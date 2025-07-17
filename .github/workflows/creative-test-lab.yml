@@ -131,11 +131,32 @@ jobs:
         run: npm install @anthropic-ai/claude-code
       
       - name: Setup MCP configuration
+        env:
+          MCP_CONFIG_JSON: ${{ secrets.MCP_CONFIG_JSON }}
         run: |
           EXPERIMENT_DIR="${{ needs.setup-experiment.outputs.experiment-dir }}"
           
-          # 基本設定をコピー
-          cp .claude/mcp-kamuicode.json temp-configs/experiment-config.json
+          # Secretsから基本設定を取得
+          if [ -n "$MCP_CONFIG_JSON" ]; then
+            echo "🔧 SecretsからMCP設定を読み込み中..."
+            echo "$MCP_CONFIG_JSON" > temp-configs/experiment-config.json
+            echo "✅ MCP設定を読み込みました"
+          else
+            echo "❌ MCP_CONFIG_JSON secretが設定されていません"
+            # フォールバック: 基本的な設定を作成
+            cat > temp-configs/experiment-config.json << 'EOF'
+{
+  "mcpServers": {
+    "t2i-fal-imagen4-fast": {
+      "type": "http",
+      "url": "https://mcp-flux-kontext-only-20250716-020022-44f00679-zl3xx5lsaq-uc.a.run.app/t2i/fal/imagen4/fast",
+      "description": "Fal.ai Imagen4 Fast Text-to-Image (Speed Optimized)"
+    }
+  }
+}
+EOF
+            echo "⚠️ デフォルトMCP設定を使用します"
+          fi
           
           # 実験用設定を追加（必要に応じて）
           MCP_TO_TEST="${{ inputs.mcp_to_test }}"
@@ -147,6 +168,10 @@ jobs:
           
           # 設定ファイルを実験ディレクトリにコピー
           cp temp-configs/experiment-config.json "$EXPERIMENT_DIR/config/"
+          
+          # 設定内容を確認（機密情報は表示しない）
+          echo "📋 MCP設定の確認:"
+          jq -r '.mcpServers | keys[]' "$EXPERIMENT_DIR/config/experiment-config.json" || echo "JSON解析エラー"
       
       - name: Execute rapid experiment
         env:
