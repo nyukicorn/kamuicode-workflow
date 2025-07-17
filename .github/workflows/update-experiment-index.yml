@@ -1,10 +1,6 @@
 name: Update Experiment Index
 
 on:
-  workflow_run:
-    workflows: ["Creative Test Lab"]
-    types: [completed]
-  
   workflow_dispatch:
     inputs:
       force_update:
