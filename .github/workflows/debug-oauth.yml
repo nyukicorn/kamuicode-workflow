@@ -23,30 +23,16 @@ jobs:
       
       - name: Test Method 1 - OAuth Config File Creation
         env:
-          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           echo "=== Method 1: OAuth Config File Creation ==="
           
           # Create Claude config directory
           mkdir -p ~/.claude
           
-          # Create OAuth token file with GitHub secrets
-          cat > ~/.claude/oauth_token.json << EOF
-          {
-            "access_token": "$CLAUDE_ACCESS_TOKEN",
-            "refresh_token": "$CLAUDE_REFRESH_TOKEN",
-            "expires_at": "$CLAUDE_EXPIRES_AT",
-            "token_type": "bearer"
-          }
-          EOF
-          
-          echo "OAuth config file created"
-          echo "File contents (masked):"
-          echo "access_token: ${CLAUDE_ACCESS_TOKEN:0:10}..."
-          echo "refresh_token: ${CLAUDE_REFRESH_TOKEN:0:10}..."
-          echo "expires_at: $CLAUDE_EXPIRES_AT"
+          # Test with CLAUDE_CODE_OAUTH_TOKEN environment variable
+          echo "CLAUDE_CODE_OAUTH_TOKEN set: ${CLAUDE_CODE_OAUTH_TOKEN:+YES}"
+          echo "Token prefix: ${CLAUDE_CODE_OAUTH_TOKEN:0:20}..."
           
           echo "=== Testing Claude CLI with OAuth file ==="
           npx @anthropic-ai/claude-code --print -p "Hello, respond with just 'Test 1 success'" || echo "Method 1 failed"
