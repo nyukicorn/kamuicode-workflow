@@ -63,7 +63,9 @@ jobs:
       - name: ミュージックビデオ計画エージェント
         id: planning
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎵 Music Video Planning Agent Execution"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -148,6 +150,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --allowedTools "Read,Write,Edit" \
             --max-turns 25 \
             --verbose \
@@ -246,7 +249,9 @@ jobs:
       - name: 音楽生成エージェント (Google Lyria)
         id: music
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎵 Music Generation Agent Execution (Google Lyria)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -308,6 +313,7 @@ jobs:
           - パス保存ファイル: $FOLDER_NAME/music-url.txt"
           
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__t2m-google-lyria__lyria_generate,Bash" \
             --max-turns 25 \
@@ -411,7 +417,9 @@ jobs:
       - name: 音楽分析・プロンプト最適化エージェント
         id: analysis
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎵 Music Analysis & Prompt Optimization Agent Execution"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -504,6 +512,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --allowedTools "Read,Write,Edit" \
             --max-turns 50 \
             --verbose \
@@ -614,7 +623,9 @@ jobs:
       - name: 画像セグメント1生成 (Imagen4 Fast)
         id: image
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎨 Image Segment 1 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -695,6 +706,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
             --max-turns 25 \
@@ -793,7 +805,9 @@ jobs:
       - name: 画像セグメント2生成 (Imagen4 Fast)
         id: image
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎨 Image Segment 2 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -836,6 +850,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
             --max-turns 25 \
@@ -915,7 +930,9 @@ jobs:
       - name: 画像セグメント3生成 (Imagen4 Fast)
         id: image
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎨 Image Segment 3 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -958,6 +975,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
             --max-turns 25 \
@@ -1039,7 +1057,9 @@ jobs:
       - name: 動画プロンプト調整エージェント
         id: adjust
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎨 Video Prompt Adjustment Agent"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -1110,6 +1130,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --allowedTools "Read,Write" \
             --max-turns 30 \
             --verbose \
@@ -1204,7 +1225,9 @@ jobs:
       - name: 動画セグメント1生成 (Hailuo-02 Pro)
         id: video
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎬 Video Segment 1 Generation (Hailuo-02 Pro)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -1254,6 +1277,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
             --max-turns 70 \
@@ -1322,7 +1346,9 @@ jobs:
       - name: 動画セグメント2生成 (Hailuo-02 Pro)
         id: video
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎬 Video Segment 2 Generation (Hailuo-02 Pro)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -1372,6 +1398,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
             --max-turns 70 \
@@ -1440,7 +1467,9 @@ jobs:
       - name: 動画セグメント3生成 (Hailuo-02 Pro)
         id: video
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎬 Video Segment 3 Generation (Hailuo-02 Pro)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -1490,6 +1519,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --mcp-config="$MCP_CONFIG_ABS_PATH" \
             --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
             --max-turns 70 \
@@ -1559,7 +1589,9 @@ jobs:
       - name: 動画連結・音楽統合エージェント
         id: concat
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎬 Video Concatenation & Music Integration Agent"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -1634,6 +1666,7 @@ jobs:
           
           # Claude Code CLIの実行
           npx @anthropic-ai/claude-code \
+            --use-oauth \
             --allowedTools "Read,Write,Bash" \
             --max-turns 70 \
             --verbose \
