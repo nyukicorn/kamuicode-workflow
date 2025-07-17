@@ -34,8 +34,10 @@ jobs:
           echo "CLAUDE_CODE_OAUTH_TOKEN set: ${CLAUDE_CODE_OAUTH_TOKEN:+YES}"
           echo "Token prefix: ${CLAUDE_CODE_OAUTH_TOKEN:0:20}..."
           
-          echo "=== Testing Claude CLI with OAuth file ==="
-          npx @anthropic-ai/claude-code --print -p "Hello, respond with just 'Test 1 success'" || echo "Method 1 failed"
+          echo "=== Testing Claude CLI with variables ==="
+          TEST_PROMPT="A beautiful red rose"
+          echo "Test prompt: $TEST_PROMPT"
+          npx @anthropic-ai/claude-code --print -p "Generate an image with this prompt: $TEST_PROMPT" || echo "Variable test failed"
       
       - name: Test Method 2 - grll/claude-code-action
         uses: grll/claude-code-action@beta
