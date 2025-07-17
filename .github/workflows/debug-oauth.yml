@@ -34,10 +34,28 @@ jobs:
           echo "CLAUDE_CODE_OAUTH_TOKEN set: ${CLAUDE_CODE_OAUTH_TOKEN:+YES}"
           echo "Token prefix: ${CLAUDE_CODE_OAUTH_TOKEN:0:20}..."
           
-          echo "=== Testing Claude CLI with variables ==="
-          TEST_PROMPT="A beautiful red rose"
-          echo "Test prompt: $TEST_PROMPT"
-          npx @anthropic-ai/claude-code --print -p "Generate an image with this prompt: $TEST_PROMPT" || echo "Variable test failed"
+          echo "=== Testing Prompt Variable Construction ==="
+          
+          # Test variables like in the actual workflow
+          FINAL_IMAGE_PROMPT="A beautiful red rose with detailed petals"
+          
+          # Test prompt construction exactly like the workflow
+          PROMPT="画像セグメント1を生成してください。
+
+          **画像プロンプト**: $FINAL_IMAGE_PROMPT
+
+          **実行手順**:
+          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成"
+          
+          echo "=== Debug Output ==="
+          echo "FINAL_IMAGE_PROMPT: '$FINAL_IMAGE_PROMPT'"
+          echo "PROMPT length: ${#PROMPT}"
+          echo "PROMPT content:"
+          echo "$PROMPT"
+          echo "=== End Debug ==="
+          
+          echo "=== Testing Claude CLI with constructed prompt ==="
+          npx @anthropic-ai/claude-code --print -p "$PROMPT" || echo "Prompt construction test failed"
       
       - name: Test Method 2 - grll/claude-code-action
         uses: grll/claude-code-action@beta
