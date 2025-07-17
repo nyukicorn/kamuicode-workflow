@@ -665,13 +665,16 @@ jobs:
             exit 1
           fi
           
-          # 最適化プロンプトの選択
-          if [ -n "$OPTIMIZED_IMAGE_PROMPT" ]; then
+          # 画像プロンプトの取得（音楽分析から最適化されたものを使用、なければ計画からのものを使用）
+          OPTIMIZED_IMAGE_PROMPT="${{ needs.music-analysis.outputs.image-prompt-1 }}"
+          ORIGINAL_IMAGE_PROMPT="${{ needs.music-planning.outputs.image-prompt }}"
+          
+          if [ -n "$OPTIMIZED_IMAGE_PROMPT" ] && [ "$OPTIMIZED_IMAGE_PROMPT" != "" ]; then
             FINAL_IMAGE_PROMPT="$OPTIMIZED_IMAGE_PROMPT"
-            echo "Using optimized image prompt from music analysis"
+            echo "Using optimized image prompt from music analysis: $FINAL_IMAGE_PROMPT"
           else
             FINAL_IMAGE_PROMPT="$ORIGINAL_IMAGE_PROMPT"
-            echo "Using original image prompt from planning"
+            echo "Using original image prompt from planning: $FINAL_IMAGE_PROMPT"
           fi
           
           # プロンプトの構築
@@ -680,7 +683,14 @@ jobs:
           **画像プロンプト**: $FINAL_IMAGE_PROMPT
 
           **実行手順**:
-          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成
+          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成"
+          
+          echo "=== DEBUG: PROMPT CONSTRUCTION ==="
+          echo "FINAL_IMAGE_PROMPT value: '$FINAL_IMAGE_PROMPT'"
+          echo "PROMPT length: ${#PROMPT}"
+          echo "PROMPT content:"
+          echo "$PROMPT"
+          echo "=== END DEBUG ==="
           2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
           3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
           4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
