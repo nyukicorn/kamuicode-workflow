@@ -1,4 +1,4 @@
-name: Creative Test Lab
+name: Creative Test Lab (Simple)
 
 on:
   workflow_dispatch:
