@@ -20,7 +20,7 @@ on:
         options:
           - 'auto-detect'
           - 'image'
-          - 'video' 
+          - 'video'
           - 'music'
           - 'threejs-scene'
           - 'mixed-media'
