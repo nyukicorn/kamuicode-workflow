@@ -190,10 +190,9 @@ EOF
           exec 1> >(tee -a "$EXPERIMENT_DIR/logs/experiment.log")
           exec 2> >(tee -a "$EXPERIMENT_DIR/logs/error.log")
           
-          # Claude Code を使用して実験を実行
-          timeout 1800 npx claude-code --non-interactive \
-            --mcp-config="$EXPERIMENT_DIR/config/experiment-config.json" \
-            --message="実験を実行してください。
+          # Claude Codeへの指示内容をファイルに保存
+          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << EOF
+          実験を実行してください。
             
           実験内容: ${{ inputs.experiment_description }}
           期待するアウトプット: ${{ inputs.output_type }}
@@ -207,7 +206,13 @@ EOF
           5. 簡単なレポートを作成
           
           品質よりもスピードを重視し、とにかく何かアウトプットを生成してください。
-          失敗してもログに記録して続行してください。" \
+          失敗してもログに記録して続行してください。
+          EOF
+          
+          # Claude Code を使用して実験を実行
+          timeout 1800 npx claude-code --non-interactive \
+            --mcp-config="$EXPERIMENT_DIR/config/experiment-config.json" \
+            --message="$(cat $EXPERIMENT_DIR/claude-instructions.txt)" \
             || echo "実験がタイムアウトまたはエラーで終了しました" >> "$EXPERIMENT_DIR/logs/error.log"
           
           echo "終了時刻: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
