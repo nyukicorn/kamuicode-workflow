@@ -277,13 +277,18 @@ jobs:
           echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
           echo "Allowed tools: mcp__t2m-google-lyria__lyria_submit,mcp__t2m-google-lyria__lyria_status,mcp__t2m-google-lyria__lyria_result,Bash"
           
-          # MCP設定ファイルの存在確認
+          # Create MCP config file from GitHub Secret
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_ABS_PATH"
+          echo "✅ MCP config file created from GitHub Secret"
+          
+          # MCP設定ファイルの確認
           if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
             echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
             echo "MCP servers configured:"
             jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
           else
-            echo "❌ MCP config file not found at: $MCP_CONFIG_ABS_PATH"
+            echo "❌ MCP config file creation failed"
             exit 1
           fi
           
@@ -645,13 +650,18 @@ jobs:
           echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
           echo "Allowed tools: mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
           
-          # MCP設定ファイルの存在確認
+          # Create MCP config file from GitHub Secret
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_ABS_PATH"
+          echo "✅ MCP config file created from GitHub Secret"
+          
+          # MCP設定ファイルの確認
           if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
             echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
             echo "MCP servers configured:"
             jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
           else
-            echo "❌ MCP config file not found at: $MCP_CONFIG_ABS_PATH"
+            echo "❌ MCP config file creation failed"
             exit 1
           fi
           
