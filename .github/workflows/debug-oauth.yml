@@ -18,16 +18,12 @@ jobs:
       - name: Install Claude Code SDK
         run: npm install @anthropic-ai/claude-code
       
-      - name: Debug OAuth Environment Variables
+      - name: Test CLAUDE_USE_SUBSCRIPTION
         env:
-          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
-          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
-          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          CLAUDE_USE_SUBSCRIPTION: "true"
         run: |
           echo "=== Environment Variables Check ==="
-          echo "CLAUDE_ACCESS_TOKEN set: ${CLAUDE_ACCESS_TOKEN:+YES}"
-          echo "CLAUDE_REFRESH_TOKEN set: ${CLAUDE_REFRESH_TOKEN:+YES}"
-          echo "CLAUDE_EXPIRES_AT set: ${CLAUDE_EXPIRES_AT:+YES}"
+          echo "CLAUDE_USE_SUBSCRIPTION: $CLAUDE_USE_SUBSCRIPTION"
           
           echo "=== Claude CLI Version ==="
           npx @anthropic-ai/claude-code --version
