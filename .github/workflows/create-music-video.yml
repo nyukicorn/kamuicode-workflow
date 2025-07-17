@@ -683,7 +683,8 @@ jobs:
           **画像プロンプト**: $FINAL_IMAGE_PROMPT
 
           **実行手順**:
-          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成"
+          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成
+          2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始"
           
           echo "=== DEBUG: PROMPT CONSTRUCTION ==="
           echo "FINAL_IMAGE_PROMPT value: '$FINAL_IMAGE_PROMPT'"
@@ -691,7 +692,6 @@ jobs:
           echo "PROMPT content:"
           echo "$PROMPT"
           echo "=== END DEBUG ==="
-          2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
           3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
           4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
           5. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
