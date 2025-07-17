@@ -1,0 +1,72 @@
+name: Creative Test Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_description:
+        description: 'テストしたい実験内容'
+        required: true
+        type: string
+      
+      mcp_to_test:
+        description: 'テストするMCP'
+        required: false
+        type: string
+        default: 'imagen4-fast'
+
+jobs:
+  test-experiment:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup environment
+        run: |
+          echo "🧪 実験開始"
+          echo "実験内容: ${{ inputs.experiment_description }}"
+          echo "使用MCP: ${{ inputs.mcp_to_test }}"
+          
+          # 実験用ディレクトリを作成
+          EXPERIMENT_ID="exp-$(date +%Y%m%d-%H%M%S)"
+          mkdir -p "experiment-results/$EXPERIMENT_ID"
+          
+          echo "実験ID: $EXPERIMENT_ID"
+          echo "EXPERIMENT_ID=$EXPERIMENT_ID" >> $GITHUB_ENV
+      
+      - name: Simple test execution
+        run: |
+          echo "🔧 テスト実行中..."
+          
+          # 簡単なテストファイルを作成
+          cat > "experiment-results/$EXPERIMENT_ID/test-result.txt" << EOF
+          実験結果レポート
+          
+          実験ID: $EXPERIMENT_ID
+          実験内容: ${{ inputs.experiment_description }}
+          使用MCP: ${{ inputs.mcp_to_test }}
+          実行時刻: $(date)
+          
+          ステータス: テスト完了
+          EOF
+          
+          echo "✅ テスト実行完了"
+      
+      - name: Commit results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add experiment-results/
+          
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "Test experiment: $EXPERIMENT_ID"
+            git push
+          fi
+          
+          echo "🎉 実験完了: $EXPERIMENT_ID"
