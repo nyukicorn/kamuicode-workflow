@@ -1,0 +1,366 @@
+name: Creative Art Studio
+
+on:
+  workflow_dispatch:
+    inputs:
+      art_vision:
+        description: '作品のビジョン（詳細に記述してください）'
+        required: true
+        type: string
+        # 例: "桜の季節の京都の庭園で、着物を着た女性が静かに茶を点てている。背景は古い茶室で、外は満開の桜。時間は夕方、柔らかな光が差し込む..."
+        
+      proven_mcps:
+        description: 'テスト済みMCP（カンマ区切り）'
+        required: true
+        type: string
+        default: 'imagen4-fast,google-lyria,hailuo-02-pro'
+        # 例: "imagen4-fast,google-lyria,hailuo-02-pro,threejs-stable"
+        
+      quality_level:
+        description: '品質レベル'
+        type: choice
+        options:
+          - 'exhibition'    # 展示レベル
+          - 'portfolio'     # ポートフォリオレベル
+          - 'personal'      # 個人用レベル
+        default: 'exhibition'
+        
+      reference_experiments:
+        description: '参考にする実験ID（任意）'
+        type: string
+        required: false
+        # 例: "exp-20250117-120000,exp-20250116-150000"
+        
+      target_duration:
+        description: '目標制作時間（分）'
+        type: choice
+        options:
+          - '60'    # 1時間
+          - '120'   # 2時間  
+          - '180'   # 3時間
+          - '240'   # 4時間
+          - '300'   # 5時間
+        default: '180'
+
+jobs:
+  preparation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      project-id: ${{ steps.setup.outputs.project-id }}
+      project-dir: ${{ steps.setup.outputs.project-dir }}
+      analysis-result: ${{ steps.analyze.outputs.analysis-result }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup art project
+        id: setup
+        run: |
+          # プロジェクト用の一意なIDとディレクトリを作成
+          PROJECT_ID="art-$(date +%Y%m%d-%H%M%S)"
+          PROJECT_DIR="art-studio-works/${PROJECT_ID}"
+          
+          mkdir -p "$PROJECT_DIR"/{drafts,iterations,final,references,logs}
+          
+          echo "project-id=$PROJECT_ID" >> $GITHUB_OUTPUT
+          echo "project-dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+          
+          echo "🎨 アート制作開始: $PROJECT_ID"
+          echo "📁 制作ディレクトリ: $PROJECT_DIR"
+          
+          # プロジェクトの基本情報を記録
+          cat > "$PROJECT_DIR/project-info.json" << EOF
+          {
+            "project_id": "$PROJECT_ID",
+            "started_at": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+            "art_vision": "${{ inputs.art_vision }}",
+            "quality_level": "${{ inputs.quality_level }}",
+            "proven_mcps": "${{ inputs.proven_mcps }}",
+            "reference_experiments": "${{ inputs.reference_experiments }}",
+            "target_duration": "${{ inputs.target_duration }}",
+            "status": "started"
+          }
+          EOF
+          
+          # 作品ビジョンを詳細記録
+          cat > "$PROJECT_DIR/vision.md" << 'EOF'
+          # 作品ビジョン
+          
+          ${{ inputs.art_vision }}
+          
+          ## 技術要件
+          - 使用MCP: ${{ inputs.proven_mcps }}
+          - 品質レベル: ${{ inputs.quality_level }}
+          - 制作時間: ${{ inputs.target_duration }}分
+          
+          ## 制作工程
+          1. ビジョン分析
+          2. 技術的実現可能性の検証
+          3. 段階的制作
+          4. 品質向上イテレーション
+          5. 最終調整
+          
+          EOF
+      
+      - name: Analyze art vision
+        id: analyze
+        run: |
+          echo "🔍 作品ビジョンを分析中..."
+          
+          ART_VISION="${{ inputs.art_vision }}"
+          PROVEN_MCPS="${{ inputs.proven_mcps }}"
+          
+          # ビジョンから技術的要件を抽出
+          ANALYSIS_RESULT=""
+          
+          # 画像生成の必要性を判定
+          if [[ "$ART_VISION" =~ 画像|写真|絵|風景|人物|色彩|構図 ]]; then
+            ANALYSIS_RESULT="$ANALYSIS_RESULT,image_generation_required"
+          fi
+          
+          # 音楽生成の必要性を判定
+          if [[ "$ART_VISION" =~ 音楽|音|メロディ|リズム|楽器|BGM ]]; then
+            ANALYSIS_RESULT="$ANALYSIS_RESULT,music_generation_required"
+          fi
+          
+          # 動画生成の必要性を判定
+          if [[ "$ART_VISION" =~ 動画|映像|アニメーション|動き|時間 ]]; then
+            ANALYSIS_RESULT="$ANALYSIS_RESULT,video_generation_required"
+          fi
+          
+          # 3D要素の必要性を判定
+          if [[ "$ART_VISION" =~ 立体|3[dD]|空間|360|パノラマ|環境 ]]; then
+            ANALYSIS_RESULT="$ANALYSIS_RESULT,3d_elements_required"
+          fi
+          
+          # インタラクティブ要素の必要性を判定
+          if [[ "$ART_VISION" =~ インタラクティブ|操作|クリック|ボタン|UI ]]; then
+            ANALYSIS_RESULT="$ANALYSIS_RESULT,interactive_elements_required"
+          fi
+          
+          # 最初のカンマを削除
+          ANALYSIS_RESULT=${ANALYSIS_RESULT#,}
+          
+          echo "analysis-result=$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
+          echo "🎯 分析結果: $ANALYSIS_RESULT"
+          
+          # 分析結果をファイルに保存
+          cat > "${{ steps.setup.outputs.project-dir }}/analysis.json" << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+            "art_vision": "$ART_VISION",
+            "technical_requirements": "$ANALYSIS_RESULT",
+            "available_mcps": "$PROVEN_MCPS",
+            "complexity_level": "$(echo "$ANALYSIS_RESULT" | tr ',' '\n' | wc -l)",
+            "estimated_iterations": 3
+          }
+          EOF
+      
+      - name: Validate MCP availability
+        run: |
+          echo "🔧 MCP可用性を確認中..."
+          
+          PROVEN_MCPS="${{ inputs.proven_mcps }}"
+          PROJECT_DIR="${{ steps.setup.outputs.project-dir }}"
+          
+          # 基本MCPの存在確認
+          if [[ "$PROVEN_MCPS" =~ imagen4-fast ]]; then
+            echo "✅ imagen4-fast: 利用可能"
+          else
+            echo "⚠️ imagen4-fast: 未指定"
+          fi
+          
+          if [[ "$PROVEN_MCPS" =~ google-lyria ]]; then
+            echo "✅ google-lyria: 利用可能"
+          else
+            echo "⚠️ google-lyria: 未指定"
+          fi
+          
+          if [[ "$PROVEN_MCPS" =~ hailuo-02-pro ]]; then
+            echo "✅ hailuo-02-pro: 利用可能"
+          else
+            echo "⚠️ hailuo-02-pro: 未指定"
+          fi
+          
+          # 実験結果の参照
+          REFERENCE_EXPERIMENTS="${{ inputs.reference_experiments }}"
+          if [[ -n "$REFERENCE_EXPERIMENTS" ]]; then
+            echo "📋 参考実験を確認中..."
+            
+            # 参考実験の存在確認
+            IFS=',' read -ra REFS <<< "$REFERENCE_EXPERIMENTS"
+            for ref in "${REFS[@]}"; do
+              if [ -d "experiment-results/$ref" ]; then
+                echo "✅ 参考実験 $ref: 見つかりました"
+                # 実験結果をコピー
+                cp -r "experiment-results/$ref" "$PROJECT_DIR/references/"
+              else
+                echo "⚠️ 参考実験 $ref: 見つかりません"
+              fi
+            done
+          fi
+
+  art-creation:
+    needs: [preparation]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: Prepare MCP configuration
+        run: |
+          PROJECT_DIR="${{ needs.preparation.outputs.project-dir }}"
+          
+          # 本番用のMCP設定を準備
+          cp .claude/mcp-kamuicode.json "$PROJECT_DIR/mcp-production.json"
+          
+          echo "🔧 本番用MCP設定を準備しました"
+      
+      - name: Create art project (Coming Soon)
+        env:
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+        run: |
+          PROJECT_DIR="${{ needs.preparation.outputs.project-dir }}"
+          PROJECT_ID="${{ needs.preparation.outputs.project-id }}"
+          
+          echo "::group::🎨 アート制作実行中"
+          echo "開始時刻: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "プロジェクト: $PROJECT_ID"
+          echo "品質レベル: ${{ inputs.quality_level }}"
+          
+          # ログファイルの設定
+          exec 1> >(tee -a "$PROJECT_DIR/logs/creation.log")
+          exec 2> >(tee -a "$PROJECT_DIR/logs/error.log")
+          
+          # 現在は準備段階のため、プレースホルダーを作成
+          cat > "$PROJECT_DIR/drafts/placeholder.md" << 'EOF'
+          # アート制作プレースホルダー
+          
+          ## 現在の状況
+          Creative Art Studio はまだ開発中です。
+          
+          ## 計画された機能
+          1. 詳細なビジョン分析
+          2. 段階的な制作プロセス
+          3. 品質向上のイテレーション
+          4. 最終的な作品の完成
+          
+          ## 作品ビジョン
+          ${{ inputs.art_vision }}
+          
+          ## 使用予定MCP
+          ${{ inputs.proven_mcps }}
+          
+          ## 次のステップ
+          - Creative Test Lab での十分な実験
+          - 成功パターンの蓄積
+          - 本格的なアート制作機能の実装
+          
+          EOF
+          
+          echo "📝 プレースホルダーを作成しました"
+          echo "🔄 将来の実装: 本格的なアート制作機能"
+          echo "終了時刻: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "::endgroup::"
+      
+      - name: Update project status
+        run: |
+          PROJECT_DIR="${{ needs.preparation.outputs.project-dir }}"
+          
+          # プロジェクト情報を更新
+          jq '.status = "placeholder_created" | .completed_at = now | .completed_at_iso = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+            "$PROJECT_DIR/project-info.json" > "$PROJECT_DIR/project-info.json.tmp"
+          mv "$PROJECT_DIR/project-info.json.tmp" "$PROJECT_DIR/project-info.json"
+          
+          # プロジェクトレポートを作成
+          cat > "$PROJECT_DIR/README.md" << EOF
+          # アートプロジェクト: ${{ needs.preparation.outputs.project-id }}
+          
+          ## プロジェクト概要
+          - **プロジェクトID**: ${{ needs.preparation.outputs.project-id }}
+          - **開始日時**: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+          - **品質レベル**: ${{ inputs.quality_level }}
+          - **制作時間**: ${{ inputs.target_duration }}分
+          
+          ## 作品ビジョン
+          ${{ inputs.art_vision }}
+          
+          ## 技術的要件
+          - **使用MCP**: ${{ inputs.proven_mcps }}
+          - **分析結果**: ${{ needs.preparation.outputs.analysis-result }}
+          
+          ## 現在の状況
+          🚧 **開発中**: Creative Art Studio は現在開発中です。
+          
+          ### 完成予定機能
+          - 詳細なビジョン分析
+          - 段階的制作プロセス
+          - 品質向上イテレーション
+          - 最終作品の完成
+          
+          ## 次のステップ
+          1. Creative Test Lab での十分な実験
+          2. 成功パターンの蓄積と分析
+          3. 本格的なアート制作機能の実装
+          4. 高品質作品の制作開始
+          
+          ## 関連実験
+          EOF
+          
+          # 参考実験がある場合は追加
+          if [[ -n "${{ inputs.reference_experiments }}" ]]; then
+            echo "- 参考実験: ${{ inputs.reference_experiments }}" >> "$PROJECT_DIR/README.md"
+          else
+            echo "- 参考実験: なし" >> "$PROJECT_DIR/README.md"
+          fi
+          
+          echo "✅ プロジェクトレポートを作成しました"
+      
+      - name: Commit art project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add art-studio-works/
+          
+          if git diff --cached --quiet; then
+            echo "コミットするものがありません"
+          else
+            git commit -m "Add art project: ${{ needs.preparation.outputs.project-id }}
+
+          作品ビジョン: ${{ inputs.art_vision }}
+          品質レベル: ${{ inputs.quality_level }}
+          使用MCP: ${{ inputs.proven_mcps }}
+          
+          🎨 Generated with Creative Art Studio (Preview)
+          
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+          fi
+      
+      - name: Project summary
+        run: |
+          PROJECT_ID="${{ needs.preparation.outputs.project-id }}"
+          echo "::notice::🎨 アートプロジェクト作成: $PROJECT_ID"
+          echo "::notice::📋 作品ビジョン: ${{ inputs.art_vision }}"
+          echo "::notice::🎯 品質レベル: ${{ inputs.quality_level }}"
+          echo "::notice::🔧 使用MCP: ${{ inputs.proven_mcps }}"
+          echo "::notice::📁 プロジェクト: art-studio-works/$PROJECT_ID/"
+          echo "::notice::🚧 現在は開発中 - 本格実装は実験完了後"
+          echo "::notice::🧪 まずは Creative Test Lab で実験を重ねてください"

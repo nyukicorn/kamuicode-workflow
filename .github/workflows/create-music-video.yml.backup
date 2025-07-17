@@ -63,7 +63,9 @@ jobs:
       - name: ミュージックビデオ計画エージェント
         id: planning
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
           echo "::group::🎵 Music Video Planning Agent Execution"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -83,10 +85,12 @@ jobs:
           fi
           
           # プロンプトの構築
-          PROMPT="あなたは音楽主導のミュージックビデオ制作の戦略的プランナーです。5秒×3つの動画を30-40秒の音楽に最適化する戦略を中心とした詳細な制作計画を立ててください。
+          PROMPT="|
+            あなたは音楽主導のミュージックビデオ制作の戦略的プランナーです。5秒×3つの動画を30-40秒の音楽に最適化する戦略を中心とした詳細な制作計画を立ててください。
 
-          **音楽コンセプト**: $MUSIC_CONCEPT
-          **重要制約**: 動画は5秒×3つのみ、音楽は30-40秒
+            **音楽コンセプト**: ${{ inputs.music_concept }}
+            **重要制約**: 動画は5秒×3つのみ、音楽は30-40秒
+            **作業フォルダ**: ${{ needs.setup-branch.outputs.folder-name }}/planning
 
           **戦略的タスク**:
           1. 音楽コンセプトを分析し、Google Lyriaで生成すべき音楽の詳細な設定を計画
@@ -141,24 +145,13 @@ jobs:
           2. txtファイルは機械処理用（1行テキスト）、mdファイルはユーザー確認用
           3. 音楽→画像→動画の一貫したコンセプトを維持
           4. 各ファイルの内容は具体的で詳細に記述してください
-          5. ファイル作成後、必ずファイルパスを確認・報告してください"
+            5. ファイル作成後、必ずファイルパスを確認・報告してください
+      - name: Check planning results
+        id: check-planning
+        run: |
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          PLANNING_DIR="$FOLDER_NAME/planning"
           
-          echo "🚀 Starting Music Video Planning Agent Claude Code CLI..."
-          echo "📝 Prompt length: ${#PROMPT}"
-          
-          # Claude Code CLIの実行
-          npx @anthropic-ai/claude-code \
-            --allowedTools "Read,Write,Edit" \
-            --max-turns 25 \
-            --verbose \
-            --permission-mode "acceptEdits" \
-            -p "$PROMPT" || {
-              echo "::error::❌ Claude Code CLI execution failed"
-              exit 1
-            }
-          
-          # 生成された計画の確認
-          echo ""
           echo "📋 Checking generated planning files..."
           
           # 音楽プロンプトの確認
@@ -204,7 +197,6 @@ jobs:
           fi
           
           echo "completed=true" >> $GITHUB_OUTPUT
-          echo "::endgroup::"
       
       - name: Commit and push planning
         env:
@@ -235,37 +227,17 @@ jobs:
         with:
           ref: ${{ needs.setup-branch.outputs.branch-name }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Claude Code SDK
-        run: npm install @anthropic-ai/claude-code
-      
-      - name: 音楽生成エージェント (Google Lyria)
-        id: music
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Create music directory and check MCP config
         run: |
-          echo "::group::🎵 Music Generation Agent Execution (Google Lyria)"
-          echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
-          
-          # 設定
-          MUSIC_CONCEPT="${{ inputs.music_concept }}"
-          MUSIC_PROMPT="${{ needs.music-planning.outputs.music-prompt }}"
           FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
           MUSIC_DIR="$FOLDER_NAME/music"
-          
-          echo "Music concept: $MUSIC_CONCEPT"
-          echo "Music prompt: $MUSIC_PROMPT"
+          mkdir -p "$MUSIC_DIR"
+          echo "📁 Created music folder: $MUSIC_DIR"
+          echo "::group::🎵 Music Generation Agent Execution (Google Lyria)"
+          echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "Music concept: ${{ inputs.music_concept }}"
+          echo "Music prompt: ${{ needs.music-planning.outputs.music-prompt }}"
           echo "Target folder: $MUSIC_DIR"
-          
-          # 音楽フォルダを事前に作成
-          if [ ! -d "$MUSIC_DIR" ]; then
-            mkdir -p "$MUSIC_DIR"
-            echo "📁 Created music folder: $MUSIC_DIR"
-          fi
           
           # MCP設定の確認
           MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
@@ -275,9 +247,7 @@ jobs:
           echo "Working directory: $(pwd)"
           echo "MCP config path: $MCP_CONFIG_PATH"
           echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
-          echo "Allowed tools: mcp__t2m-google-lyria__lyria_submit,mcp__t2m-google-lyria__lyria_status,mcp__t2m-google-lyria__lyria_result,Bash"
           
-          # MCP設定ファイルの存在確認
           if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
             echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
             echo "MCP servers configured:"
@@ -286,37 +256,40 @@ jobs:
             echo "❌ MCP config file not found at: $MCP_CONFIG_ABS_PATH"
             exit 1
           fi
-          
-          # 一括実行: 音楽生成（Google Lyria Generate）
-          echo "🚀 Music Generation (Google Lyria Generate)"
-          MUSIC_PROMPT_FULL="Google Lyriaを使用して音楽生成を実行してください。
+          echo "::endgroup::"
+      
+      - name: 音楽生成エージェント (Google Lyria)
+        id: music
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          allowedTools: "mcp__t2m-google-lyria__lyria_submit,mcp__t2m-google-lyria__lyria_status,mcp__t2m-google-lyria__lyria_result,Bash"
+          max-turns: 25
+          verbose: true
+          permission-mode: "acceptEdits"
+          mcp-config: ".claude/mcp-kamuicode.json"
+          prompt: |
+            Google Lyriaを使用して音楽生成を実行してください。
 
-          **音楽コンセプト**: $MUSIC_CONCEPT
-          **最適化された音楽生成プロンプト**: $MUSIC_PROMPT
+            **音楽コンセプト**: ${{ inputs.music_concept }}
+            **最適化された音楽生成プロンプト**: ${{ needs.music-planning.outputs.music-prompt }}
+            **作業フォルダ**: ${{ needs.setup-branch.outputs.folder-name }}/music
 
-          **実行手順**:
-          1. \`mcp__t2m-google-lyria__lyria_generate\`ツールを使用して音楽生成を実行
-          2. 生成された音楽ファイルを「$MUSIC_DIR/generated-music.mp3」または「$MUSIC_DIR/generated-music.wav」に保存
-          3. 音楽ファイルのパスを「$FOLDER_NAME/music-url.txt」に保存（後の処理で参照用）
-          4. 生成完了の確認メッセージを表示
+            **実行手順**:
+            1. `mcp__t2m-google-lyria__lyria_submit`ツールを使用して音楽生成を実行
+            2. 生成された音楽ファイルを「${{ needs.setup-branch.outputs.folder-name }}/music/generated-music.mp3」または「${{ needs.setup-branch.outputs.folder-name }}/music/generated-music.wav」に保存
+            3. 音楽ファイルのパスを「${{ needs.setup-branch.outputs.folder-name }}/music-url.txt」に保存（後の処理で参照用）
+            4. 生成完了の確認メッセージを表示
 
-          **重要**: 必ず正しいツール名 \`mcp__t2m-google-lyria__lyria_generate\` を使用してください。
-          
-          **保存先**:
-          - 音楽ディレクトリ: $MUSIC_DIR
-          - 音楽ファイル: generated-music.mp3 または generated-music.wav
-          - パス保存ファイル: $FOLDER_NAME/music-url.txt"
-          
-          npx @anthropic-ai/claude-code \
-            --mcp-config="$MCP_CONFIG_ABS_PATH" \
-            --allowedTools "mcp__t2m-google-lyria__lyria_generate,Bash" \
-            --max-turns 25 \
-            --verbose \
-            --permission-mode "acceptEdits" \
-            -p "$MUSIC_PROMPT_FULL" || {
-              echo "::error::❌ Music generation failed"
-              exit 1
-            }
+            **重要**: 必ず正しいツール名を使用してください。
+
+            **保存先**:
+            - 音楽ディレクトリ: ${{ needs.setup-branch.outputs.folder-name }}/music
+            - 音楽ファイル: generated-music.mp3 または generated-music.wav
+            - パス保存ファイル: ${{ needs.setup-branch.outputs.folder-name }}/music-url.txt
           
           # 生成された音楽の確認
           echo ""
@@ -400,18 +373,45 @@ jobs:
         with:
           ref: ${{ needs.setup-branch.outputs.branch-name }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Claude Code SDK
-        run: npm install @anthropic-ai/claude-code
+      - name: Create analysis directory  
+        run: |
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          ANALYSIS_DIR="$FOLDER_NAME/analysis"
+          MUSIC_DIR="$FOLDER_NAME/music"
+          
+          echo "::group::🎵 Music Analysis & Prompt Optimization Agent Execution"
+          echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "Music concept: ${{ inputs.music_concept }}"
+          echo "Original image prompt: ${{ needs.music-planning.outputs.image-prompt }}"
+          echo "Original video prompt: ${{ needs.music-planning.outputs.video-concept }}"
+          echo "Music URL: ${{ needs.music-generation.outputs.music-url }}"
+          echo "Analysis folder: $ANALYSIS_DIR"
+          
+          # 分析フォルダを事前に作成
+          if [ ! -d "$ANALYSIS_DIR" ]; then
+            mkdir -p "$ANALYSIS_DIR"
+            echo "📁 Created analysis folder: $ANALYSIS_DIR"
+          fi
+          
+          # 生成された音楽ファイルの確認
+          if [ ! -d "$MUSIC_DIR" ]; then
+            echo "::error::❌ Music directory not found: $MUSIC_DIR"
+            exit 1
+          fi
+          echo "::endgroup::"
       
       - name: 音楽分析・プロンプト最適化エージェント
         id: analysis
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          allowedTools: "Read,Write,Edit,Bash"
+          max-turns: 25
+          verbose: true
+          permission-mode: "acceptEdits"
         run: |
           echo "::group::🎵 Music Analysis & Prompt Optimization Agent Execution"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -603,18 +603,19 @@ jobs:
         with:
           ref: ${{ needs.setup-branch.outputs.branch-name }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Claude Code SDK
-        run: npm install @anthropic-ai/claude-code
-      
       - name: 画像セグメント1生成 (Imagen4 Fast)
         id: image
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          allowedTools: "mcp__i2t-google-imagen4__imagen4_submit,mcp__i2t-google-imagen4__imagen4_status,mcp__i2t-google-imagen4__imagen4_result,Bash"
+          max-turns: 25
+          verbose: true
+          permission-mode: "acceptEdits"
+          mcp-config: ".claude/mcp-kamuicode.json"
         run: |
           echo "::group::🎨 Image Segment 1 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -782,18 +783,19 @@ jobs:
         with:
           ref: ${{ needs.setup-branch.outputs.branch-name }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Claude Code SDK
-        run: npm install @anthropic-ai/claude-code
-      
       - name: 画像セグメント2生成 (Imagen4 Fast)
         id: image
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          allowedTools: "mcp__i2t-google-imagen4__imagen4_submit,mcp__i2t-google-imagen4__imagen4_status,mcp__i2t-google-imagen4__imagen4_result,Bash"
+          max-turns: 25
+          verbose: true
+          permission-mode: "acceptEdits"
+          mcp-config: ".claude/mcp-kamuicode.json"
         run: |
           echo "::group::🎨 Image Segment 2 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
@@ -904,18 +906,19 @@ jobs:
         with:
           ref: ${{ needs.setup-branch.outputs.branch-name }}
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      
-      - name: Install Claude Code SDK
-        run: npm install @anthropic-ai/claude-code
-      
       - name: 画像セグメント3生成 (Imagen4 Fast)
         id: image
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          allowedTools: "mcp__i2t-google-imagen4__imagen4_submit,mcp__i2t-google-imagen4__imagen4_status,mcp__i2t-google-imagen4__imagen4_result,Bash"
+          max-turns: 25
+          verbose: true
+          permission-mode: "acceptEdits"
+          mcp-config: ".claude/mcp-kamuicode.json"
         run: |
           echo "::group::🎨 Image Segment 3 Generation (Imagen4 Fast)"
           echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"

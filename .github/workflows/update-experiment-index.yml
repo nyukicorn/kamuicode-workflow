@@ -1,0 +1,278 @@
+name: Update Experiment Index
+
+on:
+  workflow_run:
+    workflows: ["Creative Test Lab"]
+    types: [completed]
+  
+  workflow_dispatch:
+    inputs:
+      force_update:
+        description: '強制的にインデックスを更新'
+        type: boolean
+        default: false
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Update experiment index
+        run: |
+          echo "📊 実験インデックスを更新中..."
+          
+          # 実験結果ディレクトリを確認
+          EXPERIMENT_RESULTS_DIR="experiment-results"
+          INDEX_FILE="$EXPERIMENT_RESULTS_DIR/index.md"
+          
+          if [ ! -d "$EXPERIMENT_RESULTS_DIR" ]; then
+            echo "実験結果ディレクトリが見つかりません"
+            exit 1
+          fi
+          
+          # 実験ディレクトリをカウント
+          TOTAL_EXPERIMENTS=$(find "$EXPERIMENT_RESULTS_DIR" -maxdepth 1 -type d -name "exp-*" | wc -l)
+          
+          # 成功・失敗の実験をカウント
+          SUCCESS_COUNT=0
+          FAILURE_COUNT=0
+          
+          # MCP使用頻度をカウント
+          declare -A MCP_USAGE
+          MCP_USAGE["imagen4-fast"]=0
+          MCP_USAGE["google-lyria"]=0
+          MCP_USAGE["hailuo-02-pro"]=0
+          MCP_USAGE["threejs-experimental"]=0
+          
+          # 出力タイプをカウント
+          declare -A OUTPUT_TYPES
+          OUTPUT_TYPES["image"]=0
+          OUTPUT_TYPES["video"]=0
+          OUTPUT_TYPES["music"]=0
+          OUTPUT_TYPES["threejs-scene"]=0
+          OUTPUT_TYPES["mixed-media"]=0
+          
+          # 実験結果を分析
+          for experiment_dir in "$EXPERIMENT_RESULTS_DIR"/exp-*; do
+            if [ -d "$experiment_dir" ]; then
+              experiment_name=$(basename "$experiment_dir")
+              
+              # 実験情報を読み込み
+              if [ -f "$experiment_dir/experiment-info.json" ]; then
+                # 成功・失敗の判定
+                if [ -d "$experiment_dir/output" ] && [ "$(ls -A "$experiment_dir/output")" ]; then
+                  SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                  status="✅ 成功"
+                else
+                  FAILURE_COUNT=$((FAILURE_COUNT + 1))
+                  status="❌ 失敗"
+                fi
+                
+                # JSONから情報を抽出
+                description=$(jq -r '.description // "N/A"' "$experiment_dir/experiment-info.json")
+                output_type=$(jq -r '.output_type // "auto-detect"' "$experiment_dir/experiment-info.json")
+                timestamp=$(jq -r '.timestamp // "N/A"' "$experiment_dir/experiment-info.json")
+                
+                # MCP使用頻度を更新（簡易的な実装）
+                if [[ "$description" =~ [iI]mage|画像 ]]; then
+                  MCP_USAGE["imagen4-fast"]=$((${MCP_USAGE["imagen4-fast"]} + 1))
+                fi
+                if [[ "$description" =~ [mM]usic|音楽 ]]; then
+                  MCP_USAGE["google-lyria"]=$((${MCP_USAGE["google-lyria"]} + 1))
+                fi
+                if [[ "$description" =~ [vV]ideo|動画 ]]; then
+                  MCP_USAGE["hailuo-02-pro"]=$((${MCP_USAGE["hailuo-02-pro"]} + 1))
+                fi
+                if [[ "$description" =~ [tT]hree|3[dD]|3[jJ][sS] ]]; then
+                  MCP_USAGE["threejs-experimental"]=$((${MCP_USAGE["threejs-experimental"]} + 1))
+                fi
+                
+                # 出力タイプの更新
+                case "$output_type" in
+                  "image") OUTPUT_TYPES["image"]=$((${OUTPUT_TYPES["image"]} + 1)) ;;
+                  "video") OUTPUT_TYPES["video"]=$((${OUTPUT_TYPES["video"]} + 1)) ;;
+                  "music") OUTPUT_TYPES["music"]=$((${OUTPUT_TYPES["music"]} + 1)) ;;
+                  "threejs-scene") OUTPUT_TYPES["threejs-scene"]=$((${OUTPUT_TYPES["threejs-scene"]} + 1)) ;;
+                  *) OUTPUT_TYPES["mixed-media"]=$((${OUTPUT_TYPES["mixed-media"]} + 1)) ;;
+                esac
+                
+                # 実験履歴エントリを作成
+                experiment_date=$(date -d "$timestamp" +"%Y-%m-%d" 2>/dev/null || echo "Unknown")
+                echo "- **$experiment_name** ($experiment_date): $description - $status" >> temp_experiments.md
+              fi
+            fi
+          done
+          
+          # インデックスファイルを更新
+          cat > "$INDEX_FILE" << 'EOF'
+# 実験結果インデックス
+
+このファイルは実験結果の索引として自動更新されます。
+
+## 最新の実験
+
+EOF
+          
+          # 最新の実験を追加
+          if [ -f temp_experiments.md ]; then
+            tail -10 temp_experiments.md >> "$INDEX_FILE"
+          else
+            echo "*まだ実験結果がありません*" >> "$INDEX_FILE"
+          fi
+          
+          cat >> "$INDEX_FILE" << EOF
+
+---
+
+## 実験結果の見方
+
+### ディレクトリ構造
+\`\`\`
+exp-YYYYMMDD-HHMMSS/
+├── experiment-info.json    # 実験の基本情報
+├── README.md              # 実験結果レポート
+├── output/                # 生成されたファイル
+│   ├── images/           # 画像ファイル
+│   ├── videos/           # 動画ファイル
+│   ├── audio/            # 音楽ファイル
+│   └── scenes/           # Three.js等のシーンファイル
+├── logs/                  # 実行ログ
+│   ├── experiment.log    # 実験実行ログ
+│   └── error.log         # エラーログ
+└── config/               # 使用した設定
+    └── experiment-config.json
+\`\`\`
+
+### 実験結果の評価
+
+各実験は以下の観点で評価されます：
+
+#### 技術的成功度
+- ✅ **完全成功**: 期待通りの結果が得られた
+- ⚠️ **部分成功**: 一部の機能が動作した
+- ❌ **失敗**: 期待した結果が得られなかった
+
+#### 創作への応用可能性
+- 🎨 **アート工房候補**: 高品質な作品制作に使用可能
+- 🔧 **改良必要**: 調整すれば使用可能
+- 🚫 **使用困難**: 現状では創作に適さない
+
+#### 実験の種類
+- 🧪 **新MCP検証**: 新しいMCPサーバーのテスト
+- 🔄 **組み合わせ実験**: 複数MCPの組み合わせテスト
+- 🎯 **特定機能検証**: 特定の機能やパラメータのテスト
+- 💡 **アイデア実験**: 新しいアイデアの検証
+
+---
+
+## 統計情報
+
+### 実験回数
+- 総実験数: $TOTAL_EXPERIMENTS
+- 成功実験: $SUCCESS_COUNT
+- 失敗実験: $FAILURE_COUNT
+
+### MCP使用頻度
+- imagen4-fast: ${MCP_USAGE["imagen4-fast"]}回
+- google-lyria: ${MCP_USAGE["google-lyria"]}回
+- hailuo-02-pro: ${MCP_USAGE["hailuo-02-pro"]}回
+- threejs-experimental: ${MCP_USAGE["threejs-experimental"]}回
+
+### 出力タイプ別
+- 画像: ${OUTPUT_TYPES["image"]}回
+- 動画: ${OUTPUT_TYPES["video"]}回
+- 音楽: ${OUTPUT_TYPES["music"]}回
+- Three.js: ${OUTPUT_TYPES["threejs-scene"]}回
+- 混合メディア: ${OUTPUT_TYPES["mixed-media"]}回
+
+*統計は実験実行時に自動更新されます*
+
+---
+
+## 実験履歴
+
+EOF
+          
+          # 全実験履歴を追加
+          if [ -f temp_experiments.md ]; then
+            cat temp_experiments.md >> "$INDEX_FILE"
+          else
+            echo "### 2025-01-17" >> "$INDEX_FILE"
+            echo "- 実験結果記録システムを初期化" >> "$INDEX_FILE"
+            echo "- Creative Test Lab ワークフローを準備" >> "$INDEX_FILE"
+            echo "- 最初の実験実行を待機中" >> "$INDEX_FILE"
+          fi
+          
+          cat >> "$INDEX_FILE" << 'EOF'
+
+---
+
+## 今後の予定
+
+### 短期目標（1週間）
+- [ ] 最初の実験実行
+- [ ] 基本的なMCPの動作確認
+- [ ] 実験結果の評価システム構築
+
+### 中期目標（1ヶ月）
+- [ ] 10回以上の実験実行
+- [ ] 成功パターンの特定
+- [ ] アート工房への移行準備
+
+### 長期目標（3ヶ月）
+- [ ] 実験結果の自動分析
+- [ ] 推奨実験の自動提案
+- [ ] 実験からアートへの自動移行
+
+---
+
+## 注意事項
+
+1. **実験結果の保存期間**: 30日間（GitHub Actions artifacts）
+2. **手動削除の禁止**: 実験結果は自動管理されます
+3. **機密情報の注意**: 実験結果に個人情報を含めないでください
+4. **容量制限**: 大容量ファイルは自動圧縮されます
+
+---
+
+*このファイルは Creative Test Lab によって自動更新されます*  
+EOF
+          
+          echo "*最終更新: $(date +%Y-%m-%d)*" >> "$INDEX_FILE"
+          
+          # 一時ファイルを削除
+          rm -f temp_experiments.md
+          
+          echo "✅ 実験インデックスを更新しました"
+          echo "📊 総実験数: $TOTAL_EXPERIMENTS"
+          echo "✅ 成功実験: $SUCCESS_COUNT"
+          echo "❌ 失敗実験: $FAILURE_COUNT"
+      
+      - name: Commit updated index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add experiment-results/index.md
+          
+          if git diff --cached --quiet; then
+            echo "インデックスに変更はありません"
+          else
+            git commit -m "Update experiment results index
+
+          📊 統計情報を更新
+          - 総実験数: $(find experiment-results -maxdepth 1 -type d -name "exp-*" | wc -l)
+          - 最終更新: $(date +%Y-%m-%d)
+          
+          🤖 Generated by Update Experiment Index
+          
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+          fi
+          
+          echo "📈 実験インデックスの更新完了"
