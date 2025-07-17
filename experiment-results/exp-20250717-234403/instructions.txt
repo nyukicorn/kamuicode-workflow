@@ -1,0 +1,3 @@
+実験内容: Flux Photoを使って美しいラベンダー花園の画像を生成
+期待するアウトプット: image
+MCP: imagen4-fast
