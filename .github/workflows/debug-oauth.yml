@@ -18,19 +18,44 @@ jobs:
       - name: Install Claude Code SDK
         run: npm install @anthropic-ai/claude-code
       
-      - name: Test CLAUDE_USE_SUBSCRIPTION
+      - name: Test Method 1 - OAuth Config File Creation
         env:
-          CLAUDE_USE_SUBSCRIPTION: "true"
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
         run: |
-          echo "=== Environment Variables Check ==="
-          echo "CLAUDE_USE_SUBSCRIPTION: $CLAUDE_USE_SUBSCRIPTION"
+          echo "=== Method 1: OAuth Config File Creation ==="
           
-          echo "=== Claude CLI Version ==="
-          npx @anthropic-ai/claude-code --version
+          # Create Claude config directory
+          mkdir -p ~/.claude
           
-          echo "=== Claude CLI Help ==="
-          npx @anthropic-ai/claude-code --help | head -20
+          # Create OAuth token file with GitHub secrets
+          cat > ~/.claude/oauth_token.json << EOF
+          {
+            "access_token": "$CLAUDE_ACCESS_TOKEN",
+            "refresh_token": "$CLAUDE_REFRESH_TOKEN",
+            "expires_at": "$CLAUDE_EXPIRES_AT",
+            "token_type": "bearer"
+          }
+          EOF
           
-          echo "=== Test Simple Claude CLI Call ==="
-          echo "Testing with minimal prompt..."
-          npx @anthropic-ai/claude-code --print -p "Hello, respond with just 'Hello back'" || echo "CLI call failed"
+          echo "OAuth config file created"
+          echo "File contents (masked):"
+          echo "access_token: ${CLAUDE_ACCESS_TOKEN:0:10}..."
+          echo "refresh_token: ${CLAUDE_REFRESH_TOKEN:0:10}..."
+          echo "expires_at: $CLAUDE_EXPIRES_AT"
+          
+          echo "=== Testing Claude CLI with OAuth file ==="
+          npx @anthropic-ai/claude-code --print -p "Hello, respond with just 'Test 1 success'" || echo "Method 1 failed"
+      
+      - name: Test Method 2 - grll/claude-code-action
+        uses: grll/claude-code-action@beta
+        with:
+          use_oauth: true
+          claude_access_token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          claude_refresh_token: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          prompt: "Hello, respond with just 'Test 2 success'"
+          allowedTools: "Read,Write"
+          max-turns: 1
+          verbose: true
