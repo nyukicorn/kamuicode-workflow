@@ -39,13 +39,14 @@ jobs:
           # Test variables like in the actual workflow
           FINAL_IMAGE_PROMPT="A beautiful red rose with detailed petals"
           
-          # Test prompt construction exactly like the workflow
-          PROMPT="画像セグメント1を生成してください。
+          # Test prompt construction with English (like successful users might use)
+          PROMPT="Generate image segment 1.
 
-          **画像プロンプト**: $FINAL_IMAGE_PROMPT
+          **Image prompt**: $FINAL_IMAGE_PROMPT
 
-          **実行手順**:
-          1. 画像プロンプト（$FINAL_IMAGE_PROMPT）を使用してImagen4 Fastで画像生成"
+          **Steps**:
+          1. Use the image prompt ($FINAL_IMAGE_PROMPT) to generate image with Imagen4 Fast
+          2. Use mcp__t2i-fal-imagen4-fast__imagen4_fast_submit tool"
           
           echo "=== Debug Output ==="
           echo "FINAL_IMAGE_PROMPT: '$FINAL_IMAGE_PROMPT'"
