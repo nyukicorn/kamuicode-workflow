@@ -15,15 +15,8 @@ on:
         default: 'auto-detect'
       
       output_type:
-        description: '期待するアウトプット'
-        type: choice
-        options:
-          - 'auto-detect'
-          - 'image'
-          - 'video'
-          - 'music'
-          - 'threejs-scene'
-          - 'mixed-media'
+        description: '期待するアウトプット (auto-detect/image/video/music/threejs-scene/mixed-media)'
+        type: string
         default: 'auto-detect'
       
       quick_notes:
