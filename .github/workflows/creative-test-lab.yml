@@ -132,17 +132,17 @@ jobs:
       
       - name: Setup MCP configuration
         env:
-          MCP_CONFIG_JSON: ${{ secrets.MCP_CONFIG_JSON }}
+          MCP_CONFIG: ${{ secrets.MCP_CONFIG }}
         run: |
           EXPERIMENT_DIR="${{ needs.setup-experiment.outputs.experiment-dir }}"
           
           # Secretsから基本設定を取得
-          if [ -n "$MCP_CONFIG_JSON" ]; then
+          if [ -n "$MCP_CONFIG" ]; then
             echo "🔧 SecretsからMCP設定を読み込み中..."
-            echo "$MCP_CONFIG_JSON" > temp-configs/experiment-config.json
+            echo "$MCP_CONFIG" > temp-configs/experiment-config.json
             echo "✅ MCP設定を読み込みました"
           else
-            echo "❌ MCP_CONFIG_JSON secretが設定されていません"
+            echo "❌ MCP_CONFIG secretが設定されていません"
             # フォールバック: 基本的な設定を作成
             cat > temp-configs/experiment-config.json << 'EOF'
 {
