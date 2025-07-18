@@ -87,28 +87,26 @@ jobs:
           echo "MCP: ${{ inputs.mcp_to_test }}" >> "$EXPERIMENT_DIR/instructions.txt"
           
           # Claude Codeへの詳細な指示を作成
-          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << EOF
-          以下の実験を実行してください：
-
-          実験内容: ${{ inputs.experiment_description }}
-          期待するアウトプット: ${{ inputs.output_type }}
-          使用MCP: ${{ inputs.mcp_to_test }}
-
-          手順:
-          1. 実験内容を分析して適切なMCPツールを選択
-          2. 画像生成の場合は、美しい高品質な画像を生成
-          3. 生成したファイルを必ず保存（画像の場合は.png形式で）
-          4. 生成されたファイルのパスと内容を明確に記録
-          5. 実験結果のサマリーを作成
-
-          重要: 
-          - 必ず実際にファイルを生成して保存してください
-          - 生成されたファイルは現在のディレクトリに保存
-          - ファイル名には実験IDを含めてください
-          - 失敗した場合も詳細なログを残してください
-
-          今すぐ実行してください。
-          EOF
+          echo "以下の実験を実行してください：" > "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "実験内容: ${{ inputs.experiment_description }}" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "期待するアウトプット: ${{ inputs.output_type }}" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "使用MCP: ${{ inputs.mcp_to_test }}" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "手順:" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "1. 実験内容を分析して適切なMCPツールを選択" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "2. 画像生成の場合は、美しい高品質な画像を生成" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "3. 生成したファイルを必ず保存（画像の場合は.png形式で）" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "4. 生成されたファイルのパスと内容を明確に記録" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "5. 実験結果のサマリーを作成" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "重要:" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "- 必ず実際にファイルを生成して保存してください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "- 生成されたファイルは現在のディレクトリに保存" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "- ファイル名には実験IDを含めてください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "- 失敗した場合も詳細なログを残してください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "今すぐ実行してください。" >> "$EXPERIMENT_DIR/claude-instructions.txt"
 
           # Claude Codeを実行
           echo "Claude Code実行開始: $(date)"
