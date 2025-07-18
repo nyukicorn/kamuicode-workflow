@@ -1,0 +1,66 @@
+name: Test Music Planning Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        default: '静かな夜のピアノ曲'
+        type: string
+
+jobs:
+  test-music-planning:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Setup Branch (prerequisite)
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Test Music Planning Module
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          echo "🔍 Music Planning Test Results:"
+          echo "✅ Planning Completed: ${{ steps.planning.outputs.planning-completed }}"
+          echo "✅ Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
+          echo "✅ Image Prompt: ${{ steps.planning.outputs.image-prompt }}"
+          echo "✅ Video Concept: ${{ steps.planning.outputs.video-concept }}"
+          echo ""
+          echo "🧪 Test Input: ${{ inputs.music_concept }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          
+          # 基本的な検証
+          if [ "${{ steps.planning.outputs.planning-completed }}" = "true" ]; then
+            echo "✅ Planning completed successfully"
+          else
+            echo "❌ Planning did not complete"
+            exit 1
+          fi
+          
+          if [ -n "${{ steps.planning.outputs.music-prompt }}" ]; then
+            echo "✅ Music prompt generated"
+          else
+            echo "❌ Music prompt not generated"
+            exit 1
+          fi
+          
+          if [ -n "${{ steps.planning.outputs.image-prompt }}" ]; then
+            echo "✅ Image prompt generated"
+          else
+            echo "❌ Image prompt not generated"
+            exit 1
+          fi
+          
+          echo "🎯 Music Planning Module Test: PASSED"
