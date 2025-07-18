@@ -1,0 +1,26 @@
+name: Simple Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: 'Test message'
+        required: true
+        default: 'Hello World'
+        type: string
+
+jobs:
+  simple-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Simple Test
+        run: |
+          echo "🧪 Running simple test..."
+          echo "📝 Test message: ${{ inputs.test_message }}"
+          echo "📂 Current directory: $(pwd)"
+          echo "🌿 Current branch: $(git branch --show-current)"
+          echo "✅ Simple test completed successfully!"
