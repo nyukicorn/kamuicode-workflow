@@ -1,0 +1,456 @@
+name: Create 360° Panorama 3JS Experience
+
+on:
+  workflow_dispatch:
+    inputs:
+      panorama_scene:
+        description: 'パノラマシーンの説明（例：桜満開の京都庭園、夕方の暖かい光）'
+        required: true
+        type: string
+      music_style:
+        description: '音楽スタイルの説明（例：穏やかなアンビエント音楽、自然の音を含む）'
+        required: true
+        type: string
+
+jobs:
+  setup-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      branch-name: ${{ steps.create-branch.outputs.branch-name }}
+      folder-name: ${{ steps.create-branch.outputs.folder-name }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Create branch for panorama experience
+        id: create-branch
+        run: |
+          BRANCH_NAME="panorama/$(date +%Y%m%d)-${{ github.run_id }}"
+          FOLDER_NAME="panorama-$(date +%Y%m%d)-${{ github.run_id }}"
+          git checkout -b $BRANCH_NAME
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push origin $BRANCH_NAME
+          echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "Created branch: $BRANCH_NAME"
+          echo "Folder name: $FOLDER_NAME"
+
+  planning:
+    runs-on: ubuntu-latest
+    needs: [setup-branch]
+    permissions:
+      contents: write
+    outputs:
+      planning-completed: ${{ steps.planning.outputs.completed }}
+      panorama-prompt: ${{ steps.planning.outputs.panorama-prompt }}
+      music-prompt: ${{ steps.planning.outputs.music-prompt }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: パノラマ3JS計画エージェント
+        id: planning
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "::group::📋 Panorama 3JS Planning Agent Execution"
+          
+          # 設定
+          PANORAMA_SCENE="${{ inputs.panorama_scene }}"
+          MUSIC_STYLE="${{ inputs.music_style }}"
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          PLANNING_DIR="$FOLDER_NAME/planning"
+          
+          # 計画フォルダを作成
+          mkdir -p "$PLANNING_DIR"
+          
+          # プロンプトの構築
+          PROMPT="あなたは360度パノラマ3JS体験の専門プランナーです。以下の指示から最適なパノラマ画像と音楽を生成するための計画を立ててください。
+
+          **ユーザーの指示**:
+          - パノラマシーン: $PANORAMA_SCENE
+          - 音楽スタイル: $MUSIC_STYLE
+
+          **タスク**:
+          1. 360度パノラマ画像生成用のプロンプトを作成（「360 degree panoramic view, equirectangular format」を含む）
+          2. 音楽生成用のプロンプトを作成
+          3. 計画書を「$PLANNING_DIR/panorama-plan.md」に保存
+          4. パノラマ画像プロンプトを「$PLANNING_DIR/panorama-prompt.txt」に保存
+          5. 音楽プロンプトを「$PLANNING_DIR/music-prompt.txt」に保存
+
+          **重要**: 各ファイルを具体的で詳細に記述してください。"
+          
+          # Claude Code CLIの実行
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Write,Edit" \
+            --max-turns 15 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$PROMPT" || {
+              echo "::error::❌ Claude Code CLI execution failed"
+              exit 1
+            }
+          
+          # 結果の確認
+          if [ -f "$PLANNING_DIR/panorama-prompt.txt" ]; then
+            PANORAMA_PROMPT=$(cat "$PLANNING_DIR/panorama-prompt.txt" | tr '\n' ' ')
+            echo "panorama-prompt=$PANORAMA_PROMPT" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Panorama prompt file not found"
+            exit 1
+          fi
+          
+          if [ -f "$PLANNING_DIR/music-prompt.txt" ]; then
+            MUSIC_PROMPT=$(cat "$PLANNING_DIR/music-prompt.txt" | tr '\n' ' ')
+            echo "music-prompt=$MUSIC_PROMPT" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Music prompt file not found"
+            exit 1
+          fi
+          
+          echo "completed=true" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+      
+      - name: Commit and push planning
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ needs.setup-branch.outputs.folder-name }}/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add panorama planning: ${{ inputs.panorama_scene }}"
+            git push origin ${{ needs.setup-branch.outputs.branch-name }}
+          fi
+
+  panorama-generation:
+    runs-on: ubuntu-latest
+    needs: [setup-branch, planning]
+    permissions:
+      contents: write
+    outputs:
+      panorama-completed: ${{ steps.panorama.outputs.completed }}
+      google-panorama-url: ${{ steps.panorama.outputs.google-panorama-url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: 360度パノラマ画像生成エージェント
+        id: panorama
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "::group::🌐 Panorama Generation Agent Execution"
+          
+          # 設定
+          PLANNED_PANORAMA_PROMPT="${{ needs.planning.outputs.panorama-prompt }}"
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          PANORAMA_DIR="$FOLDER_NAME/panorama"
+          
+          # パノラマフォルダを作成
+          mkdir -p "$PANORAMA_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_ABS_PATH="$(pwd)/.claude/mcp-kamuicode.json"
+          
+          # プロンプトの構築
+          PROMPT="Imagen4 Ultraで360度パノラマ画像を生成してください。
+
+          **プロンプト**: $PLANNED_PANORAMA_PROMPT
+
+          **手順**:
+          1. mcp__t2i-fal-imagen4-ultra__imagen4_ultra_submitで画像生成開始
+          2. mcp__t2i-fal-imagen4-ultra__imagen4_ultra_statusでステータス確認
+          3. mcp__t2i-fal-imagen4-ultra__imagen4_ultra_resultで結果取得
+          4. Google URLを「$FOLDER_NAME/google-panorama-url.txt」に保存
+          5. Bashツールで「$PANORAMA_DIR/generated-panorama.jpg」にダウンロード"
+          
+          # Claude Code CLIの実行
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__t2i-fal-imagen4-ultra__imagen4_ultra_submit,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_status,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$PROMPT" || {
+              echo "::error::❌ Claude Code CLI execution failed"
+              exit 1
+            }
+          
+          # 結果の確認
+          if [ -f "$FOLDER_NAME/google-panorama-url.txt" ]; then
+            GOOGLE_URL=$(cat "$FOLDER_NAME/google-panorama-url.txt")
+            echo "google-panorama-url=$GOOGLE_URL" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Google panorama URL not found"
+            exit 1
+          fi
+          
+          echo "completed=true" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+      
+      - name: Commit and push panorama
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ needs.setup-branch.outputs.folder-name }}/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add panorama images: ${{ inputs.panorama_scene }}"
+            git push origin ${{ needs.setup-branch.outputs.branch-name }}
+          fi
+
+  music-generation:
+    runs-on: ubuntu-latest
+    needs: [setup-branch, planning]
+    permissions:
+      contents: write
+    outputs:
+      music-completed: ${{ steps.music.outputs.completed }}
+      google-music-url: ${{ steps.music.outputs.google-music-url }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: 音楽生成エージェント
+        id: music
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "::group::🎵 Music Generation Agent Execution"
+          
+          # 設定
+          PLANNED_MUSIC_PROMPT="${{ needs.planning.outputs.music-prompt }}"
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          MUSIC_DIR="$FOLDER_NAME/music"
+          
+          # 音楽フォルダを作成
+          mkdir -p "$MUSIC_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_ABS_PATH="$(pwd)/.claude/mcp-kamuicode.json"
+          
+          # プロンプトの構築
+          PROMPT="Google Lyriaで音楽を生成してください。
+
+          **プロンプト**: $PLANNED_MUSIC_PROMPT
+
+          **手順**:
+          1. mcp__t2m-google-lyria__lyria_submitで音楽生成開始
+          2. mcp__t2m-google-lyria__lyria_statusでステータス確認
+          3. mcp__t2m-google-lyria__lyria_resultで結果取得
+          4. Google URLを「$FOLDER_NAME/google-music-url.txt」に保存
+          5. Bashツールで「$MUSIC_DIR/generated-music.wav」にダウンロード"
+          
+          # Claude Code CLIの実行
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__t2m-google-lyria__lyria_submit,mcp__t2m-google-lyria__lyria_status,mcp__t2m-google-lyria__lyria_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$PROMPT" || {
+              echo "::error::❌ Claude Code CLI execution failed"
+              exit 1
+            }
+          
+          # 結果の確認
+          if [ -f "$FOLDER_NAME/google-music-url.txt" ]; then
+            GOOGLE_URL=$(cat "$FOLDER_NAME/google-music-url.txt")
+            echo "google-music-url=$GOOGLE_URL" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Google music URL not found"
+            exit 1
+          fi
+          
+          echo "completed=true" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+      
+      - name: Commit and push music
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ needs.setup-branch.outputs.folder-name }}/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add music: ${{ inputs.music_style }}"
+            git push origin ${{ needs.setup-branch.outputs.branch-name }}
+          fi
+
+  threejs-integration:
+    runs-on: ubuntu-latest
+    needs: [setup-branch, planning, panorama-generation, music-generation]
+    permissions:
+      contents: write
+    outputs:
+      integration-completed: ${{ steps.integration.outputs.completed }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: 3JS統合エージェント
+        id: integration
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "::group::🌐 3JS Integration Agent Execution"
+          
+          # 設定
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          PANORAMA_DIR="$FOLDER_NAME/panorama"
+          MUSIC_DIR="$FOLDER_NAME/music"
+          THREEJS_DIR="$FOLDER_NAME/3js-experience"
+          
+          # 3JSフォルダを作成
+          mkdir -p "$THREEJS_DIR/assets"
+          
+          # プロンプトの構築
+          PROMPT="360度パノラマ画像と音楽を統合した3JS体験を作成してください。
+
+          **利用可能なアセット**:
+          - パノラマ画像: $PANORAMA_DIR内のファイル
+          - 音楽ファイル: $MUSIC_DIR内のファイル
+
+          **作成する3JS体験**:
+          1. パノラマ画像と音楽を「$THREEJS_DIR/assets/」にコピー
+          2. Three.js CDNを使用したHTMLファイルを「$THREEJS_DIR/index.html」に作成
+          3. 360度パノラマ表示、音楽再生、マウス操作対応
+          4. 音楽再生/停止ボタンとフルスクリーンボタンを実装
+
+          **HTMLの要件**:
+          - Three.jsでパノラマ画像を球面にマッピング
+          - 音楽の再生コントロール
+          - レスポンシブデザイン
+          - マウス/タッチでの視点操作"
+          
+          # Claude Code CLIの実行
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Edit,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$PROMPT" || {
+              echo "::error::❌ Claude Code CLI execution failed"
+              exit 1
+            }
+          
+          # 結果の確認
+          if [ -f "$THREEJS_DIR/index.html" ]; then
+            echo "::notice::✅ 3JS experience created"
+          else
+            echo "::error::❌ 3JS experience HTML not found"
+            exit 1
+          fi
+          
+          echo "completed=true" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+      
+      - name: Commit and push 3JS experience
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ needs.setup-branch.outputs.folder-name }}/
+          if ! git diff --cached --quiet; then
+            git commit -m "Add 3JS panorama experience: ${{ inputs.panorama_scene }}"
+            git push origin ${{ needs.setup-branch.outputs.branch-name }}
+          fi
+
+  create-pr:
+    runs-on: ubuntu-latest
+    needs: [setup-branch, planning, panorama-generation, music-generation, threejs-integration]
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+      
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH_NAME="${{ needs.setup-branch.outputs.branch-name }}"
+          FOLDER_NAME="${{ needs.setup-branch.outputs.folder-name }}"
+          
+          # 最終コミット
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$FOLDER_NAME/"
+          
+          if ! git diff --cached --quiet; then
+            git commit -m "Complete 360° Panorama 3JS Experience: ${{ inputs.panorama_scene }}"
+            git push origin $BRANCH_NAME
+          fi
+          
+          # PRボディを作成
+          PR_BODY="🌐 Claude Code SDK & kamuicode MCPを使用した360度パノラマ3JS体験です。
+
+          **パノラマシーン**: ${{ inputs.panorama_scene }}
+          **音楽スタイル**: ${{ inputs.music_style }}
+
+          **生成フロー**:
+          1. 🌐 Imagen4 Ultra で360度パノラマ画像生成
+          2. 🎵 Google Lyria で音楽生成
+          3. 🌐 Three.js で統合体験構築
+
+          **使用方法**:
+          1. \`$FOLDER_NAME/3js-experience/index.html\` をダウンロード
+          2. ブラウザで開く
+          3. 360度パノラマ体験を楽しむ
+
+          ---
+          🌐 Generated with Claude Code SDK & kamuicode MCP"
+          
+          # PR作成
+          gh pr create \
+            --title "新しい360° Panorama 3JS Experience: ${{ inputs.panorama_scene }}" \
+            --body "$PR_BODY" \
+            --base main \
+            --head $BRANCH_NAME
