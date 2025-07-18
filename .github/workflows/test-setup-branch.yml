@@ -16,6 +16,9 @@ jobs:
       contents: write
     
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: Test Setup Branch Module
         id: setup
         uses: ./.github/actions/kamui-modules/setup-branch
