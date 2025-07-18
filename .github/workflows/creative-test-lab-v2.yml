@@ -78,18 +78,57 @@ jobs:
           
           echo "🚀 実験実行中..."
           
+          # ログディレクトリを作成
+          mkdir -p "$EXPERIMENT_DIR/logs"
+          
           # 実験指示をファイルに保存
           echo "実験内容: ${{ inputs.experiment_description }}" > "$EXPERIMENT_DIR/instructions.txt"
           echo "期待するアウトプット: ${{ inputs.output_type }}" >> "$EXPERIMENT_DIR/instructions.txt"
           echo "MCP: ${{ inputs.mcp_to_test }}" >> "$EXPERIMENT_DIR/instructions.txt"
           
-          # Claude Codeを実行（シンプルなコマンド）
-          npx claude-code --non-interactive \
+          # Claude Codeへの詳細な指示を作成
+          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << 'INSTRUCTION_EOF'
+          以下の実験を実行してください：
+
+          実験内容: ${{ inputs.experiment_description }}
+          期待するアウトプット: ${{ inputs.output_type }}
+          使用MCP: ${{ inputs.mcp_to_test }}
+
+          手順:
+          1. 実験内容を分析して適切なMCPツールを選択
+          2. 画像生成の場合は、美しい高品質な画像を生成
+          3. 生成したファイルを必ず保存（画像の場合は.png形式で）
+          4. 生成されたファイルのパスと内容を明確に記録
+          5. 実験結果のサマリーを作成
+
+          重要: 
+          - 必ず実際にファイルを生成して保存してください
+          - 生成されたファイルは現在のディレクトリに保存
+          - ファイル名には実験IDを含めてください
+          - 失敗した場合も詳細なログを残してください
+
+          今すぐ実行してください。
+          INSTRUCTION_EOF
+
+          # Claude Codeを実行
+          echo "Claude Code実行開始: $(date)"
+          timeout 1800 npx claude-code --non-interactive \
             --mcp-config="$EXPERIMENT_DIR/config/mcp-config.json" \
-            --message="実験を実行: ${{ inputs.experiment_description }}" \
-            > "$EXPERIMENT_DIR/logs/output.log" 2>&1 || true
+            --message="$(cat $EXPERIMENT_DIR/claude-instructions.txt)" \
+            > "$EXPERIMENT_DIR/logs/claude-output.log" 2>&1 || echo "Claude Code実行エラーまたはタイムアウト"
           
-          echo "✅ 実験完了"
+          # 生成されたファイルを確認・移動
+          echo "生成ファイル確認中..."
+          if ls *.png *.jpg *.jpeg *.mp4 *.mp3 *.wav *.glb *.obj 2>/dev/null; then
+            echo "生成されたファイルを移動中..."
+            mv *.png *.jpg *.jpeg *.mp4 *.mp3 *.wav *.glb *.obj "$EXPERIMENT_DIR/output/" 2>/dev/null || true
+          fi
+          
+          # outputディレクトリの内容を確認
+          echo "=== 生成されたファイル一覧 ===" | tee -a "$EXPERIMENT_DIR/logs/experiment.log"
+          ls -la "$EXPERIMENT_DIR/output/" 2>/dev/null | tee -a "$EXPERIMENT_DIR/logs/experiment.log" || echo "outputディレクトリにファイルなし"
+          
+          echo "✅ 実験完了: $(date)"
       
       - name: Save results
         run: |
@@ -98,8 +137,43 @@ jobs:
           
           # 結果のサマリーを作成
           echo "# 実験結果: $EXPERIMENT_ID" > "$EXPERIMENT_DIR/README.md"
-          echo "- 実験内容: ${{ inputs.experiment_description }}" >> "$EXPERIMENT_DIR/README.md"
-          echo "- 実行日時: $(date)" >> "$EXPERIMENT_DIR/README.md"
+          echo "" >> "$EXPERIMENT_DIR/README.md"
+          echo "## 実験概要" >> "$EXPERIMENT_DIR/README.md"
+          echo "- **実験内容**: ${{ inputs.experiment_description }}" >> "$EXPERIMENT_DIR/README.md"
+          echo "- **期待するアウトプット**: ${{ inputs.output_type }}" >> "$EXPERIMENT_DIR/README.md"
+          echo "- **使用MCP**: ${{ inputs.mcp_to_test }}" >> "$EXPERIMENT_DIR/README.md"
+          echo "- **実行日時**: $(date)" >> "$EXPERIMENT_DIR/README.md"
+          echo "- **メモ**: ${{ inputs.quick_notes }}" >> "$EXPERIMENT_DIR/README.md"
+          echo "" >> "$EXPERIMENT_DIR/README.md"
+          
+          # 生成されたファイルの情報を追加
+          echo "## 生成されたファイル" >> "$EXPERIMENT_DIR/README.md"
+          if [ -d "$EXPERIMENT_DIR/output" ] && [ "$(ls -A $EXPERIMENT_DIR/output)" ]; then
+            echo "```" >> "$EXPERIMENT_DIR/README.md"
+            ls -la "$EXPERIMENT_DIR/output/" >> "$EXPERIMENT_DIR/README.md"
+            echo "```" >> "$EXPERIMENT_DIR/README.md"
+            
+            # 画像ファイルがある場合、README.mdに表示
+            for img in "$EXPERIMENT_DIR/output"/*.png "$EXPERIMENT_DIR/output"/*.jpg "$EXPERIMENT_DIR/output"/*.jpeg; do
+              if [ -f "$img" ]; then
+                filename=$(basename "$img")
+                echo "" >> "$EXPERIMENT_DIR/README.md"
+                echo "### 生成画像: $filename" >> "$EXPERIMENT_DIR/README.md"
+                echo "![Generated Image](output/$filename)" >> "$EXPERIMENT_DIR/README.md"
+              fi
+            done
+          else
+            echo "生成されたファイルはありません。" >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          echo "" >> "$EXPERIMENT_DIR/README.md"
+          echo "## ログ" >> "$EXPERIMENT_DIR/README.md"
+          if [ -f "$EXPERIMENT_DIR/logs/claude-output.log" ]; then
+            echo "Claude Code実行ログ:" >> "$EXPERIMENT_DIR/README.md"
+            echo "```" >> "$EXPERIMENT_DIR/README.md"
+            tail -20 "$EXPERIMENT_DIR/logs/claude-output.log" >> "$EXPERIMENT_DIR/README.md"
+            echo "```" >> "$EXPERIMENT_DIR/README.md"
+          fi
           
           # 結果をコミット
           git config user.name "github-actions[bot]"
@@ -109,6 +183,12 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Add experiment results: $EXPERIMENT_ID"
+            git commit -m "🧪 Add experiment results: $EXPERIMENT_ID
+
+実験内容: ${{ inputs.experiment_description }}
+アウトプット: ${{ inputs.output_type }}
+MCP: ${{ inputs.mcp_to_test }}
+
+🤖 Generated with [Claude Code](https://claude.ai/code) via Creative Test Lab"
             git push
           fi
