@@ -1,10 +1,18 @@
 name: Issue Video Background Removal Trigger
 
 on:
-  issues:
-    types: [opened]
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      manual_trigger:
+        description: '手動実行用（自動トリガーを一時停止中）'
+        required: false
+        type: boolean
+        default: true
+  # 自動トリガーを一時停止
+  # issues:
+  #   types: [opened]
+  # issue_comment:
+  #   types: [created]
 
 permissions:
   contents: write
