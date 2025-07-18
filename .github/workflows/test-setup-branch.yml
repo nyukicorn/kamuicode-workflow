@@ -1,0 +1,48 @@
+name: Test Setup Branch Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_name:
+        description: 'テスト名（例：setup-branch-test）'
+        required: true
+        default: 'setup-branch-test'
+        type: string
+
+jobs:
+  test-setup-branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Test Setup Branch Module
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Verify Results
+        run: |
+          echo "🔍 Setup Branch Test Results:"
+          echo "✅ Branch Name: ${{ steps.setup.outputs.branch-name }}"
+          echo "✅ Folder Name: ${{ steps.setup.outputs.folder-name }}"
+          echo ""
+          echo "🧪 Test Input: ${{ inputs.test_name }}"
+          echo "📝 Current Branch: $(git branch --show-current)"
+          echo "📂 Working Directory: $(pwd)"
+          
+          # 基本的な検証
+          if [ -n "${{ steps.setup.outputs.branch-name }}" ]; then
+            echo "✅ Branch name output is not empty"
+          else
+            echo "❌ Branch name output is empty"
+            exit 1
+          fi
+          
+          if [ -n "${{ steps.setup.outputs.folder-name }}" ]; then
+            echo "✅ Folder name output is not empty"
+          else
+            echo "❌ Folder name output is empty"
+            exit 1
+          fi
+          
+          echo "🎯 Setup Branch Module Test: PASSED"
