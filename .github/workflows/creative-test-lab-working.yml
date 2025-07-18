@@ -48,14 +48,9 @@ jobs:
           FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
           IMAGES_DIR="${{ steps.setup.outputs.images-dir }}"
           
-          # 英語プロンプト変換
-          if [[ "$DESCRIPTION" =~ 桜 ]]; then
-            IMAGE_PROMPT="Beautiful cherry blossoms in full bloom, spring landscape, pink petals"
-          elif [[ "$DESCRIPTION" =~ ポピー|花 ]]; then
-            IMAGE_PROMPT="Beautiful poppy flower field, vibrant red poppies, colorful garden"
-          else
-            IMAGE_PROMPT="Beautiful landscape artwork, natural scenery, high quality"
-          fi
+          # 日本語の説明をそのまま英語プロンプトとして使用
+          # ユーザーが指定したものを作る
+          IMAGE_PROMPT="$DESCRIPTION, high quality, detailed, professional photography"
           
           # MCP設定ファイルを作成
           mkdir -p .claude
