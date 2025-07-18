@@ -2,6 +2,20 @@
 
 Claude Code SDK と kamuicode MCP を活用したAI駆動クリエイティブ工房
 
+## 🚨 重要：既存ワークフロー保護ルール
+
+### 絶対に変更・削除してはいけないワークフロー
+- `video-workflow-template/create-video-from-prompt.yml` - 画像→動画生成（実績あり）
+- `music-video-workflow/create-music-video.yml` - 音楽→動画生成（実績あり）
+- `.claude/mcp-kamuicode.json` - MCP設定（全ワークフローで使用）
+
+### 新規ワークフロー追加時のルール
+1. **新しいディレクトリを作成**して既存を分離
+2. **既存ワークフローは絶対に触らない**
+3. **テスト完了後**に正式運用開始
+
+⚠️ **このルールを破ると既存の動作が停止する可能性があります**
+
 ## 概要
 
 このリポジトリは、GitHub ActionsでClaude Code SDKとkamuicode MCPを使用してAIコンテンツを生成するクリエイティブ工房システムです。新しいAI技術の迅速な実験から高品質なアート作品の制作まで、包括的なクリエイティブフローを提供します。
