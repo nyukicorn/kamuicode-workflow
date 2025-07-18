@@ -56,30 +56,155 @@ jobs:
         run: |
           EXPERIMENT_DIR="${{ steps.setup.outputs.experiment-dir }}"
           
-          # Create instruction file
-          echo "実験を実行してください。" > instruction.txt
-          echo "内容: ${{ inputs.experiment_description }}" >> instruction.txt
-          echo "アウトプット: ${{ inputs.output_type }}" >> instruction.txt
-          echo "画像を生成して保存してください。" >> instruction.txt
+          echo "🚀 Phase 1: imagen4-fast画像生成実行中..."
           
-          # Run Claude Code
-          npx claude-code --non-interactive \
+          # 日本語入力を英語に変換（簡易版）
+          DESCRIPTION="${{ inputs.experiment_description }}"
+          
+          # 基本的な日本語→英語変換
+          if [[ "$DESCRIPTION" =~ 桜 ]]; then
+            ENGLISH_PROMPT="Beautiful cherry blossoms in full bloom, spring landscape, high quality, detailed"
+          elif [[ "$DESCRIPTION" =~ 花 ]]; then
+            ENGLISH_PROMPT="Beautiful flowers in a garden, colorful, high quality, detailed"
+          elif [[ "$DESCRIPTION" =~ 風景 ]]; then
+            ENGLISH_PROMPT="Beautiful landscape scenery, natural lighting, high quality, detailed"
+          else
+            ENGLISH_PROMPT="Beautiful artistic image of $DESCRIPTION, high quality, detailed"
+          fi
+          
+          echo "📝 日本語指示: $DESCRIPTION"
+          echo "🔄 英語プロンプト: $ENGLISH_PROMPT"
+          
+          # Claude Code詳細指示を作成
+          echo "以下の画像生成を実行してください：" > "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "使用MCP: mcp__t2i-fal-imagen4-fast__generate" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "プロンプト: $ENGLISH_PROMPT" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "画像サイズ: 1024x1024" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "品質: high" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "重要な指示:" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "1. mcp__t2i-fal-imagen4-fast__generateツールを必ず使用してください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "2. 生成された画像を現在のディレクトリに保存してください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "3. ファイル名は generated-image.png にしてください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          echo "4. 生成完了後、ファイルが保存されたことを確認してください" >> "$EXPERIMENT_DIR/claude-instructions.txt"
+          
+          echo "📋 Claude Code指示内容:"
+          cat "$EXPERIMENT_DIR/claude-instructions.txt"
+          
+          # Claude Code実行
+          echo "🤖 Claude Code実行開始: $(date)"
+          timeout 600 npx claude-code --non-interactive \
             --mcp-config="$EXPERIMENT_DIR/mcp-config.json" \
-            --message="$(cat instruction.txt)" || true
+            --message="$(cat $EXPERIMENT_DIR/claude-instructions.txt)" \
+            > "$EXPERIMENT_DIR/logs/claude-output.log" 2>&1 || echo "⚠️ Claude Code実行エラーまたはタイムアウト"
           
-          # Move generated files
-          ls *.png *.jpg 2>/dev/null && mv *.png *.jpg "$EXPERIMENT_DIR/output/" || true
+          echo "📊 Claude Code実行ログ:"
+          tail -10 "$EXPERIMENT_DIR/logs/claude-output.log" || echo "ログファイルなし"
+          
+          # 生成されたファイルを確認・移動
+          echo "🔍 生成ファイル確認中..."
+          if ls generated-image.png *.png *.jpg *.jpeg 2>/dev/null; then
+            echo "✅ 画像ファイルが見つかりました！"
+            mv generated-image.png *.png *.jpg *.jpeg "$EXPERIMENT_DIR/output/" 2>/dev/null || true
+            echo "📁 ファイルをoutputディレクトリに移動しました"
+          else
+            echo "❌ 画像ファイルが見つかりません"
+          fi
+          
+          # 最終確認
+          echo "📂 生成結果確認:"
+          ls -la "$EXPERIMENT_DIR/output/" || echo "outputディレクトリが空です"
+          
+          echo "✅ Phase 1実行完了: $(date)"
       
       - name: Save results
         run: |
           EXPERIMENT_ID="${{ steps.setup.outputs.experiment-id }}"
           EXPERIMENT_DIR="${{ steps.setup.outputs.experiment-dir }}"
           
-          echo "# 実験結果: $EXPERIMENT_ID" > "$EXPERIMENT_DIR/README.md"
-          echo "実験内容: ${{ inputs.experiment_description }}" >> "$EXPERIMENT_DIR/README.md"
-          echo "日時: $(date)" >> "$EXPERIMENT_DIR/README.md"
+          echo "📝 詳細レポート生成中..."
           
+          # 詳細なREADME.md生成
+          cat > "$EXPERIMENT_DIR/README.md" << EOF
+          # 🧪 実験結果: $EXPERIMENT_ID
+          
+          ## 📋 実験概要
+          - **実験フェーズ**: Phase 1 - imagen4-fast基本実装
+          - **日本語指示**: ${{ inputs.experiment_description }}
+          - **期待アウトプット**: ${{ inputs.output_type }}
+          - **実行日時**: $(date)
+          - **使用MCP**: imagen4-fast
+          
+          ## 🎯 生成結果
+          EOF
+          
+          # 生成されたファイルの確認と表示
+          if [ -d "$EXPERIMENT_DIR/output" ] && [ "$(ls -A $EXPERIMENT_DIR/output)" ]; then
+            echo "" >> "$EXPERIMENT_DIR/README.md"
+            echo "### ✅ 生成されたファイル" >> "$EXPERIMENT_DIR/README.md"
+            echo '```' >> "$EXPERIMENT_DIR/README.md"
+            ls -la "$EXPERIMENT_DIR/output/" >> "$EXPERIMENT_DIR/README.md"
+            echo '```' >> "$EXPERIMENT_DIR/README.md"
+            
+            # 画像ファイルがある場合、プレビュー表示
+            for img in "$EXPERIMENT_DIR/output"/*.png "$EXPERIMENT_DIR/output"/*.jpg "$EXPERIMENT_DIR/output"/*.jpeg; do
+              if [ -f "$img" ]; then
+                filename=$(basename "$img")
+                echo "" >> "$EXPERIMENT_DIR/README.md"
+                echo "### 🖼️ 生成画像: $filename" >> "$EXPERIMENT_DIR/README.md"
+                echo "![Generated Image](output/$filename)" >> "$EXPERIMENT_DIR/README.md"
+                echo "" >> "$EXPERIMENT_DIR/README.md"
+                echo "**ファイルサイズ**: $(du -h "$img" | cut -f1)" >> "$EXPERIMENT_DIR/README.md"
+              fi
+            done
+          else
+            echo "" >> "$EXPERIMENT_DIR/README.md"
+            echo "### ❌ 生成失敗" >> "$EXPERIMENT_DIR/README.md"
+            echo "画像ファイルが生成されませんでした。ログを確認してください。" >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          # 実行ログの追加
+          echo "" >> "$EXPERIMENT_DIR/README.md"
+          echo "## 📊 実行ログ" >> "$EXPERIMENT_DIR/README.md"
+          if [ -f "$EXPERIMENT_DIR/logs/claude-output.log" ]; then
+            echo "### Claude Code実行ログ（最後の20行）:" >> "$EXPERIMENT_DIR/README.md"
+            echo '```' >> "$EXPERIMENT_DIR/README.md"
+            tail -20 "$EXPERIMENT_DIR/logs/claude-output.log" >> "$EXPERIMENT_DIR/README.md" 2>/dev/null || echo "ログ読み込みエラー"
+            echo '```' >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          # Phase 1の成功判定
+          if [ -d "$EXPERIMENT_DIR/output" ] && [ "$(ls -A $EXPERIMENT_DIR/output)" ]; then
+            STATUS="✅ SUCCESS"
+            echo "" >> "$EXPERIMENT_DIR/README.md"
+            echo "## 🎉 Phase 1 完了" >> "$EXPERIMENT_DIR/README.md"
+            echo "imagen4-fastを使用した画像生成に成功しました！" >> "$EXPERIMENT_DIR/README.md"
+          else
+            STATUS="❌ FAILED"
+            echo "" >> "$EXPERIMENT_DIR/README.md"
+            echo "## ⚠️ Phase 1 失敗" >> "$EXPERIMENT_DIR/README.md"
+            echo "画像生成に失敗しました。ログを確認してください。" >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          echo "📊 実験ステータス: $STATUS"
+          
+          # Git設定とコミット
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
           git add experiment-results/
-          git diff --cached --quiet || git commit -m "Experiment: $EXPERIMENT_ID" && git push
+          if git diff --cached --quiet; then
+            echo "コミットするファイルがありません"
+          else
+            git commit -m "🧪 Phase 1実験結果: $EXPERIMENT_ID [$STATUS]
+
+実験内容: ${{ inputs.experiment_description }}
+使用MCP: imagen4-fast
+フェーズ: Phase 1 - 基本画像生成実装
+
+🤖 Generated with Creative Test Lab Simple"
+            git push
+          fi
+          
+          echo "✅ Phase 1実装・テスト完了"
