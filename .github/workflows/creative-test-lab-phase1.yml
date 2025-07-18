@@ -36,6 +36,8 @@ jobs:
           if [ -n "$MCP_CONFIG" ]; then
             echo "$MCP_CONFIG" > "$EXPERIMENT_DIR/mcp-config.json"
             echo "✅ MCP設定を読み込みました"
+            echo "📊 MCP設定サーバー数: $(echo "$MCP_CONFIG" | jq '.mcpServers | length' 2>/dev/null || echo 'JSON解析エラー')"
+            echo "🔍 imagen4-fast設定確認: $(echo "$MCP_CONFIG" | jq '.mcpServers | has("t2i-fal-imagen4-fast")' 2>/dev/null || echo 'false')"
           else
             echo "❌ MCP_CONFIG secretが設定されていません"
             exit 1
@@ -64,11 +66,26 @@ jobs:
           
           echo "🔄 英語プロンプト: $ENGLISH_PROMPT"
           
+          # Claude Code実行（詳細ログ付き）
+          echo "🤖 Claude Code実行中..."
+          echo "📁 設定ファイル: $EXPERIMENT_DIR/mcp-config.json"
+          echo "💬 メッセージ: Use mcp__t2i-fal-imagen4-fast__generate to create: $ENGLISH_PROMPT. Save as generated-image.png"
+          
+          # ログディレクトリ確認
+          mkdir -p "$EXPERIMENT_DIR/logs"
+          
           # Claude Code実行
           npx claude-code --non-interactive \
             --mcp-config="$EXPERIMENT_DIR/mcp-config.json" \
             --message="Use mcp__t2i-fal-imagen4-fast__generate to create: $ENGLISH_PROMPT. Save as generated-image.png" \
-            > "$EXPERIMENT_DIR/logs/output.log" 2>&1 || echo "Claude Code実行完了"
+            > "$EXPERIMENT_DIR/logs/claude-output.log" 2>&1
+          
+          EXIT_CODE=$?
+          echo "📊 Claude Code終了コード: $EXIT_CODE"
+          
+          # ログ内容を表示
+          echo "📋 Claude Code実行ログ（最後の10行）:"
+          tail -10 "$EXPERIMENT_DIR/logs/claude-output.log" 2>/dev/null || echo "ログファイルが見つかりません"
           
           # 結果確認
           if ls *.png *.jpg 2>/dev/null; then
