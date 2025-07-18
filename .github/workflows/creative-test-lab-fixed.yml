@@ -1,0 +1,164 @@
+name: Creative Test Lab Fixed
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_description:
+        description: '実験内容（例：桜の風景画像を作って）'
+        required: true
+        type: string
+
+jobs:
+  phase1-fixed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: Setup experiment
+        id: setup
+        run: |
+          EXPERIMENT_ID="fixed-$(date +%Y%m%d-%H%M%S)"
+          EXPERIMENT_DIR="experiment-results/${EXPERIMENT_ID}"
+          mkdir -p "$EXPERIMENT_DIR"/{output,logs}
+          mkdir -p .claude
+          echo "experiment-id=$EXPERIMENT_ID" >> $GITHUB_OUTPUT
+          echo "experiment-dir=$EXPERIMENT_DIR" >> $GITHUB_OUTPUT
+          echo "🧪 Phase 1 Fixed テスト開始: $EXPERIMENT_ID"
+      
+      - name: Prepare MCP config
+        env:
+          MCP_CONFIG: ${{ secrets.MCP_CONFIG }}
+        run: |
+          # MCP設定ファイルを作成（成功パターンに合わせる）
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > .claude/mcp-kamuicode.json
+          
+          echo "✅ MCP設定を .claude/mcp-kamuicode.json に保存"
+          echo "📊 MCP設定確認:"
+          jq -r '.mcpServers | keys[]' .claude/mcp-kamuicode.json | head -5 || echo "JSON解析エラー"
+      
+      - name: Test imagen4-fast with MCP
+        id: generate
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          EXPERIMENT_DIR="${{ steps.setup.outputs.experiment-dir }}"
+          DESCRIPTION="${{ inputs.experiment_description }}"
+          
+          echo "🚀 imagen4-fast画像生成テスト開始"
+          echo "📝 日本語指示: $DESCRIPTION"
+          
+          # 英語プロンプト変換
+          if [[ "$DESCRIPTION" =~ 桜 ]]; then
+            ENGLISH_PROMPT="Beautiful cherry blossoms in full bloom, spring landscape, pink petals, high quality"
+          elif [[ "$DESCRIPTION" =~ ポピー|花 ]]; then
+            ENGLISH_PROMPT="Beautiful poppy flower field, vibrant red poppies, colorful garden landscape, high quality"
+          else
+            ENGLISH_PROMPT="Beautiful landscape artwork, natural scenery, high quality, detailed"
+          fi
+          
+          echo "🔄 英語プロンプト: $ENGLISH_PROMPT"
+          
+          # MCP設定の確認
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+          
+          echo "📋 MCP設定パス: $MCP_CONFIG_ABS_PATH"
+          echo "✅ MCP設定ファイル存在確認: $([ -f "$MCP_CONFIG_ABS_PATH" ] && echo 'OK' || echo 'NG')"
+          
+          # Claude Code実行（成功パターンに基づく）
+          echo "🤖 Claude Code + MCP実行開始..."
+          
+          PROMPT="以下の画像を生成してください：
+
+          **使用ツール**: imagen4-fast
+          **画像の説明**: $ENGLISH_PROMPT
+
+          手順:
+          1. 現在のディレクトリを確認
+          2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
+          3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
+          4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
+          5. 画像URLを使用してBashでダウンロード: curl -L -o generated-image.png [URL]
+          6. ダウンロードした画像の存在確認
+
+          **重要**: 
+          - MCPツールを使用して実際に画像を生成してください
+          - 生成された画像URLからファイルをダウンロードしてください
+          - ファイル名は generated-image.png にしてください"
+          
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
+            --max-turns 10 \
+            --verbose \
+            --permission-mode "acceptAll" \
+            -p "$PROMPT" \
+            > "$EXPERIMENT_DIR/logs/claude-output.log" 2>&1
+          
+          EXIT_CODE=$?
+          echo "📊 Claude Code終了コード: $EXIT_CODE"
+          
+          # ログ内容を表示
+          echo "📋 Claude Code実行ログ（最後の30行）:"
+          tail -30 "$EXPERIMENT_DIR/logs/claude-output.log" || echo "ログファイルが見つかりません"
+          
+          # 結果確認
+          if ls *.png *.jpg 2>/dev/null; then
+            echo "✅ 画像生成成功！"
+            mv *.png *.jpg "$EXPERIMENT_DIR/output/" 2>/dev/null || true
+            echo "generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ 画像ファイルが見つかりません"
+            echo "generated=false" >> $GITHUB_OUTPUT
+          fi
+          
+          ls -la "$EXPERIMENT_DIR/output/" || echo "outputディレクトリが空です"
+      
+      - name: Save results
+        run: |
+          EXPERIMENT_ID="${{ steps.setup.outputs.experiment-id }}"
+          EXPERIMENT_DIR="${{ steps.setup.outputs.experiment-dir }}"
+          
+          # レポート作成
+          cat > "$EXPERIMENT_DIR/README.md" << EOF
+          # 🧪 Phase 1 Fixed テスト結果: $EXPERIMENT_ID
+          
+          ## 実験概要
+          - **実験内容**: ${{ inputs.experiment_description }}
+          - **実行日時**: $(date)
+          - **使用MCP**: imagen4-fast
+          - **ステータス**: ${{ steps.generate.outputs.generated == 'true' && '✅ 成功' || '❌ 失敗' }}
+          
+          ## 生成結果
+          EOF
+          
+          if [ -d "$EXPERIMENT_DIR/output" ] && [ "$(ls -A $EXPERIMENT_DIR/output)" ]; then
+            for img in "$EXPERIMENT_DIR/output"/*; do
+              if [ -f "$img" ]; then
+                filename=$(basename "$img")
+                echo "### 🖼️ 生成画像: $filename" >> "$EXPERIMENT_DIR/README.md"
+                echo "![Generated Image](output/$filename)" >> "$EXPERIMENT_DIR/README.md"
+              fi
+            done
+          else
+            echo "生成されたファイルはありません。" >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          # Git commit
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add experiment-results/
+          git diff --cached --quiet || git commit -m "Phase 1 Fixed: $EXPERIMENT_ID - MCP imagen4-fast test" && git push
