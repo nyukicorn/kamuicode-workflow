@@ -87,7 +87,7 @@ jobs:
           echo "MCP: ${{ inputs.mcp_to_test }}" >> "$EXPERIMENT_DIR/instructions.txt"
           
           # Claude Codeへの詳細な指示を作成
-          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << 'INSTRUCTION_EOF'
+          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << EOF
           以下の実験を実行してください：
 
           実験内容: ${{ inputs.experiment_description }}
@@ -108,7 +108,7 @@ jobs:
           - 失敗した場合も詳細なログを残してください
 
           今すぐ実行してください。
-          INSTRUCTION_EOF
+          EOF
 
           # Claude Codeを実行
           echo "Claude Code実行開始: $(date)"
