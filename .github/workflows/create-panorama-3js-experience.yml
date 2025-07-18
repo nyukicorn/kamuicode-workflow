@@ -1,4 +1,4 @@
-name: Create 360° Panorama 3JS Experience
+name: Create 360 Degree Panorama 3JS Experience
 
 on:
   workflow_dispatch:
