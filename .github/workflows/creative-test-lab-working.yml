@@ -1,0 +1,135 @@
+name: Creative Test Lab Working
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_description:
+        description: '実験内容（例：桜の風景画像を作って）'
+        required: true
+        type: string
+
+jobs:
+  generate-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: Setup
+        id: setup
+        run: |
+          EXPERIMENT_ID="test-$(date +%Y%m%d-%H%M%S)"
+          FOLDER_NAME="experiment-results/${EXPERIMENT_ID}"
+          IMAGES_DIR="$FOLDER_NAME/images"
+          
+          mkdir -p "$IMAGES_DIR"
+          mkdir -p .claude
+          
+          echo "experiment-id=$EXPERIMENT_ID" >> $GITHUB_OUTPUT
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "images-dir=$IMAGES_DIR" >> $GITHUB_OUTPUT
+      
+      - name: Generate Image with MCP
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          DESCRIPTION="${{ inputs.experiment_description }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          IMAGES_DIR="${{ steps.setup.outputs.images-dir }}"
+          
+          # 英語プロンプト変換
+          if [[ "$DESCRIPTION" =~ 桜 ]]; then
+            IMAGE_PROMPT="Beautiful cherry blossoms in full bloom, spring landscape, pink petals"
+          elif [[ "$DESCRIPTION" =~ ポピー|花 ]]; then
+            IMAGE_PROMPT="Beautiful poppy flower field, vibrant red poppies, colorful garden"
+          else
+            IMAGE_PROMPT="Beautiful landscape artwork, natural scenery, high quality"
+          fi
+          
+          # MCP設定ファイルを作成
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > .claude/mcp-kamuicode.json
+          
+          # MCP設定の確認
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+          
+          echo "📋 設定確認:"
+          echo "画像プロンプト: $IMAGE_PROMPT"
+          echo "MCP設定: $MCP_CONFIG_ABS_PATH"
+          echo "保存先: $IMAGES_DIR"
+          
+          # プロンプトの構築（動作確認済みのものをそのまま使用）
+          PROMPT="画像を生成してください。
+
+          **画像プロンプト**: $IMAGE_PROMPT
+
+          **実行手順**:
+          1. 画像プロンプト（$IMAGE_PROMPT）を使用してImagen4 Fastで画像生成
+          2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
+          3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
+          4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
+          5. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
+          6. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
+
+          **重要な注意点**:
+          - Google URLの有効期限は約1時間のため、生成後すぐにダウンロード
+          - 必ずGoogle提供の認証済URLを使用
+          - 画像は必ず「$IMAGES_DIR」ディレクトリに保存
+          - ファイル名は「generated-image.png」とする"
+          
+          echo "🚀 画像生成開始..."
+          
+          # Claude Code CLIの実行（動作確認済みのパラメータをそのまま使用）
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$PROMPT" || {
+              echo "❌ Claude Code実行失敗"
+              exit 1
+            }
+          
+          # 結果確認
+          if [ -f "$IMAGES_DIR/generated-image.png" ]; then
+            echo "✅ 画像生成成功！"
+            ls -la "$IMAGES_DIR/"
+          else
+            echo "❌ 画像生成失敗"
+            exit 1
+          fi
+      
+      - name: Save Results
+        run: |
+          EXPERIMENT_ID="${{ steps.setup.outputs.experiment-id }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          
+          # README作成
+          cat > "$FOLDER_NAME/README.md" << EOF
+          # 実験結果: $EXPERIMENT_ID
+          - 実験内容: ${{ inputs.experiment_description }}
+          - 実行日時: $(date)
+          - ステータス: ✅ 成功
+          
+          ## 生成画像
+          ![Generated Image](images/generated-image.png)
+          EOF
+          
+          # コミット
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add experiment-results/
+          git commit -m "✅ Creative Test Lab: $EXPERIMENT_ID - 画像生成成功" && git push
