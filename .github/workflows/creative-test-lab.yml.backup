@@ -1,0 +1,321 @@
+name: Creative Test Lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      experiment_description:
+        description: '今日試したいこと（例：新しい音楽MCP + 画像で動画作成）'
+        required: true
+        type: string
+      
+      mcp_to_test:
+        description: 'テストしたいMCP（任意）'
+        required: false
+        type: string
+        default: 'auto-detect'
+      
+      output_type:
+        description: '期待するアウトプット'
+        type: choice
+        options:
+          - 'auto-detect'
+          - 'image'
+          - 'video' 
+          - 'music'
+          - 'threejs-scene'
+          - 'mixed-media'
+        default: 'auto-detect'
+      
+      quick_notes:
+        description: '追加メモ（任意）'
+        required: false
+        type: string
+
+jobs:
+  setup-experiment:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      experiment-id: ${{ steps.setup.outputs.experiment-id }}
+      experiment-dir: ${{ steps.setup.outputs.experiment-dir }}
+      detected-mcps: ${{ steps.analyze.outputs.detected-mcps }}
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup experiment environment
+        id: setup
+        run: |
+          # 実験用の一意なIDとディレクトリを作成
+          EXPERIMENT_ID="exp-$(date +%Y%m%d-%H%M%S)"
+          EXPERIMENT_DIR="experiment-results/${EXPERIMENT_ID}"
+          
+          mkdir -p "$EXPERIMENT_DIR"/{output,logs,config}
+          
+          echo "experiment-id=$EXPERIMENT_ID" >> $GITHUB_OUTPUT
+          echo "experiment-dir=$EXPERIMENT_DIR" >> $GITHUB_OUTPUT
+          
+          echo "🧪 実験開始: $EXPERIMENT_ID"
+          echo "📁 作業ディレクトリ: $EXPERIMENT_DIR"
+          
+          # 実験の基本情報を記録
+          cat > "$EXPERIMENT_DIR/experiment-info.json" << EOF
+          {
+            "experiment_id": "$EXPERIMENT_ID",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+            "description": "${{ inputs.experiment_description }}",
+            "mcp_to_test": "${{ inputs.mcp_to_test }}",
+            "output_type": "${{ inputs.output_type }}",
+            "notes": "${{ inputs.quick_notes }}",
+            "status": "started"
+          }
+          EOF
+      
+      - name: Analyze experiment requirements
+        id: analyze
+        run: |
+          DESCRIPTION="${{ inputs.experiment_description }}"
+          MCP_TO_TEST="${{ inputs.mcp_to_test }}"
+          
+          echo "🔍 実験内容を分析中..."
+          echo "説明: $DESCRIPTION"
+          
+          # 実験内容から必要なMCPを推測
+          DETECTED_MCPS=""
+          
+          if [[ "$DESCRIPTION" =~ [iI]mage|画像 ]] || [[ "$MCP_TO_TEST" =~ image|imagen ]]; then
+            DETECTED_MCPS="$DETECTED_MCPS,imagen4-fast"
+          fi
+          
+          if [[ "$DESCRIPTION" =~ [mM]usic|音楽 ]] || [[ "$MCP_TO_TEST" =~ music|lyria ]]; then
+            DETECTED_MCPS="$DETECTED_MCPS,google-lyria"
+          fi
+          
+          if [[ "$DESCRIPTION" =~ [vV]ideo|動画 ]] || [[ "$MCP_TO_TEST" =~ video|hailuo ]]; then
+            DETECTED_MCPS="$DETECTED_MCPS,hailuo-02-pro"
+          fi
+          
+          if [[ "$DESCRIPTION" =~ [tT]hree|3[dD]|3[jJ][sS] ]] || [[ "$MCP_TO_TEST" =~ three|3d ]]; then
+            DETECTED_MCPS="$DETECTED_MCPS,threejs-experimental"
+          fi
+          
+          # 最初のカンマを削除
+          DETECTED_MCPS=${DETECTED_MCPS#,}
+          
+          # デフォルトMCPを設定
+          if [[ -z "$DETECTED_MCPS" ]]; then
+            DETECTED_MCPS="imagen4-fast"
+          fi
+          
+          echo "detected-mcps=$DETECTED_MCPS" >> $GITHUB_OUTPUT
+          echo "🎯 検出されたMCP: $DETECTED_MCPS"
+
+  rapid-experiment:
+    needs: [setup-experiment]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+      
+      - name: Setup MCP configuration
+        env:
+          MCP_CONFIG: ${{ secrets.MCP_CONFIG }}
+        run: |
+          EXPERIMENT_DIR="${{ needs.setup-experiment.outputs.experiment-dir }}"
+          
+          # Secretsから基本設定を取得
+          if [ -n "$MCP_CONFIG" ]; then
+            echo "🔧 SecretsからMCP設定を読み込み中..."
+            echo "$MCP_CONFIG" > temp-configs/experiment-config.json
+            echo "✅ MCP設定を読み込みました"
+          else
+            echo "❌ MCP_CONFIG secretが設定されていません"
+            # フォールバック: 基本的な設定を作成
+            cat > temp-configs/experiment-config.json << 'EOF'
+{
+  "mcpServers": {
+    "t2i-fal-imagen4-fast": {
+      "type": "http",
+      "url": "https://mcp-flux-kontext-only-20250716-020022-44f00679-zl3xx5lsaq-uc.a.run.app/t2i/fal/imagen4/fast",
+      "description": "Fal.ai Imagen4 Fast Text-to-Image (Speed Optimized)"
+    }
+  }
+}
+EOF
+            echo "⚠️ デフォルトMCP設定を使用します"
+          fi
+          
+          # 実験用設定を追加（必要に応じて）
+          MCP_TO_TEST="${{ inputs.mcp_to_test }}"
+          if [[ "$MCP_TO_TEST" == "threejs" ]] || [[ "$MCP_TO_TEST" == "3js" ]]; then
+            echo "🔧 Three.js MCP設定を追加中..."
+            # 将来的にThree.js MCP設定を動的に追加
+            echo "Three.js MCP設定は後で実装" >> "$EXPERIMENT_DIR/logs/setup.log"
+          fi
+          
+          # 設定ファイルを実験ディレクトリにコピー
+          cp temp-configs/experiment-config.json "$EXPERIMENT_DIR/config/"
+          
+          # 設定内容を確認（機密情報は表示しない）
+          echo "📋 MCP設定の確認:"
+          jq -r '.mcpServers | keys[]' "$EXPERIMENT_DIR/config/experiment-config.json" || echo "JSON解析エラー"
+      
+      - name: Execute rapid experiment
+        env:
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+        run: |
+          EXPERIMENT_DIR="${{ needs.setup-experiment.outputs.experiment-dir }}"
+          DETECTED_MCPS="${{ needs.setup-experiment.outputs.detected-mcps }}"
+          
+          echo "::group::🚀 実験実行中"
+          echo "開始時刻: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "使用MCP: $DETECTED_MCPS"
+          
+          # 実験実行のログを開始
+          exec 1> >(tee -a "$EXPERIMENT_DIR/logs/experiment.log")
+          exec 2> >(tee -a "$EXPERIMENT_DIR/logs/error.log")
+          
+          # Claude Codeへの指示内容をファイルに保存
+          cat > "$EXPERIMENT_DIR/claude-instructions.txt" << EOF
+          実験を実行してください。
+            
+          実験内容: ${{ inputs.experiment_description }}
+          期待するアウトプット: ${{ inputs.output_type }}
+          使用予定MCP: $DETECTED_MCPS
+          
+          以下の手順で実験を行ってください：
+          1. 実験内容を分析
+          2. 適切なMCPを選択
+          3. 基本的なアウトプットを生成
+          4. 結果を $EXPERIMENT_DIR/output/ に保存
+          5. 簡単なレポートを作成
+          
+          品質よりもスピードを重視し、とにかく何かアウトプットを生成してください。
+          失敗してもログに記録して続行してください。
+          EOF
+          
+          # Claude Code を使用して実験を実行
+          timeout 1800 npx claude-code --non-interactive \
+            --mcp-config="$EXPERIMENT_DIR/config/experiment-config.json" \
+            --message="$(cat $EXPERIMENT_DIR/claude-instructions.txt)" \
+            || echo "実験がタイムアウトまたはエラーで終了しました" >> "$EXPERIMENT_DIR/logs/error.log"
+          
+          echo "終了時刻: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          echo "::endgroup::"
+      
+      - name: Package experiment results
+        run: |
+          EXPERIMENT_DIR="${{ needs.setup-experiment.outputs.experiment-dir }}"
+          EXPERIMENT_ID="${{ needs.setup-experiment.outputs.experiment-id }}"
+          
+          echo "📦 実験結果をパッケージ中..."
+          
+          # 実験完了情報を更新
+          jq '.status = "completed" | .completed_at = now | .completed_at_iso = (now | strftime("%Y-%m-%dT%H:%M:%SZ"))' \
+            "$EXPERIMENT_DIR/experiment-info.json" > "$EXPERIMENT_DIR/experiment-info.json.tmp"
+          mv "$EXPERIMENT_DIR/experiment-info.json.tmp" "$EXPERIMENT_DIR/experiment-info.json"
+          
+          # 実験結果のサマリーを作成
+          cat > "$EXPERIMENT_DIR/README.md" << EOF
+          # 実験結果: $EXPERIMENT_ID
+          
+          ## 実験概要
+          - **実験ID**: $EXPERIMENT_ID
+          - **実行日時**: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)
+          - **実験内容**: ${{ inputs.experiment_description }}
+          - **使用MCP**: ${{ needs.setup-experiment.outputs.detected-mcps }}
+          - **期待アウトプット**: ${{ inputs.output_type }}
+          
+          ## 実験結果
+          
+          ### 生成ファイル
+          EOF
+          
+          # 生成されたファイルをリストアップ
+          if [ -d "$EXPERIMENT_DIR/output" ] && [ "$(ls -A "$EXPERIMENT_DIR/output")" ]; then
+            echo "- 生成されたファイル:" >> "$EXPERIMENT_DIR/README.md"
+            ls -la "$EXPERIMENT_DIR/output/" >> "$EXPERIMENT_DIR/README.md"
+          else
+            echo "- 生成されたファイル: なし" >> "$EXPERIMENT_DIR/README.md"
+          fi
+          
+          # 実験結果を圧縮
+          cd experiment-results
+          zip -r "${EXPERIMENT_ID}-results.zip" "$EXPERIMENT_ID/"
+          
+          # 実験ログを experiments/README.md に追加
+          cat >> ../experiments/README.md << EOF
+          
+          ### $(date +%Y-%m-%d)
+          - 実験: ${{ inputs.experiment_description }}
+          - MCP: ${{ needs.setup-experiment.outputs.detected-mcps }}
+          - 結果: 実行完了
+          - ファイル: experiment-results/${EXPERIMENT_ID}-results.zip
+          - 所要時間: 約30分
+          - 次回: 結果を確認して次の実験を計画
+          - メモ: ${{ inputs.quick_notes }}
+          EOF
+          
+          echo "✅ 実験完了！結果は experiment-results/${EXPERIMENT_ID}/ に保存されました"
+          echo "📥 ダウンロード用: experiment-results/${EXPERIMENT_ID}-results.zip"
+      
+      - name: Upload experiment results
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-results-${{ needs.setup-experiment.outputs.experiment-id }}
+          path: experiment-results/${{ needs.setup-experiment.outputs.experiment-id }}-results.zip
+          retention-days: 30
+      
+      - name: Commit experiment results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add experiment-results/
+          git add experiments/README.md
+          git add temp-configs/
+          
+          if git diff --cached --quiet; then
+            echo "コミットするものがありません"
+          else
+            git commit -m "Add experiment results: ${{ needs.setup-experiment.outputs.experiment-id }}
+
+          実験内容: ${{ inputs.experiment_description }}
+          使用MCP: ${{ needs.setup-experiment.outputs.detected-mcps }}
+          
+          🧪 Generated with Creative Test Lab
+          
+          Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+          fi
+      
+      - name: Cleanup temporary files
+        run: |
+          # 一時設定ファイルをクリーンアップ
+          rm -f temp-configs/experiment-config.json
+          echo "🧹 一時ファイルをクリーンアップしました"
+      
+      - name: Experiment summary
+        run: |
+          EXPERIMENT_ID="${{ needs.setup-experiment.outputs.experiment-id }}"
+          echo "::notice::🎉 実験完了: $EXPERIMENT_ID"
+          echo "::notice::📋 実験内容: ${{ inputs.experiment_description }}"
+          echo "::notice::🔧 使用MCP: ${{ needs.setup-experiment.outputs.detected-mcps }}"
+          echo "::notice::📁 結果: experiment-results/${EXPERIMENT_ID}/"
+          echo "::notice::💾 ダウンロード: Actions の Artifacts から取得可能"
+          echo "::notice::🚀 次回: 結果を確認してアート工房での本格制作を検討"

@@ -66,6 +66,11 @@ jobs:
           
           echo "🔄 英語プロンプト: $ENGLISH_PROMPT"
           
+          # Node.jsとnpm確認
+          echo "🔧 環境確認:"
+          echo "Node.js: $(node --version 2>/dev/null || echo 'Not installed')"
+          echo "npm: $(npm --version 2>/dev/null || echo 'Not installed')"
+          
           # Claude Code実行（詳細ログ付き）
           echo "🤖 Claude Code実行中..."
           echo "📁 設定ファイル: $EXPERIMENT_DIR/mcp-config.json"
@@ -74,18 +79,29 @@ jobs:
           # ログディレクトリ確認
           mkdir -p "$EXPERIMENT_DIR/logs"
           
-          # Claude Code実行
-          npx claude-code --non-interactive \
+          # 環境変数確認
+          echo "🔐 環境変数確認:"
+          echo "CLAUDE_ACCESS_TOKEN設定: $([ -n "$CLAUDE_ACCESS_TOKEN" ] && echo '✅ あり' || echo '❌ なし')"
+          echo "CLAUDE_REFRESH_TOKEN設定: $([ -n "$CLAUDE_REFRESH_TOKEN" ] && echo '✅ あり' || echo '❌ なし')"
+          echo "CLAUDE_EXPIRES_AT設定: $([ -n "$CLAUDE_EXPIRES_AT" ] && echo '✅ あり' || echo '❌ なし')"
+          
+          # Claude Codeインストール確認
+          echo "📦 claude-codeパッケージ確認中..."
+          npm list @anthropic-ai/claude-code 2>/dev/null || echo "claude-codeがインストールされていません"
+          
+          # Claude Code実行（エラー詳細出力）
+          echo "🚀 Claude Code実行開始..."
+          npx @anthropic-ai/claude-code --non-interactive \
             --mcp-config="$EXPERIMENT_DIR/mcp-config.json" \
             --message="Use mcp__t2i-fal-imagen4-fast__generate to create: $ENGLISH_PROMPT. Save as generated-image.png" \
-            > "$EXPERIMENT_DIR/logs/claude-output.log" 2>&1
+            2>&1 | tee "$EXPERIMENT_DIR/logs/claude-output.log"
           
-          EXIT_CODE=$?
+          EXIT_CODE=${PIPESTATUS[0]}
           echo "📊 Claude Code終了コード: $EXIT_CODE"
           
-          # ログ内容を表示
-          echo "📋 Claude Code実行ログ（最後の10行）:"
-          tail -10 "$EXPERIMENT_DIR/logs/claude-output.log" 2>/dev/null || echo "ログファイルが見つかりません"
+          # ログ内容を再度表示
+          echo "📋 ログファイル全体:"
+          cat "$EXPERIMENT_DIR/logs/claude-output.log" 2>/dev/null || echo "ログファイルが見つかりません"
           
           # 結果確認
           if ls *.png *.jpg 2>/dev/null; then

@@ -1,0 +1,63 @@
+name: Creative Test Lab Debug
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-mcp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Debug MCP and Claude
+        env:
+          CLAUDE_ACCESS_TOKEN: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          CLAUDE_REFRESH_TOKEN: ${{ secrets.CLAUDE_REFRESH_TOKEN }}
+          CLAUDE_EXPIRES_AT: ${{ secrets.CLAUDE_EXPIRES_AT }}
+          MCP_CONFIG: ${{ secrets.MCP_CONFIG }}
+        run: |
+          echo "🔧 環境情報:"
+          echo "Node.js: $(node --version)"
+          echo "npm: $(npm --version)"
+          echo "PWD: $(pwd)"
+          
+          echo ""
+          echo "🔐 環境変数確認:"
+          echo "CLAUDE_ACCESS_TOKEN: $([ -n "$CLAUDE_ACCESS_TOKEN" ] && echo 'Set' || echo 'Not set')"
+          echo "CLAUDE_REFRESH_TOKEN: $([ -n "$CLAUDE_REFRESH_TOKEN" ] && echo 'Set' || echo 'Not set')"
+          echo "CLAUDE_EXPIRES_AT: $([ -n "$CLAUDE_EXPIRES_AT" ] && echo 'Set' || echo 'Not set')"
+          echo "MCP_CONFIG: $([ -n "$MCP_CONFIG" ] && echo 'Set' || echo 'Not set')"
+          
+          echo ""
+          echo "📦 claude-codeパッケージ情報:"
+          npm info @anthropic-ai/claude-code version 2>/dev/null || echo "パッケージ情報取得失敗"
+          
+          echo ""
+          echo "🧪 シンプルなClaude Code実行テスト:"
+          echo '{"mcpServers":{}}' > test-mcp.json
+          
+          # 最もシンプルなテスト
+          npx @anthropic-ai/claude-code --version || echo "Claude Code バージョン確認失敗"
+          
+          echo ""
+          echo "📋 MCP設定内容確認:"
+          if [ -n "$MCP_CONFIG" ]; then
+            echo "$MCP_CONFIG" > mcp-config.json
+            echo "MCPサーバー数: $(echo "$MCP_CONFIG" | jq '.mcpServers | length' 2>/dev/null || echo '0')"
+            echo "imagen4-fast存在確認: $(echo "$MCP_CONFIG" | jq '.mcpServers."t2i-fal-imagen4-fast"' 2>/dev/null | head -3)"
+          fi
+          
+          echo ""
+          echo "🎯 最小限のClaude Code実行:"
+          npx @anthropic-ai/claude-code --non-interactive \
+            --message="Hello, can you confirm MCP is working?" \
+            2>&1 || echo "基本実行失敗"
