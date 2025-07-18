@@ -1,0 +1,194 @@
+name: 'Music Generation'
+description: 'Generate music using Google Lyria via KamuiCode MCP'
+author: 'KamuiCode Workflow'
+
+inputs:
+  music-concept:
+    description: 'The music concept'
+    required: true
+  music-prompt:
+    description: 'The generated music prompt'
+    required: true
+  folder-name:
+    description: 'The folder name for storing music files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+
+outputs:
+  music-completed:
+    description: 'Whether music generation was completed successfully'
+    value: ${{ steps.music.outputs.completed }}
+  music-url:
+    description: 'URL of the generated music'
+    value: ${{ steps.music.outputs.music-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 音楽生成エージェント (Google Lyria)
+      id: music
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎵 Music Generation Agent Execution (Google Lyria)"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        MUSIC_CONCEPT="${{ inputs.music-concept }}"
+        MUSIC_PROMPT="${{ inputs.music-prompt }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        MUSIC_DIR="$FOLDER_NAME/music"
+        
+        echo "Music concept: $MUSIC_CONCEPT"
+        echo "Music prompt: $MUSIC_PROMPT"
+        echo "Target folder: $MUSIC_DIR"
+        
+        # 音楽フォルダを事前に作成
+        if [ ! -d "$MUSIC_DIR" ]; then
+          mkdir -p "$MUSIC_DIR"
+          echo "📁 Created music folder: $MUSIC_DIR"
+        fi
+        
+        # MCP設定の確認
+        MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        echo "📋 MCP Configuration Check:"
+        echo "Working directory: $(pwd)"
+        echo "MCP config path: $MCP_CONFIG_PATH"
+        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
+        echo "Allowed tools: mcp__t2m-google-lyria__lyria_submit,mcp__t2m-google-lyria__lyria_status,mcp__t2m-google-lyria__lyria_result,Bash"
+        
+        # Create MCP config file from input
+        mkdir -p .claude
+        echo '${{ inputs.mcp-config }}' > "$MCP_CONFIG_ABS_PATH"
+        echo "✅ MCP config file created from input"
+        
+        # MCP設定ファイルの確認
+        if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
+          echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
+          echo "MCP servers configured:"
+          jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
+        else
+          echo "❌ MCP config file creation failed"
+          exit 1
+        fi
+        
+        # 一括実行: 音楽生成（Google Lyria Generate）
+        echo "🚀 Music Generation (Google Lyria Generate)"
+        MUSIC_PROMPT_FULL="Google Lyriaを使用して音楽生成を実行してください。
+
+        **音楽コンセプト**: $MUSIC_CONCEPT
+        **最適化された音楽生成プロンプト**: $MUSIC_PROMPT
+
+        **実行手順**:
+        1. \`mcp__t2m-google-lyria__lyria_generate\`ツールを使用して音楽生成を実行
+        2. 生成された音楽ファイルを「$MUSIC_DIR/generated-music.mp3」または「$MUSIC_DIR/generated-music.wav」に保存
+        3. 音楽ファイルのパスを「$FOLDER_NAME/music-url.txt」に保存（後の処理で参照用）
+        4. 生成完了の確認メッセージを表示
+
+        **重要**: 必ず正しいツール名 \`mcp__t2m-google-lyria__lyria_generate\` を使用してください。
+        
+        **保存先**:
+        - 音楽ディレクトリ: $MUSIC_DIR
+        - 音楽ファイル: generated-music.mp3 または generated-music.wav
+        - パス保存ファイル: $FOLDER_NAME/music-url.txt"
+        
+        npx @anthropic-ai/claude-code \
+          --mcp-config="$MCP_CONFIG_ABS_PATH" \
+          --allowedTools "mcp__t2m-google-lyria__lyria_generate,Bash" \
+          --max-turns 25 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$MUSIC_PROMPT_FULL" || {
+            echo "::error::❌ Music generation failed"
+            exit 1
+          }
+        
+        # 生成された音楽の確認
+        echo ""
+        echo "🎵 Checking generated music..."
+        if [ -d "$MUSIC_DIR" ]; then
+          MUSIC_COUNT=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | wc -l)
+          echo "::notice::🎵 Generated $MUSIC_COUNT music files"
+          if [ "$MUSIC_COUNT" -gt 0 ]; then
+            echo "Music files:"
+            FIRST_MUSIC=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | head -1)
+            echo "First music: $FIRST_MUSIC"
+            
+            # 音楽URLを確認してGitHub Outputに設定
+            if [ -f "$FOLDER_NAME/music-url.txt" ]; then
+              MUSIC_URL=$(cat "$FOLDER_NAME/music-url.txt")
+              echo "Music URL: $MUSIC_URL"
+              echo "music-url=$MUSIC_URL" >> $GITHUB_OUTPUT
+            else
+              echo "::warning::⚠️ Music URL not found in file"
+              echo "music-url=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "::error::❌ No music files were generated"
+            exit 1
+          fi
+        else
+          echo "::error::❌ Music directory not found"
+          exit 1
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit and push music
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No music files to commit"
+        else
+          git commit -m "Add generated music: ${{ inputs.music-concept }}"
+          # リトライロジックでプッシュ
+          PUSH_SUCCESS=false
+          for i in {1..5}; do
+            echo "Push attempt $i/5..."
+            git pull origin ${{ inputs.branch-name }} --rebase
+            if git push origin ${{ inputs.branch-name }}; then
+              echo "✅ Push successful on attempt $i"
+              PUSH_SUCCESS=true
+              break
+            else
+              echo "Push failed on attempt $i"
+              sleep $((i * 2))
+            fi
+          done
+          
+          if [ "$PUSH_SUCCESS" = false ]; then
+            echo "❌ All push attempts failed"
+            exit 1
+          fi
+        fi

@@ -1,0 +1,51 @@
+name: Test Music Modular (Phase 1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        type: string
+
+jobs:
+  test-modular-music:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Music Planning
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Music Generation
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Test Results Summary
+        run: |
+          echo "🎯 Modular Test Results:"
+          echo "✅ Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "✅ Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo "✅ Planning: ${{ steps.planning.outputs.planning-completed }}"
+          echo "✅ Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "🎵 Generated Music Concept: ${{ inputs.music_concept }}"
+          echo "🎶 Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
