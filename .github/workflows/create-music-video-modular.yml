@@ -66,7 +66,8 @@ jobs:
         run: |
           # Create PR title and body
           PR_TITLE="🎵 Add music video: ${{ inputs.music_concept }}"
-          PR_BODY="## 🎬 Music Video Creation Summary
+          PR_BODY=$(cat <<'EOF'
+## 🎬 Music Video Creation Summary
 
 **Concept**: ${{ inputs.music_concept }}
 **Branch**: ${{ steps.setup.outputs.branch-name }}
@@ -78,11 +79,13 @@ jobs:
 - 🎵 Music URL: ${{ steps.music.outputs.music-url }}
 
 ### 📁 Files Created:
-- Planning documents in \`planning/\` directory
-- Music files in \`music/\` directory
+- Planning documents in `planning/` directory
+- Music files in `music/` directory
 
 ---
-🤖 Generated with Create Music Video (Modular) workflow"
+🤖 Generated with Create Music Video (Modular) workflow
+EOF
+)
 
           # Create the pull request
           gh pr create \
