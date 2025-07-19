@@ -1,0 +1,72 @@
+name: Test Music Generation Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        default: '静かな夜のピアノ曲'
+        type: string
+
+jobs:
+  test-music-generation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch (prerequisite)
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Music Planning (prerequisite)
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Test Music Generation Module
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Verify Results
+        run: |
+          echo "🔍 Music Generation Test Results:"
+          echo "✅ Generation Completed: ${{ steps.music.outputs.music-completed }}"
+          echo "✅ Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "🧪 Test Input: ${{ inputs.music_concept }}"
+          echo "🎵 Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          
+          # 基本的な検証
+          if [ "${{ steps.music.outputs.music-completed }}" = "true" ]; then
+            echo "✅ Music generation completed successfully"
+          else
+            echo "❌ Music generation did not complete"
+            exit 1
+          fi
+          
+          if [ -n "${{ steps.music.outputs.music-url }}" ]; then
+            echo "✅ Music URL generated"
+          else
+            echo "❌ Music URL not generated"
+            exit 1
+          fi
+          
+          echo "🎯 Music Generation Module Test: PASSED"

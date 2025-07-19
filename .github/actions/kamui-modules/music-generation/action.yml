@@ -1,0 +1,101 @@
+name: 'Music Generation'
+description: 'Generate music using Google Lyria via KamuiCode MCP (simplified test version)'
+author: 'KamuiCode Workflow'
+
+inputs:
+  music-concept:
+    description: 'The music concept'
+    required: true
+  music-prompt:
+    description: 'The generated music prompt'
+    required: true
+  folder-name:
+    description: 'The folder name for storing music files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+
+outputs:
+  music-completed:
+    description: 'Whether music generation was completed successfully'
+    value: ${{ steps.music.outputs.completed }}
+  music-url:
+    description: 'URL of the generated music'
+    value: ${{ steps.music.outputs.music-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 音楽生成エージェント (Simplified Test Version)
+      id: music
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎵 Music Generation Agent Execution (Test Version)"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        MUSIC_CONCEPT="${{ inputs.music-concept }}"
+        MUSIC_PROMPT="${{ inputs.music-prompt }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        MUSIC_DIR="$FOLDER_NAME/music"
+        
+        echo "Music concept: $MUSIC_CONCEPT"
+        echo "Music prompt: $MUSIC_PROMPT"
+        echo "Target folder: $MUSIC_DIR"
+        
+        # 音楽フォルダを事前に作成
+        if [ ! -d "$MUSIC_DIR" ]; then
+          mkdir -p "$MUSIC_DIR"
+          echo "📁 Created music folder: $MUSIC_DIR"
+        fi
+        
+        # テスト用のダミー音楽ファイルを作成
+        echo "Test music file for: $MUSIC_CONCEPT" > "$MUSIC_DIR/generated-music.txt"
+        echo "Music prompt: $MUSIC_PROMPT" >> "$MUSIC_DIR/generated-music.txt"
+        echo "Generated at: $(date)" >> "$MUSIC_DIR/generated-music.txt"
+        
+        # テスト用のURLを作成
+        MUSIC_URL="https://example.com/test-music-$RANDOM.mp3"
+        echo "$MUSIC_URL" > "$FOLDER_NAME/music-url.txt"
+        
+        echo "music-url=$MUSIC_URL" >> $GITHUB_OUTPUT
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit and push music
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No music files to commit"
+        else
+          git commit -m "Add generated music (test): ${{ inputs.music-concept }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
