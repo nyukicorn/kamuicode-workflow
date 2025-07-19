@@ -1,0 +1,103 @@
+name: 'Music Video Planning'
+description: 'Plan music video creation strategy using Claude Code SDK'
+author: 'KamuiCode Workflow'
+
+inputs:
+  music-concept:
+    description: 'The music concept to plan for'
+    required: true
+  folder-name:
+    description: 'The folder name for storing planning files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  planning-completed:
+    description: 'Whether planning was completed successfully'
+    value: ${{ steps.planning.outputs.completed }}
+  music-prompt:
+    description: 'Generated music prompt'
+    value: ${{ steps.planning.outputs.music-prompt }}
+  image-prompt:
+    description: 'Generated image prompt'
+    value: ${{ steps.planning.outputs.image-prompt }}
+  video-concept:
+    description: 'Generated video concept'
+    value: ${{ steps.planning.outputs.video-concept }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: ミュージックビデオ計画エージェント
+      id: planning
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎵 Music Video Planning Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        MUSIC_CONCEPT="${{ inputs.music-concept }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        PLANNING_DIR="$FOLDER_NAME/planning"
+        
+        echo "Music concept: $MUSIC_CONCEPT"
+        echo "Planning folder: $PLANNING_DIR"
+        
+        # 計画フォルダを事前に作成
+        if [ ! -d "$PLANNING_DIR" ]; then
+          mkdir -p "$PLANNING_DIR"
+          echo "📁 Created planning folder: $PLANNING_DIR"
+        fi
+        
+        # まず簡単なテストファイルを作成（テスト用）
+        echo "Test music prompt for: $MUSIC_CONCEPT" > "$PLANNING_DIR/music-prompt.txt"
+        echo "Test image prompt for: $MUSIC_CONCEPT" > "$PLANNING_DIR/image-prompt.txt"
+        echo "Test video strategy for: $MUSIC_CONCEPT" > "$PLANNING_DIR/video-strategy.txt"
+        
+        # アウトプットの設定
+        MUSIC_PROMPT=$(cat "$PLANNING_DIR/music-prompt.txt" | tr '\n' ' ')
+        IMAGE_PROMPT=$(cat "$PLANNING_DIR/image-prompt.txt" | tr '\n' ' ')
+        VIDEO_CONCEPT=$(head -5 "$PLANNING_DIR/video-strategy.txt" | tr '\n' ' ')
+        
+        echo "music-prompt=$MUSIC_PROMPT" >> $GITHUB_OUTPUT
+        echo "image-prompt=$IMAGE_PROMPT" >> $GITHUB_OUTPUT
+        echo "video-concept=$VIDEO_CONCEPT" >> $GITHUB_OUTPUT
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push planning
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No planning files to commit"
+        else
+          git commit -m "Add music video planning for: ${{ inputs.music-concept }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
