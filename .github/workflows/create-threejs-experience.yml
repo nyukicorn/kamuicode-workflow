@@ -81,7 +81,7 @@ jobs:
         id: translation
         uses: ./.github/actions/kamui-modules/prompt-translation
         with:
-          japanese-prompt: "完全な360度パノラマ画像、${{ inputs.experience_concept }}、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある環境、パノラマ専用レンダリング"
+          japanese-prompt: "美しい完全な360度パノラマ画像、${{ inputs.experience_concept }}、美しい風景、美しい色彩、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある美しい環境、パノラマ専用レンダリング"
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       
       - name: Image Generation (Panorama)
@@ -99,8 +99,8 @@ jobs:
         if: ${{ inputs.include_music == true }}
         uses: ./.github/actions/kamui-modules/music-generation
         with:
-          music-concept: "${{ inputs.experience_concept }}をテーマにした環境音楽、アンビエント、ループ対応"
-          music-prompt: "${{ inputs.experience_concept }}の雰囲気に合う環境音楽。リラックスできるアンビエントサウンド、シームレスループ対応、3D空間BGMとして最適化"
+          music-concept: "${{ inputs.experience_concept }}をテーマにした美しい環境音楽、美しいアンビエント、ループ対応"
+          music-prompt: "${{ inputs.experience_concept }}の雰囲気に合う美しい環境音楽。美しくリラックスできるアンビエントサウンド、シームレスループ対応、3D空間BGMとして最適化"
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
