@@ -35,11 +35,14 @@ runs:
         echo "Original Japanese prompt: $JAPANESE_PROMPT"
         
         # プロンプトの構築
-        PROMPT="Translate the following Japanese prompt to accurate English. Output only the translation result without explanations.
-
-Japanese text to translate - $JAPANESE_PROMPT
-
-Make sure the English translation is suitable for Imagen4 image generation with proper technical terms for 360-degree panorama and Equirectangular projection."
+        PROMPT=$(cat <<EOF
+        Translate the following Japanese prompt to accurate English. Output only the translation result without explanations.
+        
+        Japanese text to translate - $JAPANESE_PROMPT
+        
+        Make sure the English translation is suitable for Imagen4 image generation with proper technical terms for 360-degree panorama and Equirectangular projection.
+        EOF
+        )
         
         echo "🚀 Starting Translation Agent..."
         echo "📝 Prompt length: ${#PROMPT}"
