@@ -1,0 +1,270 @@
+name: Create Music Video Orchestrated (Experimental)
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        type: string
+
+jobs:
+  create-music-video-orchestrated:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Music Planning (Intent-to-Prompt)
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Music Generation (Intent-to-Prompt)
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Music Analysis
+        id: analysis
+        uses: ./.github/actions/kamui-modules/music-analysis
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          original-image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          original-video-prompt: ${{ steps.planning.outputs.video-concept }}
+          music-url: ${{ steps.music.outputs.music-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Image Generation (Intent-to-Prompt)
+        id: image
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎨 Intent-to-Prompt Image Generation"
+          echo "Starting experimental image generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          IMAGES_DIR="$FOLDER_NAME/images"
+          OPTIMIZED_PROMPT="${{ steps.analysis.outputs.image-prompt-1 }}"
+          
+          echo "Music concept: $MUSIC_CONCEPT"
+          echo "Optimized prompt from analysis: $OPTIMIZED_PROMPT"
+          echo "Target folder: $IMAGES_DIR"
+          
+          # フォルダ作成
+          mkdir -p "$IMAGES_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
+          
+          # Setup Node.js and Claude Code SDK
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm
+          npm install @anthropic-ai/claude-code
+          
+          # Intent-to-Prompt: 音楽コンセプトと分析結果を総合的に考慮
+          SMART_PROMPT="音楽ビデオの画像生成を実行してください。
+          
+          **音楽コンセプト**: $MUSIC_CONCEPT
+          **音楽分析による最適化済みプロンプト**: $OPTIMIZED_PROMPT
+          
+          **あなたの判断で行ってください**:
+          1. 音楽コンセプトと最適化済みプロンプトを総合的に分析
+          2. より魅力的で音楽に調和する画像プロンプトを自由に構築
+          3. 日本語の場合は英語に翻訳してからImagen4 Fastで実行
+          4. 技術的な詳細（ファイル保存、URL管理等）も最適な方法で実行
+          
+          **利用可能なツール**: Imagen4 Fast MCP, Bash
+          **保存先**: $IMAGES_DIR/generated-image.png
+          **URL保存**: $FOLDER_NAME/google-image-url.txt
+          
+          **重要**: あなたの創造性と判断力を最大限に活用して、
+          音楽コンセプトに最も調和する美しい画像を生成してください。"
+          
+          echo "🚀 Starting Intent-to-Prompt Image Generation..."
+          
+          # Claude Code SDK実行
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_PATH" \
+            --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$SMART_PROMPT" || {
+              echo "::error::❌ Intent-to-Prompt Image generation failed"
+              exit 1
+            }
+          
+          # 結果確認
+          if [ -f "$FOLDER_NAME/google-image-url.txt" ]; then
+            GOOGLE_URL=$(cat "$FOLDER_NAME/google-image-url.txt")
+            echo "google-image-url=$GOOGLE_URL" >> $GITHUB_OUTPUT
+            echo "image-completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Image generation output not found"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Video Generation (Intent-to-Prompt)
+        id: video
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎬 Intent-to-Prompt Video Generation"
+          echo "Starting experimental video generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          GOOGLE_IMAGE_URL="${{ steps.image.outputs.google-image-url }}"
+          OPTIMIZED_VIDEO_PROMPT="${{ steps.analysis.outputs.video-prompt-1 }}"
+          VIDEOS_DIR="$FOLDER_NAME/videos"
+          
+          echo "Music concept: $MUSIC_CONCEPT"
+          echo "Image URL: $GOOGLE_IMAGE_URL"
+          echo "Optimized video prompt: $OPTIMIZED_VIDEO_PROMPT"
+          
+          # フォルダ作成
+          mkdir -p "$VIDEOS_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
+          
+          # Intent-to-Prompt: 音楽、画像、分析結果を総合考慮
+          SMART_PROMPT="音楽ビデオの動画生成を実行してください。
+          
+          **音楽コンセプト**: $MUSIC_CONCEPT
+          **生成済み画像URL**: $GOOGLE_IMAGE_URL
+          **音楽分析による最適化済み動画プロンプト**: $OPTIMIZED_VIDEO_PROMPT
+          
+          **あなたの判断で行ってください**:
+          1. 音楽コンセプト、画像の内容、最適化済みプロンプトを総合的に分析
+          2. より魅力的で一貫性のある動画プロンプトを自由に構築
+          3. 画像と音楽の調和を最重視した動画を生成
+          4. Hailuo-02 Proで5秒の高品質動画を作成
+          5. 技術的な詳細も最適な方法で実行
+          
+          **利用可能なツール**: Hailuo-02 Pro MCP, Bash
+          **保存先**: $VIDEOS_DIR/segment-1.mp4
+          
+          **重要**: 音楽の雰囲気と画像の美しさを最大限に活かし、
+          視聴者が感動する動画を創造してください。"
+          
+          echo "🚀 Starting Intent-to-Prompt Video Generation..."
+          
+          # Claude Code SDK実行
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_PATH" \
+            --allowedTools "mcp__i2v-hailuo-02-pro__hailuo_submit,mcp__i2v-hailuo-02-pro__hailuo_status,mcp__i2v-hailuo-02-pro__hailuo_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "acceptEdits" \
+            -p "$SMART_PROMPT" || {
+              echo "::error::❌ Intent-to-Prompt Video generation failed"
+              exit 1
+            }
+          
+          # 結果確認
+          if [ -f "$VIDEOS_DIR/segment-1.mp4" ]; then
+            echo "video-completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Video generation output not found"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Video Adjustment
+        id: adjustment
+        uses: ./.github/actions/kamui-modules/video-adjustment
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          video-prompt-1: ${{ steps.analysis.outputs.video-prompt-1 }}
+          video-prompt-2: ${{ steps.analysis.outputs.video-prompt-2 }}
+          video-prompt-3: ${{ steps.analysis.outputs.video-prompt-3 }}
+      
+      - name: Video Concatenation & Music Integration
+        id: concatenation
+        uses: ./.github/actions/kamui-modules/video-concatenation
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Summary (Experimental Results)
+        run: |
+          echo "🎯 Music Video Creation Summary (ORCHESTRATED VERSION - EXPERIMENTAL):"
+          echo "================================================"
+          echo "📝 Concept: ${{ inputs.music_concept }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo ""
+          echo "🧪 EXPERIMENTAL FEATURES USED:"
+          echo "  - Intent-to-Prompt Image Generation"
+          echo "  - Intent-to-Prompt Video Generation"
+          echo "  - Claude Code SDK Autonomous Decision Making"
+          echo ""
+          echo "✅ Planning Status: ${{ steps.planning.outputs.planning-completed }}"
+          echo "🎵 Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
+          echo "🖼️ Image Prompt: ${{ steps.planning.outputs.image-prompt }}"
+          echo ""
+          echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
+          echo "🎶 Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "✅ Music Analysis: ${{ steps.analysis.outputs.analysis-completed }}"
+          echo "🔍 Optimized Image Prompt: ${{ steps.analysis.outputs.image-prompt-1 }}"
+          echo "🎭 Optimized Video Prompt: ${{ steps.analysis.outputs.video-prompt-1 }}"
+          echo ""
+          echo "🧪 Intent-to-Prompt Image Generation: ${{ steps.image.outputs.image-completed }}"
+          echo "🖼️ Google Image URL: ${{ steps.image.outputs.google-image-url }}"
+          echo ""
+          echo "🧪 Intent-to-Prompt Video Generation: ${{ steps.video.outputs.video-completed }}"
+          echo ""
+          echo "✅ Video Adjustment: ${{ steps.adjustment.outputs.adjustment-completed }}"
+          echo "🎭 Adjusted Video Prompts: Generated for 3 segments"
+          echo ""
+          echo "✅ Video Concatenation & Music Integration: ${{ steps.concatenation.outputs.concatenation-completed }}"
+          echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
+          echo ""
+          echo "🎉 EXPERIMENTAL Music Video Pipeline Success!"
+          echo "📊 Generated: Music + Analysis + Intent-to-Prompt Image/Video + Final Integration"
+          echo "🧪 Claude Code SDK Autonomous Creativity: ACTIVATED"
+          echo "================================================"
+      
+      - name: Final Status
+        run: |
+          echo "✅ Experimental Orchestrated Workflow completed successfully!"
+          echo "Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "🧪 Compare results with standard modular workflow"
+          echo "Check the branch for generated files."
