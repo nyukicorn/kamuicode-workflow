@@ -269,7 +269,7 @@ runs:
         fi
         
         # プレビューURLを生成
-        PREVIEW_URL="https://$REPO_OWNER.github.io/${REPO_NAME#*/}/docs/$FOLDER_NAME/"
+        PREVIEW_URL="https://$REPO_OWNER.github.io/kamuicode-workflow/docs/$FOLDER_NAME/"
         echo "preview-url=$PREVIEW_URL" >> $GITHUB_OUTPUT
         echo "📋 Preview URL: $PREVIEW_URL"
         
@@ -294,9 +294,10 @@ runs:
 
         GitHub Pages preview: https://${{ github.repository_owner }}.github.io/kamuicode-workflow/docs/${{ inputs.folder-name }}/"
           # mainブランチにマージ
-          git checkout main
-          git pull origin main
+          git fetch origin main
+          git checkout -B main origin/main
           git checkout ${{ inputs.branch-name }} -- docs/
+          git add docs/
           git commit -m "Merge docs from ${{ inputs.branch-name }} to main for GitHub Pages"
           git push origin main
           # 元のブランチに戻る
