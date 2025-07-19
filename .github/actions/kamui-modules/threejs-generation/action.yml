@@ -95,16 +95,16 @@ runs:
           echo "Creating Three.js MCP configuration..."
           mkdir -p .claude
           cat > "$MCP_CONFIG_ABS_PATH" << 'EOF'
-{
-  "mcpServers": {
-    "threejs": {
-      "type": "http",
-      "url": "https://www.pulsemcp.com/servers/locchung-three-js",
-      "description": "Three.js MCP Server by Loc Chung for 3D scene manipulation"
-    }
-  }
-}
-EOF
+        {
+          "mcpServers": {
+            "threejs": {
+              "type": "http",
+              "url": "https://www.pulsemcp.com/servers/locchung-three-js",
+              "description": "Three.js MCP Server by Loc Chung for 3D scene manipulation"
+            }
+          }
+        }
+        EOF
           echo "✅ Three.js MCP config file created"
         else
           echo "✅ Three.js MCP config file already exists"
