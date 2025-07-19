@@ -116,63 +116,61 @@ runs:
           MUSIC_INTEGRATION="
         **音楽統合**:
         - BGM URL: $MUSIC_URL
-        - 音楽のオン/オフボタンを実装
-        - Web Audio APIでループ再生
-        - ボリューム制御機能"
+        - HTML5 Audioでの音楽オン/オフボタンを実装
+        - ループ再生とボリューム制御機能
+        - 音楽ファイルを$SRC_DIR/generated-music.wavにコピー"
         fi
         
-        PROMPT="Three.js 3D体験シーンを生成してください。
-        
+        PROMPT="安定したThree.js 3D体験シーンを生成してください。
+
         **体験コンセプト**: $EXPERIENCE_CONCEPT
         **パノラマ画像URL**: $PANORAMA_URL
         
-        **実行手順**:
-        1. パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
-        2. Three.jsライブラリファイルを$SRC_DIR/libsに配置
-        3. メインHTMLファイル($SRC_DIR/index.html)を作成:
-           - Three.js WebGLRenderer設定
-           - パノラマ画像をSphereGeometryにマッピング
-           - OrbitControlsでマウス操作
-           - パーティクルシステム実装
-           - レスポンシブデザイン
-        4. JavaScriptファイルを作成:
-           - $SRC_DIR/js/main.js: メインアプリケーション
-           - $SRC_DIR/js/scene.js: 3Dシーン設定
-           - $SRC_DIR/js/particles.js: パーティクルアートシステム
-           - $SRC_DIR/js/controls.js: ユーザー操作制御
-        5. CSSファイル($SRC_DIR/css/style.css)を作成:
-           - フルスクリーン表示
-           - UI制御パネル
-           - ローディング画面
+        **必須実行手順**:
+        1. **ファイル配置（重要）**:
+           - パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
+           - パノラマ画像を$SRC_DIR/panorama.jpgにもコピー（相対パス問題解決）
+           - 音楽ファイルがあれば$SRC_DIR/generated-music.wavにもコピー
+        
+        2. **単一HTMLファイル作成（$SRC_DIR/index.html）**:
+           - Three.js CDN使用: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+           - OrbitControls使用禁止（カスタム実装必須）
+           - 完全なHTML5 Audio実装
+           - カスタムマウス/タッチ制御
+           - 自動回転機能（ダブルクリック）
+           - パーティクルシステム
+        
+        **必須実装機能**:
+        - **マウス制御**: ドラッグで視点移動、ホイールでズーム
+        - **タッチ制御**: モバイル対応のタッチ操作
+        - **自動回転**: ダブルクリックで時計回り自動回転モード
+        - **音楽制御**: HTML5 Audioでの再生/停止、ボリューム調整
+        - **パーティクル**: 舞い散るパーティクル（自動回転時は高速化）
+        - **UI表示**: 操作説明（マウスドラッグ・ホイール・ダブルクリック）
+        
+        **技術要件**:
+        - パノラマ: 'panorama.jpg'（相対パス）
+        - 音楽: 'generated-music.wav'（HTML5 Audio、ループ再生）
+        - WebGL対応チェックとエラー表示
+        - レスポンシブデザイン
+        - すべて単一HTMLファイルに統合
+        
+        **禁止事項**:
+        - OrbitControls.jsの使用（読み込みエラーの原因）
+        - Web Audio APIの使用（デコードエラーの原因）
+        - 複数JSファイルへの分割
+        - 相対パス '../assets/' の使用
+        
+        **実装参考コード構造**:
+        - カスタムマウス制御変数とイベントリスナー
+        - HTML5 Audio要素での音楽制御
+        - ダブルクリック自動回転（時計回り）
+        - スムーズなカメラアニメーション
+        - パーティクルシステムとの連動
+        
         $MUSIC_INTEGRATION
         
-        **技術仕様**:
-        - パノラマ: Equirectangular → SphereGeometry内側テクスチャ
-        - パーティクル: Points/ParticleSystemで「$EXPERIENCE_CONCEPT」テーマ
-        - 操作: マウスドラッグでカメラ回転、ホイールでズーム
-        - 最適化: requestAnimationFrame、適切なディスポーズ
-        
-        **重要な注意点**:
-        - パノラマ画像はGoogle URLから確実にダウンロード
-        - Three.jsはCDN版を使用（最新安定版）
-        - すべてのファイルを指定されたディレクトリ構造に配置
-        - WebGL対応チェックとフォールバック実装
-        - モバイル対応のタッチ操作
-        
-        **ファイル構造**:
-        $SRC_DIR/
-        ├── index.html
-        ├── js/
-        │   ├── main.js
-        │   ├── scene.js  
-        │   ├── particles.js
-        │   └── controls.js
-        ├── css/
-        │   └── style.css
-        └── libs/
-            └── three.min.js
-        $ASSETS_DIR/
-        └── panorama.jpg"
+        **最終ファイル**: $SRC_DIR/index.html（完全動作する単一ファイル）"
         
         echo "🚀 Starting Three.js Scene Generation Agent..."
         echo "📝 Prompt length: ${#PROMPT}"
@@ -193,35 +191,51 @@ runs:
         echo ""
         echo "📸 Checking generated Three.js files..."
         
-        # HTMLファイルの確認
+        # メインHTMLファイルの確認
         if [ -f "$SRC_DIR/index.html" ]; then
           echo "✅ Main HTML file created: $SRC_DIR/index.html"
+          HTML_SIZE=$(wc -c < "$SRC_DIR/index.html")
+          echo "  HTML file size: $HTML_SIZE bytes"
         else
           echo "::error::❌ Main HTML file not found"
           exit 1
         fi
         
-        # JSファイルの確認
-        JS_COUNT=$(find "$SRC_DIR/js" -name "*.js" 2>/dev/null | wc -l)
-        echo "✅ JavaScript files created: $JS_COUNT"
-        
-        # CSSファイルの確認
-        if [ -f "$SRC_DIR/css/style.css" ]; then
-          echo "✅ CSS file created: $SRC_DIR/css/style.css"
+        # パノラマ画像の確認（両方の場所）
+        if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
+          echo "✅ Panorama image in assets: $ASSETS_DIR/panorama.jpg"
         else
-          echo "::warning::⚠️ CSS file not found"
+          echo "::warning::⚠️ Panorama image not found in assets"
         fi
         
-        # パノラマ画像の確認
-        if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
-          echo "✅ Panorama image downloaded: $ASSETS_DIR/panorama.jpg"
+        if [ -f "$SRC_DIR/panorama.jpg" ]; then
+          echo "✅ Panorama image in src: $SRC_DIR/panorama.jpg"
         else
-          echo "::warning::⚠️ Panorama image not found"
+          echo "::warning::⚠️ Panorama image not found in src (may cause loading issues)"
+        fi
+        
+        # 音楽ファイルの確認（音楽が有効な場合）
+        if [ "$INCLUDE_MUSIC" == "true" ]; then
+          if [ -f "$SRC_DIR/generated-music.wav" ]; then
+            echo "✅ Music file in src: $SRC_DIR/generated-music.wav"
+            MUSIC_SIZE=$(wc -c < "$SRC_DIR/generated-music.wav")
+            echo "  Music file size: $MUSIC_SIZE bytes"
+          else
+            echo "::warning::⚠️ Music file not found in src (music controls may not work)"
+          fi
         fi
         
         # 総ファイル数をカウント
         TOTAL_FILES=$(find "$SRC_DIR" -type f | wc -l)
         echo "scene-files-created=$TOTAL_FILES" >> $GITHUB_OUTPUT
+        
+        echo ""
+        echo "🎉 Three.js scene generation completed with enhanced features:"
+        echo "  - Custom mouse/touch controls (no OrbitControls dependency)"
+        echo "  - HTML5 Audio music system (no Web Audio API issues)"
+        echo "  - Auto-rotation with double-click"
+        echo "  - Particle system with rotation sync"
+        echo "  - Single HTML file approach"
         
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "::endgroup::"
