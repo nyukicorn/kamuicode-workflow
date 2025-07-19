@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夏の花々が咲く美しい庭園 - パノラマ体験</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .volume-control {
+            margin-top: 10px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            margin-left: 10px;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 2000;
+        }
+
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 2000;
+        }
+
+        @media (max-width: 768px) {
+            .ui-overlay {
+                font-size: 12px;
+                padding: 10px;
+                max-width: 250px;
+            }
+
+            .controls {
+                bottom: 10px;
+                left: 10px;
+                padding: 10px;
+            }
+
+            .control-btn {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading" class="loading">パノラマを読み込み中...</div>
+        
+        <div class="ui-overlay">
+            <h3>🌸 夏の花々が咲く美しい庭園</h3>
+            <p><strong>操作方法:</strong></p>
+            <p>🖱️ マウスドラッグ: 視点移動</p>
+            <p>🎯 ホイール: ズーム</p>
+            <p>🔄 ダブルクリック: 自動回転</p>
+            <p>📱 タッチ操作対応</p>
+        </div>
+
+        <div class="controls">
+            <button id="toggleMusic" class="control-btn">🎵 音楽再生</button>
+            <button id="toggleAutoRotate" class="control-btn">🔄 自動回転</button>
+            <button id="resetView" class="control-btn">🏠 視点リセット</button>
+            <div class="volume-control">
+                <label>🔊 音量:</label>
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.1" value="0.5">
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <script>
+        // グローバル変数
+        let scene, camera, renderer, sphere, particles;
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        let autoRotate = false;
+        let autoRotateSpeed = 0.005;
+        let audio;
+        let isLoading = true;
+
+        // マウス/タッチ制御変数
+        let lastTouchDistance = 0;
+        let zoom = 1;
+        const minZoom = 0.5;
+        const maxZoom = 3;
+
+        // 初期化
+        function init() {
+            console.log('Three.js体験シーンを初期化中...');
+
+            // WebGL対応チェック
+            if (!checkWebGLSupport()) {
+                showError('WebGLがサポートされていません。最新のブラウザをご利用ください。');
+                return;
+            }
+
+            // シーン作成
+            scene = new THREE.Scene();
+
+            // カメラ作成
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 0.1);
+
+            // レンダラー作成
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                alpha: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            const container = document.getElementById('canvas-container');
+            container.appendChild(renderer.domElement);
+
+            // パノラマスフィア作成
+            createPanoramaSphere();
+
+            // パーティクルシステム作成
+            createParticleSystem();
+
+            // 音楽設定
+            setupAudio();
+
+            // イベントリスナー設定
+            setupEventListeners();
+
+            // アニメーション開始
+            animate();
+
+            console.log('Three.js体験シーンの初期化完了');
+        }
+
+        // WebGL対応チェック
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!context;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // エラー表示
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            loading.className = 'error';
+            loading.innerHTML = `<h3>エラー</h3><p>${message}</p>`;
+        }
+
+        // パノラマスフィア作成
+        function createPanoramaSphere() {
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1); // 内側を向かせる
+
+            const loader = new THREE.TextureLoader();
+            loader.crossOrigin = 'anonymous';
+            
+            loader.load(
+                'panorama.jpg',
+                function(texture) {
+                    console.log('パノラマテクスチャ読み込み完了');
+                    
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture,
+                        side: THREE.BackSide
+                    });
+                    
+                    sphere = new THREE.Mesh(geometry, material);
+                    scene.add(sphere);
+                    
+                    hideLoading();
+                    isLoading = false;
+                },
+                function(progress) {
+                    console.log('パノラマテクスチャ読み込み進行:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function(error) {
+                    console.error('パノラマテクスチャ読み込みエラー:', error);
+                    showError('パノラマ画像の読み込みに失敗しました。');
+                }
+            );
+        }
+
+        // パーティクルシステム作成
+        function createParticleSystem() {
+            const particleCount = 800;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+
+            // 花びらのような色合い
+            const colorPalette = [
+                new THREE.Color(1.0, 0.7, 0.8),   // ピンク
+                new THREE.Color(1.0, 1.0, 0.8),   // クリーム
+                new THREE.Color(0.8, 1.0, 0.8),   // ライトグリーン
+                new THREE.Color(1.0, 0.9, 0.7),   // ピーチ
+                new THREE.Color(0.9, 0.8, 1.0)    // ラベンダー
+            ];
+
+            for (let i = 0; i < particleCount; i++) {
+                // ランダムな位置（球の外側）
+                const radius = 300 + Math.random() * 200;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+
+                positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = radius * Math.cos(phi);
+
+                // ランダムな色
+                const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.6,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        // 音楽設定
+        function setupAudio() {
+            audio = new Audio();
+            audio.loop = true;
+            audio.volume = 0.5;
+            audio.preload = 'auto';
+            
+            // デモ用の無音ファイル（実際の音楽ファイルがない場合）
+            // 実際の音楽ファイルがある場合は 'generated-music.wav' に変更
+            audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAAAQAEAAEAgAAAEAAgAEAAAZGF0YQQAAAAAAA==';
+            
+            // 音楽ファイルが存在する場合の設定
+            if (typeof audioFile !== 'undefined') {
+                audio.src = 'generated-music.wav';
+            }
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            // マウスイベント
+            renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+            renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+            renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+            renderer.domElement.addEventListener('wheel', onMouseWheel, false);
+            renderer.domElement.addEventListener('dblclick', onDoubleClick, false);
+
+            // タッチイベント
+            renderer.domElement.addEventListener('touchstart', onTouchStart, false);
+            renderer.domElement.addEventListener('touchmove', onTouchMove, false);
+            renderer.domElement.addEventListener('touchend', onTouchEnd, false);
+
+            // UI制御
+            document.getElementById('toggleMusic').addEventListener('click', toggleMusic);
+            document.getElementById('toggleAutoRotate').addEventListener('click', toggleAutoRotate);
+            document.getElementById('resetView').addEventListener('click', resetView);
+            document.getElementById('volumeSlider').addEventListener('input', adjustVolume);
+
+            // リサイズ
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        // マウスイベント
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!isMouseDown || isLoading) return;
+
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+
+            targetRotationY += deltaX * 0.005;
+            targetRotationX += deltaY * 0.005;
+
+            // X軸回転を制限
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onMouseWheel(event) {
+            if (isLoading) return;
+            
+            zoom -= event.deltaY * 0.001;
+            zoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+            camera.fov = 75 / zoom;
+            camera.updateProjectionMatrix();
+        }
+
+        function onDoubleClick() {
+            toggleAutoRotate();
+        }
+
+        // タッチイベント
+        function onTouchStart(event) {
+            event.preventDefault();
+            
+            if (event.touches.length === 1) {
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+                isMouseDown = true;
+            } else if (event.touches.length === 2) {
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                lastTouchDistance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+            }
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouseX;
+                const deltaY = event.touches[0].clientY - mouseY;
+
+                targetRotationY += deltaX * 0.005;
+                targetRotationX += deltaY * 0.005;
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            } else if (event.touches.length === 2) {
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                const distance = Math.sqrt(
+                    Math.pow(touch2.clientX - touch1.clientX, 2) +
+                    Math.pow(touch2.clientY - touch1.clientY, 2)
+                );
+
+                if (lastTouchDistance > 0) {
+                    const scale = distance / lastTouchDistance;
+                    zoom *= scale;
+                    zoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+                    camera.fov = 75 / zoom;
+                    camera.updateProjectionMatrix();
+                }
+                lastTouchDistance = distance;
+            }
+        }
+
+        function onTouchEnd(event) {
+            event.preventDefault();
+            isMouseDown = false;
+            lastTouchDistance = 0;
+        }
+
+        // UI制御
+        function toggleMusic() {
+            if (audio.paused) {
+                audio.play().catch(e => console.log('音楽再生エラー:', e));
+                document.getElementById('toggleMusic').textContent = '🔇 音楽停止';
+            } else {
+                audio.pause();
+                document.getElementById('toggleMusic').textContent = '🎵 音楽再生';
+            }
+        }
+
+        function toggleAutoRotate() {
+            autoRotate = !autoRotate;
+            const btn = document.getElementById('toggleAutoRotate');
+            btn.textContent = autoRotate ? '⏸️ 回転停止' : '🔄 自動回転';
+        }
+
+        function resetView() {
+            targetRotationX = 0;
+            targetRotationY = 0;
+            zoom = 1;
+            camera.fov = 75;
+            camera.updateProjectionMatrix();
+        }
+
+        function adjustVolume(event) {
+            audio.volume = event.target.value;
+        }
+
+        // ローディング非表示
+        function hideLoading() {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'none';
+        }
+
+        // リサイズ処理
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!isLoading) {
+                // スムーズな回転
+                currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+                currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+
+                // 自動回転
+                if (autoRotate) {
+                    targetRotationY += autoRotateSpeed;
+                    
+                    // パーティクル高速化
+                    if (particles) {
+                        particles.rotation.y += 0.01;
+                    }
+                } else {
+                    // 通常のパーティクル回転
+                    if (particles) {
+                        particles.rotation.y += 0.002;
+                        particles.rotation.x += 0.001;
+                    }
+                }
+
+                // カメラ回転適用
+                camera.rotation.x = currentRotationX;
+                camera.rotation.y = currentRotationY;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // 初期化実行
+        init();
+
+        // コンソールメッセージ
+        console.log('🌸 夏の花々が咲く美しい庭園 - Three.js パノラマ体験');
+        console.log('マウスドラッグ、ホイール、ダブルクリックで操作してください');
+    </script>
+</body>
+</html>
