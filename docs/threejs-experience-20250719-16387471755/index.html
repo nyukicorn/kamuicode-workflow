@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Forest Panorama Experience</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas {
+            display: block;
+        }
+        #webgl-error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            text-align: center;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+            z-index: 100;
+        }
+        #audio-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        button {
+            background: #333;
+            color: #fff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #555;
+        }
+        input[type="range"] {
+            width: 100px;
+            margin-left: 10px;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 18px;
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="loading">パノラマ画像を読み込み中...</div>
+        
+        <div id="webgl-error">
+            <h3>WebGL エラー</h3>
+            <p>お使いのブラウザではWebGLがサポートされていません。<br>
+            最新のブラウザをご利用ください。</p>
+        </div>
+        
+        <div id="ui">
+            <strong>操作方法:</strong><br>
+            🖱️ マウスドラッグ: 視点移動<br>
+            🎯 ホイール: ズーム<br>
+            👆 ダブルクリック: 自動回転<br>
+            📱 タッチ: ピンチ&ドラッグ
+        </div>
+        
+        <div id="audio-controls">
+            <button id="playBtn">🎵 再生</button>
+            <button id="stopBtn">⏹️ 停止</button>
+            <br>
+            音量: <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
+        </div>
+        
+        <audio id="bgMusic" preload="auto" loop>
+            <source src="generated-music.wav" type="audio/wav">
+        </audio>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // WebGL サポートチェック
+        function isWebGLAvailable() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && 
+                         (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        if (!isWebGLAvailable()) {
+            document.getElementById('webgl-error').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+            throw new Error('WebGL not supported');
+        }
+
+        // グローバル変数
+        let scene, camera, renderer, sphere, particles;
+        let mouse = new THREE.Vector2();
+        let mouseDown = false;
+        let autoRotate = false;
+        let touchStartX = 0, touchStartY = 0;
+        let rotationSpeed = 0.005;
+        let autoRotationSpeed = 0.01;
+        
+        // カメラ制御変数
+        let phi = 0;
+        let theta = Math.PI / 2;
+        let radius = 5;
+        const minRadius = 1;
+        const maxRadius = 20;
+
+        // 初期化
+        function init() {
+            // シーン作成
+            scene = new THREE.Scene();
+            
+            // カメラ作成
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 0);
+            
+            // レンダラー作成
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('canvas'),
+                antialias: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // パノラマスフィア作成
+            createPanoramaSphere();
+            
+            // パーティクルシステム作成
+            createParticleSystem();
+            
+            // イベントリスナー設定
+            setupEventListeners();
+            
+            // 音楽制御設定
+            setupAudioControls();
+            
+            // アニメーションループ開始
+            animate();
+        }
+
+        // パノラマスフィア作成
+        function createPanoramaSphere() {
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1); // 内側から見えるように反転
+            
+            const loader = new THREE.TextureLoader();
+            loader.load('panorama.jpg', 
+                function(texture) {
+                    const material = new THREE.MeshBasicMaterial({ map: texture });
+                    sphere = new THREE.Mesh(geometry, material);
+                    scene.add(sphere);
+                    
+                    // ローディング表示を隠す
+                    document.getElementById('loading').style.display = 'none';
+                },
+                function(progress) {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function(error) {
+                    console.error('パノラマ画像の読み込みに失敗しました:', error);
+                    document.getElementById('loading').innerHTML = 'パノラマ画像の読み込みに失敗しました';
+                }
+            );
+        }
+
+        // パーティクルシステム作成
+        function createParticleSystem() {
+            const particleCount = 500;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // ランダムな球面座標
+                const radius = Math.random() * 400 + 50;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = radius * Math.cos(phi);
+                positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+                
+                // 色設定（白から薄緑）
+                colors[i3] = 0.8 + Math.random() * 0.2;
+                colors[i3 + 1] = 1.0;
+                colors[i3 + 2] = 0.8 + Math.random() * 0.2;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.3,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            const canvas = document.getElementById('canvas');
+            
+            // マウスイベント
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            
+            // タッチイベント
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+            
+            // リサイズイベント
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // マウスイベントハンドラー
+        function onMouseDown(event) {
+            mouseDown = true;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouse.x;
+            const deltaY = event.clientY - mouse.y;
+            
+            phi += deltaX * rotationSpeed;
+            theta -= deltaY * rotationSpeed;
+            theta = Math.max(0.1, Math.min(Math.PI - 0.1, theta));
+            
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+            
+            updateCameraPosition();
+        }
+
+        function onMouseUp() {
+            mouseDown = false;
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            radius += event.deltaY * 0.01;
+            radius = Math.max(minRadius, Math.min(maxRadius, radius));
+            updateCameraPosition();
+        }
+
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+            console.log('自動回転:', autoRotate ? 'ON' : 'OFF');
+        }
+
+        // タッチイベントハンドラー
+        function onTouchStart(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            mouseDown = true;
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (!mouseDown) return;
+            
+            const touch = event.touches[0];
+            const deltaX = touch.clientX - touchStartX;
+            const deltaY = touch.clientY - touchStartY;
+            
+            phi += deltaX * rotationSpeed;
+            theta -= deltaY * rotationSpeed;
+            theta = Math.max(0.1, Math.min(Math.PI - 0.1, theta));
+            
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            
+            updateCameraPosition();
+        }
+
+        function onTouchEnd() {
+            mouseDown = false;
+        }
+
+        // カメラ位置更新
+        function updateCameraPosition() {
+            camera.position.x = radius * Math.sin(theta) * Math.cos(phi);
+            camera.position.y = radius * Math.cos(theta);
+            camera.position.z = radius * Math.sin(theta) * Math.sin(phi);
+            camera.lookAt(0, 0, 0);
+        }
+
+        // リサイズハンドラー
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 音楽制御設定
+        function setupAudioControls() {
+            const audio = document.getElementById('bgMusic');
+            const playBtn = document.getElementById('playBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const volumeSlider = document.getElementById('volumeSlider');
+            
+            playBtn.addEventListener('click', () => {
+                audio.play().catch(e => console.log('音楽再生エラー:', e));
+            });
+            
+            stopBtn.addEventListener('click', () => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            
+            volumeSlider.addEventListener('input', () => {
+                audio.volume = volumeSlider.value;
+            });
+            
+            // 初期音量設定
+            audio.volume = 0.5;
+        }
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 自動回転
+            if (autoRotate) {
+                phi += autoRotationSpeed;
+                updateCameraPosition();
+                
+                // パーティクル高速化
+                if (particles) {
+                    particles.rotation.y += 0.02;
+                }
+            } else {
+                // 通常のパーティクル回転
+                if (particles) {
+                    particles.rotation.y += 0.005;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
