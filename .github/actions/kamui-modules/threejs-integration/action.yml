@@ -30,6 +30,9 @@ outputs:
   package-size:
     description: 'Size of the final package'
     value: ${{ steps.integration.outputs.package-size }}
+  preview-url:
+    description: 'GitHub Pages preview URL'
+    value: ${{ steps.integration.outputs.preview-url }}
 
 runs:
   using: 'composite'
@@ -207,17 +210,88 @@ runs:
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "::endgroup::"
     
-    - name: Commit and push final package
+    - name: Setup GitHub Pages deployment
+      shell: bash
+      run: |
+        echo "::group::🌐 GitHub Pages Setup"
+        
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        DOCS_DIR="docs/$FOLDER_NAME"
+        REPO_NAME="${{ github.repository }}"
+        REPO_OWNER="${{ github.repository_owner }}"
+        
+        # docs/フォルダ構造を作成
+        mkdir -p "$DOCS_DIR"
+        
+        # src/index.htmlをdocs配下にコピー
+        if [ -f "$FOLDER_NAME/src/index.html" ]; then
+          cp "$FOLDER_NAME/src/index.html" "$DOCS_DIR/"
+          echo "✅ Copied index.html to docs"
+        fi
+        
+        # パノラマ画像をコピー
+        if [ -f "$FOLDER_NAME/src/panorama.jpg" ]; then
+          cp "$FOLDER_NAME/src/panorama.jpg" "$DOCS_DIR/"
+          echo "✅ Copied panorama.jpg to docs"
+        fi
+        
+        # 音楽ファイルがあればコピー
+        if [ -f "$FOLDER_NAME/src/generated-music.wav" ]; then
+          cp "$FOLDER_NAME/src/generated-music.wav" "$DOCS_DIR/"
+          echo "✅ Copied music file to docs"
+        fi
+        
+        # GitHub Pages用のindex.htmlがなければ作成
+        if [ ! -f "docs/index.html" ]; then
+          cat > docs/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>KamuiCode Three.js Experiences</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            .experience { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+            .experience h2 { margin-top: 0; }
+            .experience a { color: #0066cc; text-decoration: none; }
+            .experience a:hover { text-decoration: underline; }
+          </style>
+        </head>
+        <body>
+          <h1>🎯 KamuiCode Three.js Experiences</h1>
+          <p>Generated 3D experiences with panorama backgrounds and particle effects.</p>
+          <div id="experiences">
+            <!-- Experiences will be listed here -->
+          </div>
+        </body>
+        </html>
+        EOF
+          echo "✅ Created main docs/index.html"
+        fi
+        
+        # プレビューURLを生成
+        PREVIEW_URL="https://$REPO_OWNER.github.io/${REPO_NAME#*/}/$FOLDER_NAME/"
+        echo "preview-url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+        echo "📋 Preview URL: $PREVIEW_URL"
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push final package with GitHub Pages
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # フォルダとdocsディレクトリを追加
         git add ${{ inputs.folder-name }}/
+        git add docs/
+        
         if git diff --cached --quiet; then
           echo "No integration files to commit"
         else
-          git commit -m "Add final Three.js experience package: ${{ inputs.experience-concept }}"
+          git commit -m "Add final Three.js experience package: ${{ inputs.experience-concept }}
+
+        GitHub Pages preview: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs/${{ inputs.folder-name }}/"
           git push origin ${{ inputs.branch-name }}
         fi

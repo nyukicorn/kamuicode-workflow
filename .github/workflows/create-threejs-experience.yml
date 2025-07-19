@@ -113,6 +113,8 @@ jobs:
           echo "✅ Integration & Packaging: ${{ steps.integration.outputs.integration-completed }}"
           echo "📦 Final Package: ${{ steps.integration.outputs.final-package-path }}"
           echo ""
+          echo "🌐 GitHub Pages Preview URL: ${{ steps.integration.outputs.preview-url }}"
+          echo ""
           echo "🎉 Three.js Experience Creation Success!"
           echo "🌐 Interactive 3D scene with panorama and particles"
           echo "========================================"
@@ -121,4 +123,7 @@ jobs:
         run: |
           echo "✅ Three.js Experience workflow completed successfully!"
           echo "Branch: ${{ steps.setup.outputs.branch-name }}"
-          echo "Check the branch for the generated 3D experience files."
+          echo ""
+          echo "🌐 **Live Preview**: ${{ steps.integration.outputs.preview-url }}"
+          echo "📁 **Local Files**: Check the branch for generated files"
+          echo "📦 **Download Package**: ${{ steps.integration.outputs.final-package-path }}"
