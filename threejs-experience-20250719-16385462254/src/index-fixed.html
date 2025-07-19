@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美しい和傘が舞う京都の庭園 - VR体験</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>VR体験を読み込み中...</p>
+        </div>
+    </div>
+
+    <div id="app">
+        <canvas id="canvas"></canvas>
+        
+        <div class="ui-panel">
+            <div class="controls">
+                <button id="music-toggle" class="btn">
+                    <span id="music-icon">🎵</span>
+                    <span id="music-text">音楽ON</span>
+                </button>
+                <div class="volume-control">
+                    <span>🔊</span>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                </div>
+            </div>
+            
+            <div class="info">
+                <h1>美しい和傘が舞う京都の庭園</h1>
+                <p>マウスドラッグで視点移動 • ホイールでズーム • ダブルクリックで自動回転</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="webgl-error" style="display: none;">
+        <h2>WebGLに対応していません</h2>
+        <p>このブラウザはWebGLをサポートしていません。最新のブラウザをご利用ください。</p>
+    </div>
+
+    <!-- Three.js CDN版を使用 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        // 簡易版Three.js体験
+        let scene, camera, renderer, controls;
+        let panoramaSphere, particles;
+        let audioContext, audioBuffer, audioSource, gainNode;
+        let isPlaying = false;
+        
+        function init() {
+            try {
+                // シーン作成
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                
+                // レンダラー作成
+                const canvas = document.getElementById('canvas');
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                
+                // カスタムマウス制御
+                setupMouseControls();
+                
+                // パノラマ球体
+                const geometry = new THREE.SphereGeometry(100, 32, 32);
+                const loader = new THREE.TextureLoader();
+                
+                loader.load('panorama.jpg', function(texture) {
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture,
+                        side: THREE.BackSide 
+                    });
+                    panoramaSphere = new THREE.Mesh(geometry, material);
+                    scene.add(panoramaSphere);
+                    
+                    // パーティクル追加
+                    createParticles();
+                    
+                    // ローディング画面を隠す
+                    document.getElementById('loading-screen').style.display = 'none';
+                    
+                    // 音楽とUI制御を初期化
+                    initAudio();
+                    setupUI();
+                    
+                    console.log('VR体験が正常に初期化されました');
+                }, undefined, function(error) {
+                    console.error('パノラマ画像の読み込みに失敗:', error);
+                    showError();
+                });
+                
+                // リサイズ処理
+                window.addEventListener('resize', onWindowResize);
+                
+                // レンダリングループ開始
+                animate();
+                
+            } catch (error) {
+                console.error('初期化エラー:', error);
+                showError();
+            }
+        }
+        
+        function createParticles() {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 1000;
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 200;
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 2,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+        
+        // マウス制御変数
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        
+        // 自動回転制御
+        let isAutoRotating = false;
+        let autoRotationSpeed = -0.003; // 時計回りに変更
+        
+        function setupMouseControls() {
+            const canvas = renderer.domElement;
+            
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            
+            // タッチ対応
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+        }
+        
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+        
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+            
+            // 上下の回転を制限
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+        
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+        
+        function onDoubleClick() {
+            isAutoRotating = !isAutoRotating;
+            
+            // 視覚的フィードバック
+            const canvas = renderer.domElement;
+            if (isAutoRotating) {
+                canvas.style.cursor = 'wait';
+                console.log('自動回転モード: ON');
+                
+                // 一瞬だけフェードエフェクト
+                canvas.style.transition = 'opacity 0.2s';
+                canvas.style.opacity = '0.8';
+                setTimeout(() => {
+                    canvas.style.opacity = '1';
+                    canvas.style.cursor = 'grab';
+                }, 200);
+            } else {
+                canvas.style.cursor = 'grab';
+                console.log('自動回転モード: OFF');
+            }
+        }
+        
+        function onMouseWheel(event) {
+            camera.fov += event.deltaY * 0.1;
+            camera.fov = Math.max(10, Math.min(100, camera.fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+                isMouseDown = true;
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouseX;
+                const deltaY = event.touches[0].clientY - mouseY;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+                
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+        }
+        
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // 自動回転モードの処理
+            if (isAutoRotating) {
+                targetRotationY += autoRotationSpeed;
+                // マウス操作を一時的に無効化
+                if (isMouseDown) {
+                    isMouseDown = false;
+                }
+            }
+            
+            // スムーズなカメラ回転
+            currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+            
+            camera.rotation.x = currentRotationX;
+            camera.rotation.y = currentRotationY;
+            
+            // パーティクルも回転速度を調整
+            if (particles) {
+                particles.rotation.y += isAutoRotating ? -0.002 : 0.001;
+            }
+            
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function initAudio() {
+            // HTML5 Audio要素を使用（より互換性が高い）
+            try {
+                const audio = new Audio('generated-music.wav');
+                audio.loop = true;
+                audio.volume = 0.5;
+                
+                // 音楽ファイルの読み込み確認
+                audio.addEventListener('canplaythrough', () => {
+                    audioBuffer = audio; // audioBufferの代わりにaudio要素を使用
+                    console.log('音楽ファイルが読み込まれました');
+                });
+                
+                audio.addEventListener('error', (error) => {
+                    console.log('音楽ファイルの読み込みに失敗:', error);
+                });
+                
+                audio.load();
+            } catch (error) {
+                console.log('Audio初期化に失敗:', error);
+            }
+        }
+        
+        function setupUI() {
+            // 音楽制御
+            const musicToggle = document.getElementById('music-toggle');
+            const volumeSlider = document.getElementById('volume-slider');
+            const musicIcon = document.getElementById('music-icon');
+            const musicText = document.getElementById('music-text');
+            
+            musicToggle.addEventListener('click', () => {
+                if (isPlaying) {
+                    stopMusic();
+                    musicIcon.textContent = '🎵';
+                    musicText.textContent = '音楽ON';
+                } else {
+                    playMusic();
+                    musicIcon.textContent = '⏸️';
+                    musicText.textContent = '音楽OFF';
+                }
+            });
+            
+            volumeSlider.addEventListener('input', (e) => {
+                if (audioBuffer) {
+                    audioBuffer.volume = e.target.value;
+                }
+            });
+        }
+        
+        function playMusic() {
+            if (audioBuffer) {
+                try {
+                    audioBuffer.play();
+                    isPlaying = true;
+                } catch (error) {
+                    console.log('音楽再生エラー:', error);
+                }
+            }
+        }
+        
+        function stopMusic() {
+            if (audioBuffer) {
+                try {
+                    audioBuffer.pause();
+                    audioBuffer.currentTime = 0;
+                    isPlaying = false;
+                } catch (error) {
+                    console.log('音楽停止エラー:', error);
+                }
+            }
+        }
+        
+        function showError() {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('app').innerHTML = '<div style="color: white; text-align: center; padding: 50px;"><h2>初期化に失敗しました</h2><p>ページを再読み込みしてください</p></div>';
+        }
+        
+        // WebGL対応チェック
+        function checkWebGL() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && canvas.getContext('webgl'));
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        // 初期化開始
+        if (checkWebGL()) {
+            init();
+        } else {
+            document.getElementById('webgl-error').style.display = 'block';
+            document.getElementById('loading-screen').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

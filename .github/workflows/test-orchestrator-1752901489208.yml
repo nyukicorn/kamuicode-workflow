@@ -1,0 +1,61 @@
+name: "Create Music Video (Orchestrated) - orchestrated-2025-07-19T05-04-49-208Z"
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: "The music concept for the video"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-music-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - name: "Setup Project Structure"
+      id: setup
+      uses: ./.github/actions/kamui-modules/setup-branch
+
+    - name: "Generate videos using Hailuo-02 Pro"
+      id: video_generation
+      uses: ./.github/actions/kamui-modules/video-generation
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+        mcp-config: "${{ secrets.MCP_CONFIG }}"
+
+    - name: "Strategic planning for music video creation"
+      id: music_planning
+      uses: ./.github/actions/kamui-modules/music-planning
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+        mcp-config: "${{ secrets.MCP_CONFIG }}"
+        music-concept: "音楽付きのミュージックビデオを作成"
+
+    - name: "Generate music using Google Lyria"
+      id: music_generation
+      uses: ./.github/actions/kamui-modules/music-generation
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+        mcp-config: "${{ secrets.MCP_CONFIG }}"
+        music-concept: "音楽付きのミュージックビデオを作成"
+        music-prompt: "${{ steps.music_planning.outputs.music-prompt }}"
+
+    - name: "Concatenate videos with music integration"
+      id: video_concatenation
+      uses: ./.github/actions/kamui-modules/video-concatenation
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+

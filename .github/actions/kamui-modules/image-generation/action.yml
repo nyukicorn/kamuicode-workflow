@@ -92,40 +92,38 @@ runs:
           exit 1
         fi
         
-        # プロンプトの構築
-        PROMPT="画像生成を実行してください。
-        **画像プロンプト（原文）**: $IMAGE_PROMPT
-        
-        **重要警告**: Imagen4 Fastは日本語を理解できません。日本語で送信すると完全に間違った画像が生成されます。
-        
-        **翻訳要件（絶対必須）**:
-        上記プロンプトに日本語文字（ひらがな・カタカナ・漢字）が含まれているため、必ず以下を実行してください：
-        1. 日本語プロンプトを正確な英語に翻訳
-        2. 翻訳結果をログに出力
-        3. 翻訳された英語プロンプトのみをImagen4 Fastに送信
-        
-        **実行手順**:
-        1. 【必須】画像プロンプトの言語判定と翻訳:
-           - 日本語文字が含まれる場合 → 正確な英語に翻訳
-           - 翻訳結果を画面に表示して確認
-        2. 翻訳済み英語プロンプトを使用してImagen4 Fastで画像生成
-        3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
-        4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
-        5. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
-        6. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
-        7. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
-        **重要な注意点**:
-        - Google URLの有効期限は約1時間のため、生成後すぐにダウンロード
-        - 必ずGoogle提供の認証済URLを使用
-        - 画像は必ず「$IMAGES_DIR」ディレクトリに保存
-        - ファイル名は「generated-image.png」とする
-        - **最重要**: 生成時のGoogle URLを「$FOLDER_NAME/google-image-url.txt」に保存し、次のジョブで参照できるようにする
-        - **両方を実行**: ①Google URLをテキストファイルに保存 ②Google URLから画像をダウンロードしてローカル保存
-        
-        **保存先**:
-        - 画像ディレクトリ: $IMAGES_DIR
-        - 画像ファイル: generated-image.png
-        - Google URL保存ファイル: $FOLDER_NAME/google-image-url.txt"
+        # プロンプトの構築 - 強制翻訳版
+        PROMPT="**画像プロンプト（元の日本語）**: $IMAGE_PROMPT
+
+        **⚠️ 緊急警告 ⚠️**: 
+        このプロンプトには日本語が含まれています。Imagen4 Fastは日本語を全く理解できません。
+        日本語をそのまま送信すると、砂漠に牛や羊がいる全く間違った画像が生成されます。
+
+        **必須作業（絶対実行）**:
+        以下を一字一句正確に実行してください：
+
+        ステップ1: まず日本語プロンプトを英語に翻訳
+        「$IMAGE_PROMPT」
+
+        ステップ2: 翻訳結果を以下の形式で表示
+        「翻訳結果: [ここに英語訳]」
+
+        ステップ3: 翻訳された英語のみを使用してImagen4 Fastで画像生成
+        - mcp__t2i-fal-imagen4-fast__imagen4_fast_submitツールを使用
+        - 日本語は絶対に送信しない
+
+        ステップ4: 生成状況確認
+        - mcp__t2i-fal-imagen4-fast__imagen4_fast_statusでステータス確認
+
+        ステップ5: 結果取得とファイル保存
+        - mcp__t2i-fal-imagen4-fast__imagen4_fast_resultで結果取得
+        - Google URLを「$FOLDER_NAME/google-image-url.txt」に保存
+        - 画像を「$IMAGES_DIR/generated-image.png」にダウンロード
+
+        **確認事項**:
+        - 翻訳が完了したら「翻訳結果: [英語プロンプト]」を必ず表示
+        - 日本語文字は絶対にImagen4に送信しない
+        - 英語プロンプトのみでImagen4 Fastを実行"
         
         echo "🚀 Starting Image Generation Agent Claude Code CLI..."
         echo "📝 Prompt length: ${#PROMPT}"

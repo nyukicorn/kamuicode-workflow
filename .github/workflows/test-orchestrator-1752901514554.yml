@@ -1,0 +1,41 @@
+name: "Generate Images (Orchestrated) - orchestrated-2025-07-19T05-05-14-554Z"
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_concept:
+        description: "The image concept"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - name: "Setup Project Structure"
+      id: setup
+      uses: ./.github/actions/kamui-modules/setup-branch
+
+    - name: "Generate images using Imagen4 Fast"
+      id: image_generation
+      uses: ./.github/actions/kamui-modules/image-generation
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+        mcp-config: "${{ secrets.MCP_CONFIG }}"
+        image-prompt: "Imagen4で画像1つ、Hailuoで5秒動画1つ作って"
+
+    - name: "Generate videos using Hailuo-02 Pro"
+      id: video_generation
+      uses: ./.github/actions/kamui-modules/video-generation
+      with:
+        folder-name: "${{ steps.setup.outputs.folder-name }}"
+        branch-name: "${{ steps.setup.outputs.branch-name }}"
+        oauth-token: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+        mcp-config: "${{ secrets.MCP_CONFIG }}"
+
