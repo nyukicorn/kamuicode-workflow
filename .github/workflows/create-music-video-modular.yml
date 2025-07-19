@@ -60,36 +60,8 @@ jobs:
           echo "🎉 Workflow completed successfully!"
           echo "================================================"
       
-      - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Final Status
         run: |
-          # Create PR title and body
-          PR_TITLE="🎵 Add music video: ${{ inputs.music_concept }}"
-          PR_BODY=$(cat <<'EOF'
-## 🎬 Music Video Creation Summary
-
-**Concept**: ${{ inputs.music_concept }}
-**Branch**: ${{ steps.setup.outputs.branch-name }}
-**Folder**: ${{ steps.setup.outputs.folder-name }}
-
-### 📊 Generation Results:
-- ✅ Planning: Completed
-- ✅ Music Generation: Completed
-- 🎵 Music URL: ${{ steps.music.outputs.music-url }}
-
-### 📁 Files Created:
-- Planning documents in `planning/` directory
-- Music files in `music/` directory
-
----
-🤖 Generated with Create Music Video (Modular) workflow
-EOF
-)
-
-          # Create the pull request
-          gh pr create \
-            --title "$PR_TITLE" \
-            --body "$PR_BODY" \
-            --base main \
-            --head ${{ steps.setup.outputs.branch-name }} || echo "PR creation skipped or failed"
+          echo "✅ Workflow completed successfully!"
+          echo "Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "Check the branch for generated files."
