@@ -52,6 +52,18 @@ jobs:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
+      - name: Video Generation
+        id: video
+        uses: ./.github/actions/kamui-modules/video-generation
+        with:
+          video-prompt: ${{ steps.planning.outputs.video-concept }}
+          google-image-url: ${{ steps.image.outputs.google-image-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+          segment-number: '1'
+      
       - name: Summary
         run: |
           echo "🎯 Music Video Creation Summary (Modular Version):"
@@ -70,7 +82,10 @@ jobs:
           echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
           echo "🖼️ Google Image URL: ${{ steps.image.outputs.google-image-url }}"
           echo ""
-          echo "🎉 Workflow completed successfully!"
+          echo "✅ Video Generation: ${{ steps.video.outputs.video-completed }}"
+          echo ""
+          echo "🎉 4-Module Integration Test Completed Successfully!"
+          echo "📊 Generated: Music + Image + Video"
           echo "================================================"
       
       - name: Final Status

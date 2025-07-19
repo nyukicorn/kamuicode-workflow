@@ -1,0 +1,184 @@
+name: 'Video Generation'
+description: 'Generate videos using Hailuo-02 Pro via KamuiCode MCP'
+author: 'KamuiCode Workflow'
+
+inputs:
+  video-prompt:
+    description: 'The video generation prompt'
+    required: true
+  google-image-url:
+    description: 'Google URL of the source image'
+    required: true
+  folder-name:
+    description: 'The folder name for storing video files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+  segment-number:
+    description: 'Video segment number (default: 1)'
+    required: false
+    default: '1'
+
+outputs:
+  video-completed:
+    description: 'Whether video generation was completed successfully'
+    value: ${{ steps.video.outputs.completed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 動画生成エージェント (Hailuo-02 Pro)
+      id: video
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎬 Video Generation (Hailuo-02 Pro)"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        VIDEO_PROMPT="${{ inputs.video-prompt }}"
+        GOOGLE_IMAGE_URL="${{ inputs.google-image-url }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        SEGMENT_NUMBER="${{ inputs.segment-number }}"
+        VIDEOS_DIR="$FOLDER_NAME/videos"
+        
+        echo "Video prompt: $VIDEO_PROMPT"
+        echo "Google image URL: $GOOGLE_IMAGE_URL"
+        echo "Segment number: $SEGMENT_NUMBER"
+        echo "Target folder: $VIDEOS_DIR"
+        
+        # 動画フォルダを事前に作成
+        if [ ! -d "$VIDEOS_DIR" ]; then
+          mkdir -p "$VIDEOS_DIR"
+          echo "📁 Created videos folder: $VIDEOS_DIR"
+        fi
+        
+        # MCP設定の確認
+        MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        echo "📋 MCP Configuration Check:"
+        echo "Working directory: $(pwd)"
+        echo "MCP config path: $MCP_CONFIG_PATH"
+        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
+        echo "Allowed tools: mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash"
+        
+        # Create MCP config file from GitHub Secret
+        mkdir -p .claude
+        echo '${{ inputs.mcp-config }}' > "$MCP_CONFIG_ABS_PATH"
+        echo "✅ MCP config file created from GitHub Secret"
+        
+        # MCP設定ファイルの確認
+        if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
+          echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
+          echo "MCP servers configured:"
+          jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
+        else
+          echo "❌ MCP config file creation failed"
+          exit 1
+        fi
+        
+        # プロンプトの構築
+        PROMPT="動画セグメント$SEGMENT_NUMBER を生成してください。
+        **Google画像URL**: $GOOGLE_IMAGE_URL
+        **動画プロンプト**: $VIDEO_PROMPT
+        **実行手順**:
+        1. 提供されたGoogle画像URL（$GOOGLE_IMAGE_URL）を使用
+        2. 動画プロンプト（$VIDEO_PROMPT）を使用してHailuo-02 Proで動画生成
+        3. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit\`ツールで動画生成を開始
+        4. **待機処理**: Bashツールで「sleep 120」コマンドを実行して120秒待機
+        5. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_status\`でステータス確認
+        6. ステータスが「completed」でない場合、再度「sleep 120」で待機して再確認（最大10回）
+        7. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_result\`で結果取得
+        8. 動画URLを「$VIDEOS_DIR/segment-$SEGMENT_NUMBER.mp4」にダウンロード保存
+        
+        **重要な実行手順**:
+        1. 動画生成をsubmitで開始
+        2. 120秒待機（sleep 120）してからstatusで確認
+        3. \"completed\"になるまで120秒間隔でステータス確認を繰り返す
+        4. 完了後にresultで動画URLを取得してダウンロード
+        5. 動画ファイルは「$VIDEOS_DIR/segment-$SEGMENT_NUMBER.mp4」として保存
+        
+        **注意事項**:
+        - Google URLは有効期限があるため、必ず有効なURLを使用
+        - 動画生成には通常3-5分かかるため、適切な待機時間を設ける
+        - ステータス確認は最大10回まで実行"
+        
+        echo "🚀 Starting Video Generation Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --mcp-config="$MCP_CONFIG_ABS_PATH" \
+          --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
+          --max-turns 70 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された動画の確認
+        echo ""
+        echo "🎬 Checking generated videos..."
+        if [ -d "$VIDEOS_DIR" ]; then
+          VIDEO_COUNT=$(find "$VIDEOS_DIR" -name "*.mp4" -o -name "*.mov" -o -name "*.avi" | wc -l)
+          echo "::notice::🎬 Generated $VIDEO_COUNT video files"
+          if [ "$VIDEO_COUNT" -gt 0 ]; then
+            echo "Video files:"
+            SEGMENT_VIDEO=$(find "$VIDEOS_DIR" -name "segment-$SEGMENT_NUMBER.mp4" | head -1)
+            if [ -f "$SEGMENT_VIDEO" ]; then
+              echo "Segment $SEGMENT_NUMBER video: $SEGMENT_VIDEO"
+            else
+              echo "::warning::⚠️ Segment $SEGMENT_NUMBER video not found, checking all videos"
+              find "$VIDEOS_DIR" -name "*.mp4" -o -name "*.mov" -o -name "*.avi"
+            fi
+          else
+            echo "::error::❌ No video files were generated"
+            exit 1
+          fi
+        else
+          echo "::error::❌ Videos directory not found"
+          exit 1
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit and push video
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No video files to commit"
+        else
+          git commit -m "Add video segment ${{ inputs.segment-number }}: ${{ inputs.video-prompt }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
