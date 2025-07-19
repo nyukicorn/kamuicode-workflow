@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色とりどりの花が咲き乱れる花園 - Three.js体験</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        button {
+            padding: 8px 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        #volumeControl {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            width: 100px;
+        }
+
+        #instructions {
+            font-size: 12px;
+            line-height: 1.4;
+            color: #ccc;
+        }
+
+        #webgl-error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ff6b6b;
+            font-size: 18px;
+            display: none;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #4CAF50;
+            font-size: 18px;
+        }
+
+        @media (max-width: 768px) {
+            #ui {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 10px;
+            }
+
+            #controls {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            button {
+                flex: 1;
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui">
+            <div id="controls">
+                <button id="musicToggle">🎵 音楽 ON/OFF</button>
+                <button id="autoRotateToggle">🔄 自動回転 ON/OFF</button>
+                <div id="volumeControl">
+                    <label>音量:</label>
+                    <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
+                    <span id="volumeValue">50%</span>
+                </div>
+            </div>
+            <div id="instructions">
+                🖱️ ドラッグ: 視点移動<br>
+                🖲️ ホイール: ズーム<br>
+                👆 ダブルクリック: 自動回転切替<br>
+                📱 タッチ: ピンチでズーム、ドラッグで移動
+            </div>
+        </div>
+
+        <div id="loading">
+            🌸 花園を読み込み中... 🌸
+        </div>
+
+        <div id="webgl-error">
+            ❌ WebGLがサポートされていません。<br>
+            新しいブラウザをご利用ください。
+        </div>
+
+        <audio id="bgMusic" loop preload="auto">
+            <source src="generated-music.wav" type="audio/wav">
+        </audio>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class FlowerGardenExperience {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.particles = null;
+                this.panoramaSphere = null;
+                
+                // Mouse/Touch control
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+                this.rotationX = 0;
+                this.rotationY = 0;
+                this.targetRotationX = 0;
+                this.targetRotationY = 0;
+                
+                // Auto rotation
+                this.isAutoRotating = false;
+                this.autoRotationSpeed = 0.005;
+                
+                // Touch handling
+                this.touches = [];
+                this.lastPinchDistance = 0;
+                
+                // Zoom
+                this.targetFov = 75;
+                this.currentFov = 75;
+                
+                // Audio
+                this.audio = null;
+                this.isAudioPlaying = false;
+                
+                this.init();
+            }
+
+            init() {
+                if (!this.checkWebGLSupport()) {
+                    document.getElementById('webgl-error').style.display = 'block';
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLighting();
+                this.loadPanorama();
+                this.setupParticles();
+                this.setupEventListeners();
+                this.setupAudio();
+                this.animate();
+                
+                document.getElementById('loading').style.display = 'none';
+            }
+
+            checkWebGLSupport() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    return !!(window.WebGLRenderingContext && 
+                            canvas.getContext('webgl') || 
+                            canvas.getContext('experimental-webgl'));
+                } catch(e) {
+                    return false;
+                }
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+            }
+
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(0, 0, 0);
+            }
+
+            setupRenderer() {
+                const canvas = document.getElementById('canvas');
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: canvas, 
+                    antialias: true 
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            }
+
+            setupLighting() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+            }
+
+            loadPanorama() {
+                const loader = new THREE.TextureLoader();
+                loader.load(
+                    'panorama.jpg',
+                    (texture) => {
+                        const geometry = new THREE.SphereGeometry(500, 60, 40);
+                        geometry.scale(-1, 1, 1);
+                        
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        this.panoramaSphere = new THREE.Mesh(geometry, material);
+                        this.scene.add(this.panoramaSphere);
+                    },
+                    (progress) => {
+                        console.log('Panorama loading progress:', (progress.loaded / progress.total * 100) + '%');
+                    },
+                    (error) => {
+                        console.error('Panorama loading error:', error);
+                        document.getElementById('loading').innerHTML = '❌ パノラマ画像の読み込みに失敗しました';
+                    }
+                );
+            }
+
+            setupParticles() {
+                const particleCount = 3000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+
+                // 花びらのような色彩パレット
+                const flowerColors = [
+                    new THREE.Color(0xff69b4), // ピンク
+                    new THREE.Color(0xff1493), // 深いピンク
+                    new THREE.Color(0xffd700), // 金色
+                    new THREE.Color(0xff6347), // トマト色
+                    new THREE.Color(0x9370db), // 紫
+                    new THREE.Color(0x00ced1), // ダークターコイズ
+                    new THREE.Color(0x98fb98), // 薄緑
+                    new THREE.Color(0xffffff)  // 白
+                ];
+
+                for (let i = 0; i < particleCount; i++) {
+                    // 球体内にランダムに配置
+                    const radius = Math.random() * 400 + 50;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.random() * Math.PI;
+
+                    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+                    positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                    positions[i * 3 + 2] = radius * Math.cos(phi);
+
+                    // ランダムな花の色を選択
+                    const color = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true
+                });
+
+                this.particles = new THREE.Points(geometry, material);
+                this.scene.add(this.particles);
+            }
+
+            setupEventListeners() {
+                // Mouse events
+                document.addEventListener('mousedown', this.onMouseDown.bind(this));
+                document.addEventListener('mousemove', this.onMouseMove.bind(this));
+                document.addEventListener('mouseup', this.onMouseUp.bind(this));
+                document.addEventListener('wheel', this.onMouseWheel.bind(this));
+                document.addEventListener('dblclick', this.onDoubleClick.bind(this));
+
+                // Touch events
+                document.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+                document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+                document.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
+
+                // Window resize
+                window.addEventListener('resize', this.onWindowResize.bind(this));
+
+                // UI controls
+                document.getElementById('musicToggle').addEventListener('click', this.toggleMusic.bind(this));
+                document.getElementById('autoRotateToggle').addEventListener('click', this.toggleAutoRotation.bind(this));
+                
+                const volumeSlider = document.getElementById('volumeSlider');
+                volumeSlider.addEventListener('input', this.onVolumeChange.bind(this));
+            }
+
+            setupAudio() {
+                this.audio = document.getElementById('bgMusic');
+                this.audio.volume = 0.5;
+                
+                this.audio.addEventListener('canplaythrough', () => {
+                    console.log('Audio ready to play');
+                });
+                
+                this.audio.addEventListener('error', (e) => {
+                    console.error('Audio error:', e);
+                    document.getElementById('musicToggle').disabled = true;
+                    document.getElementById('musicToggle').textContent = '🎵 音楽利用不可';
+                });
+            }
+
+            onMouseDown(event) {
+                if (event.target.tagName === 'BUTTON' || event.target.tagName === 'INPUT') return;
+                
+                this.isMouseDown = true;
+                this.lastMouseX = event.clientX;
+                this.lastMouseY = event.clientY;
+            }
+
+            onMouseMove(event) {
+                if (!this.isMouseDown) return;
+
+                const deltaX = event.clientX - this.lastMouseX;
+                const deltaY = event.clientY - this.lastMouseY;
+
+                this.targetRotationY += deltaX * 0.005;
+                this.targetRotationX += deltaY * 0.005;
+
+                // X軸回転を制限（上下の見回し制限）
+                this.targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.targetRotationX));
+
+                this.lastMouseX = event.clientX;
+                this.lastMouseY = event.clientY;
+            }
+
+            onMouseUp() {
+                this.isMouseDown = false;
+            }
+
+            onMouseWheel(event) {
+                event.preventDefault();
+                
+                const delta = event.deltaY * 0.1;
+                this.targetFov += delta;
+                this.targetFov = Math.max(30, Math.min(120, this.targetFov));
+            }
+
+            onTouchStart(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 1) {
+                    this.lastMouseX = this.touches[0].clientX;
+                    this.lastMouseY = this.touches[0].clientY;
+                    this.isMouseDown = true;
+                } else if (this.touches.length === 2) {
+                    this.isMouseDown = false;
+                    this.lastPinchDistance = this.getPinchDistance();
+                }
+            }
+
+            onTouchMove(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 1 && this.isMouseDown) {
+                    const deltaX = this.touches[0].clientX - this.lastMouseX;
+                    const deltaY = this.touches[0].clientY - this.lastMouseY;
+
+                    this.targetRotationY += deltaX * 0.01;
+                    this.targetRotationX += deltaY * 0.01;
+                    this.targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.targetRotationX));
+
+                    this.lastMouseX = this.touches[0].clientX;
+                    this.lastMouseY = this.touches[0].clientY;
+                } else if (this.touches.length === 2) {
+                    const pinchDistance = this.getPinchDistance();
+                    const delta = (this.lastPinchDistance - pinchDistance) * 0.5;
+                    
+                    this.targetFov += delta;
+                    this.targetFov = Math.max(30, Math.min(120, this.targetFov));
+                    
+                    this.lastPinchDistance = pinchDistance;
+                }
+            }
+
+            onTouchEnd(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 0) {
+                    this.isMouseDown = false;
+                }
+            }
+
+            getPinchDistance() {
+                if (this.touches.length < 2) return 0;
+                
+                const dx = this.touches[0].clientX - this.touches[1].clientX;
+                const dy = this.touches[0].clientY - this.touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            onDoubleClick() {
+                this.toggleAutoRotation();
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            toggleMusic() {
+                if (!this.audio) return;
+                
+                if (this.isAudioPlaying) {
+                    this.audio.pause();
+                    this.isAudioPlaying = false;
+                    document.getElementById('musicToggle').textContent = '🔇 音楽 OFF';
+                } else {
+                    this.audio.play().then(() => {
+                        this.isAudioPlaying = true;
+                        document.getElementById('musicToggle').textContent = '🎵 音楽 ON';
+                    }).catch(e => {
+                        console.error('Audio play failed:', e);
+                    });
+                }
+            }
+
+            toggleAutoRotation() {
+                this.isAutoRotating = !this.isAutoRotating;
+                document.getElementById('autoRotateToggle').textContent = 
+                    this.isAutoRotating ? '⏸️ 自動回転 OFF' : '🔄 自動回転 ON';
+            }
+
+            onVolumeChange(event) {
+                const volume = parseFloat(event.target.value);
+                if (this.audio) {
+                    this.audio.volume = volume;
+                }
+                document.getElementById('volumeValue').textContent = Math.round(volume * 100) + '%';
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate.bind(this));
+
+                // スムーズなカメラ回転
+                this.rotationX += (this.targetRotationX - this.rotationX) * 0.1;
+                this.rotationY += (this.targetRotationY - this.rotationY) * 0.1;
+
+                // 自動回転
+                if (this.isAutoRotating) {
+                    this.targetRotationY += this.autoRotationSpeed;
+                }
+
+                // カメラの向きを設定
+                this.camera.rotation.order = 'YXZ';
+                this.camera.rotation.y = this.rotationY;
+                this.camera.rotation.x = this.rotationX;
+
+                // スムーズなズーム
+                this.currentFov += (this.targetFov - this.currentFov) * 0.1;
+                this.camera.fov = this.currentFov;
+                this.camera.updateProjectionMatrix();
+
+                // パーティクルアニメーション
+                if (this.particles) {
+                    const time = Date.now() * 0.001;
+                    const rotationSpeed = this.isAutoRotating ? 0.02 : 0.005;
+                    
+                    this.particles.rotation.y += rotationSpeed;
+                    this.particles.rotation.x = Math.sin(time * 0.5) * 0.1;
+                    
+                    // パーティクルの位置を少し動かす
+                    const positions = this.particles.geometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i + 1] += Math.sin(time + i) * 0.01;
+                    }
+                    this.particles.geometry.attributes.position.needsUpdate = true;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // アプリケーション開始
+        document.addEventListener('DOMContentLoaded', () => {
+            new FlowerGardenExperience();
+        });
+    </script>
+</body>
+</html>
