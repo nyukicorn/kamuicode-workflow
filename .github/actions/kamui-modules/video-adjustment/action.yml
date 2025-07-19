@@ -1,0 +1,197 @@
+name: 'Video Prompt Adjustment'
+description: 'Adjust video prompts based on generated images and strategic planning'
+author: 'KamuiCode Workflow'
+
+inputs:
+  folder-name:
+    description: 'The folder name containing generated images'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  video-prompt-1:
+    description: 'Original video prompt for segment 1 from music analysis'
+    required: true
+  video-prompt-2:
+    description: 'Original video prompt for segment 2 from music analysis'
+    required: true
+  video-prompt-3:
+    description: 'Original video prompt for segment 3 from music analysis'
+    required: true
+
+outputs:
+  adjustment-completed:
+    description: 'Whether video prompt adjustment was completed successfully'
+    value: ${{ steps.adjust.outputs.completed }}
+  adjusted-video-prompt-1:
+    description: 'Adjusted video prompt for segment 1'
+    value: ${{ steps.adjust.outputs.video-prompt-1 }}
+  adjusted-video-prompt-2:
+    description: 'Adjusted video prompt for segment 2'
+    value: ${{ steps.adjust.outputs.video-prompt-2 }}
+  adjusted-video-prompt-3:
+    description: 'Adjusted video prompt for segment 3'
+    value: ${{ steps.adjust.outputs.video-prompt-3 }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 動画プロンプト調整エージェント
+      id: adjust
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Video Prompt Adjustment Agent"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        ADJUSTMENT_DIR="$FOLDER_NAME/video-adjustments"
+        
+        # 調整フォルダを事前に作成
+        if [ ! -d "$ADJUSTMENT_DIR" ]; then
+          mkdir -p "$ADJUSTMENT_DIR"
+          echo "📁 Created adjustment folder: $ADJUSTMENT_DIR"
+        fi
+        
+        # オリジナルの動画プロンプト
+        ORIGINAL_VIDEO_PROMPT_1="${{ inputs.video-prompt-1 }}"
+        ORIGINAL_VIDEO_PROMPT_2="${{ inputs.video-prompt-2 }}"
+        ORIGINAL_VIDEO_PROMPT_3="${{ inputs.video-prompt-3 }}"
+        
+        echo "Original video prompt 1: $ORIGINAL_VIDEO_PROMPT_1"
+        echo "Original video prompt 2: $ORIGINAL_VIDEO_PROMPT_2"
+        echo "Original video prompt 3: $ORIGINAL_VIDEO_PROMPT_3"
+        
+        # プロンプトの構築
+        PROMPT="戦略的計画と生成された画像を分析し、方向性を保ちながら最適化された動画プロンプトを作成してください。
+
+        **重要**: 戦略的計画の方向性を維持しながら、実際の画像に合わせた調整を行うこと
+
+        **タスク**:
+        1. 戦略的計画書を読み込み、全体の方向性と各動画の役割を理解
+        2. 生成画像を読み込んで視覚的特徴を分析
+        3. 戦略と画像の両方を考慮し、バランスの取れた調整を実施
+        4. 各動画の戦略的役割（メイン/アクセント/トランジション）を維持
+
+        **参照すべき戦略文書**:
+        - 戦略的計画: $FOLDER_NAME/planning/music-video-strategy.md
+        - 動画戦略: $FOLDER_NAME/planning/video-strategy.txt
+        - 音楽コンセプト: $FOLDER_NAME/planning/music-prompt.md
+
+        **画像の場所**:
+        - 画像1: $FOLDER_NAME/images/generated-image.png
+
+        **オリジナル動画プロンプト**:
+        - 動画1: $ORIGINAL_VIDEO_PROMPT_1
+        - 動画2: $ORIGINAL_VIDEO_PROMPT_2
+        - 動画3: $ORIGINAL_VIDEO_PROMPT_3
+
+        **実行手順**:
+        1. 戦略的計画書を読み込み、各動画の役割と編集戦略を把握
+        2. 生成画像をReadツールで読み込み、視覚的特徴を分析
+        3. 戦略的役割を維持しながら、画像の実際の内容に合わせて調整
+        4. 音楽との統合を考慮した動きやタイミングを設計
+        5. 調整後のプロンプトを以下のファイルに保存:
+           - $ADJUSTMENT_DIR/adjusted-video-prompt-1.txt
+           - $ADJUSTMENT_DIR/adjusted-video-prompt-2.txt
+           - $ADJUSTMENT_DIR/adjusted-video-prompt-3.txt
+        6. 調整理由と戦略との整合性を$ADJUSTMENT_DIR/adjustment-report.mdに保存
+
+        **調整の原則**:
+        - 戦略的役割（メイン50-60%、アクセント20-30%、トランジション10-20%）を維持
+        - 画像の実際の要素を活かしつつ、全体の統一感を保持
+        - 音楽のテンポとビートに合わせた動きの設計
+        - 編集時の使用頻度と配置を考慮した最適化
+
+        **注意**: 現在のモジュラーワークフローでは1つの画像のみ生成されるため、この画像をベースに3つの異なる動画プロンプトを調整してください。"
+        
+        echo "🚀 Starting Video Prompt Adjustment Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write" \
+          --max-turns 30 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 調整されたプロンプトを確認してGitHub Outputに設定
+        if [ -f "$ADJUSTMENT_DIR/adjusted-video-prompt-1.txt" ]; then
+          ADJUSTED_PROMPT_1=$(cat "$ADJUSTMENT_DIR/adjusted-video-prompt-1.txt" | tr '\n' ' ')
+          echo "::notice::✅ Adjusted video prompt 1 generated"
+          echo "Adjusted video prompt 1: $ADJUSTED_PROMPT_1"
+          echo "video-prompt-1=$ADJUSTED_PROMPT_1" >> $GITHUB_OUTPUT
+        else
+          echo "::warning::⚠️ Using original prompt 1"
+          echo "video-prompt-1=$ORIGINAL_VIDEO_PROMPT_1" >> $GITHUB_OUTPUT
+        fi
+        
+        if [ -f "$ADJUSTMENT_DIR/adjusted-video-prompt-2.txt" ]; then
+          ADJUSTED_PROMPT_2=$(cat "$ADJUSTMENT_DIR/adjusted-video-prompt-2.txt" | tr '\n' ' ')
+          echo "::notice::✅ Adjusted video prompt 2 generated"
+          echo "Adjusted video prompt 2: $ADJUSTED_PROMPT_2"
+          echo "video-prompt-2=$ADJUSTED_PROMPT_2" >> $GITHUB_OUTPUT
+        else
+          echo "::warning::⚠️ Using original prompt 2"
+          echo "video-prompt-2=$ORIGINAL_VIDEO_PROMPT_2" >> $GITHUB_OUTPUT
+        fi
+        
+        if [ -f "$ADJUSTMENT_DIR/adjusted-video-prompt-3.txt" ]; then
+          ADJUSTED_PROMPT_3=$(cat "$ADJUSTMENT_DIR/adjusted-video-prompt-3.txt" | tr '\n' ' ')
+          echo "::notice::✅ Adjusted video prompt 3 generated"
+          echo "Adjusted video prompt 3: $ADJUSTED_PROMPT_3"
+          echo "video-prompt-3=$ADJUSTED_PROMPT_3" >> $GITHUB_OUTPUT
+        else
+          echo "::warning::⚠️ Using original prompt 3"
+          echo "video-prompt-3=$ORIGINAL_VIDEO_PROMPT_3" >> $GITHUB_OUTPUT
+        fi
+        
+        # 調整レポートの確認
+        if [ -f "$ADJUSTMENT_DIR/adjustment-report.md" ]; then
+          echo "::notice::✅ Adjustment report generated"
+          echo "Adjustment report preview:"
+          head -10 "$ADJUSTMENT_DIR/adjustment-report.md"
+        else
+          echo "::warning::⚠️ Adjustment report not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit and push adjustments
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No adjustments to commit"
+        else
+          git commit -m "Add video prompt adjustments based on generated images"
+          git push origin ${{ inputs.branch-name }}
+        fi

@@ -76,6 +76,17 @@ jobs:
           mcp-config: ${{ secrets.MCP_CONFIG }}
           segment-number: '1'
       
+      - name: Video Adjustment
+        id: adjustment
+        uses: ./.github/actions/kamui-modules/video-adjustment
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          video-prompt-1: ${{ steps.analysis.outputs.video-prompt-1 }}
+          video-prompt-2: ${{ steps.analysis.outputs.video-prompt-2 }}
+          video-prompt-3: ${{ steps.analysis.outputs.video-prompt-3 }}
+      
       - name: Video Concatenation & Music Integration
         id: concatenation
         uses: ./.github/actions/kamui-modules/video-concatenation
@@ -108,11 +119,14 @@ jobs:
           echo ""
           echo "✅ Video Generation: ${{ steps.video.outputs.video-completed }}"
           echo ""
+          echo "✅ Video Adjustment: ${{ steps.adjustment.outputs.adjustment-completed }}"
+          echo "🎭 Adjusted Video Prompts: Generated for 3 segments"
+          echo ""
           echo "✅ Video Concatenation & Music Integration: ${{ steps.concatenation.outputs.concatenation-completed }}"
           echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
           echo ""
           echo "🎉 Complete Music Video Pipeline Success!"
-          echo "📊 Generated: Music + Analysis + Image + Video + Final Integration"
+          echo "📊 Generated: Music + Analysis + Image + Video + Adjustment + Final Integration"
           echo "================================================"
       
       - name: Final Status
