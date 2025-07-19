@@ -288,3 +288,35 @@ runs:
           git commit -m "Add final Three.js experience package: ${{ inputs.experience-concept }}"
           git push origin ${{ inputs.branch-name }}
         fi
+        
+        # mainブランチにdocs/をプッシュ
+        echo "::group::📤 Push docs to main branch"
+        
+        # 現在のブランチを保存
+        CURRENT_BRANCH=$(git branch --show-current)
+        echo "Current branch: $CURRENT_BRANCH"
+        
+        # mainブランチの最新を取得
+        git fetch origin main
+        
+        # mainブランチにチェックアウト
+        git checkout main
+        git pull origin main
+        
+        # feature branchからdocs/フォルダをコピー
+        git checkout $CURRENT_BRANCH -- docs/
+        
+        # docs/フォルダをコミット
+        if git diff --cached --quiet; then
+          echo "No docs changes to commit to main"
+        else
+          git commit -m "Update GitHub Pages content: ${{ inputs.experience-concept }}
+
+Generated from branch: ${{ inputs.branch-name }}
+Experience folder: ${{ inputs.folder-name }}"
+          git push origin main
+        fi
+        
+        # 元のブランチに戻る
+        git checkout $CURRENT_BRANCH
+        echo "::endgroup::"
