@@ -310,10 +310,7 @@ runs:
         if git diff --cached --quiet; then
           echo "No docs changes to commit to main"
         else
-          git commit -m "Update GitHub Pages content: ${{ inputs.experience-concept }}
-
-Generated from branch: ${{ inputs.branch-name }}
-Experience folder: ${{ inputs.folder-name }}"
+          git commit -m "Update GitHub Pages content: ${{ inputs.experience-concept }} [branch: ${{ inputs.branch-name }}, folder: ${{ inputs.folder-name }}]"
           git push origin main
         fi
         
