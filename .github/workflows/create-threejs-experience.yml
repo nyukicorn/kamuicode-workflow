@@ -27,6 +27,22 @@ on:
         required: false
         type: string
         default: '0.5'
+      particle_shape:
+        description: 'パーティクル形状 (circle/square/triangle/star/heart)'
+        required: false
+        type: choice
+        options:
+          - circle
+          - square
+          - triangle
+          - star
+          - heart
+        default: 'circle'
+      particle_corner_radius:
+        description: 'パーティクル角の丸み (0.0-1.0, squareのみ有効)'
+        required: false
+        type: string
+        default: '0.0'
 
 jobs:
   create-threejs-experience:
@@ -87,6 +103,8 @@ jobs:
           particle-enabled: ${{ inputs.particle_enabled }}
           particle-count: ${{ inputs.particle_count }}
           particle-size: ${{ inputs.particle_size }}
+          particle-shape: ${{ inputs.particle_shape }}
+          particle-corner-radius: ${{ inputs.particle_corner_radius }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

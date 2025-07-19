@@ -28,6 +28,14 @@ inputs:
     description: 'Particle size (0.1-2.0)'
     required: false
     default: '0.5'
+  particle-shape:
+    description: 'Particle shape (circle/square/triangle/star/heart)'
+    required: false
+    default: 'circle'
+  particle-corner-radius:
+    description: 'Particle corner radius (0.0-1.0, for square only)'
+    required: false
+    default: '0.0'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -80,6 +88,8 @@ runs:
         PARTICLE_ENABLED="${{ inputs.particle-enabled }}"
         PARTICLE_COUNT="${{ inputs.particle-count }}"
         PARTICLE_SIZE="${{ inputs.particle-size }}"
+        PARTICLE_SHAPE="${{ inputs.particle-shape }}"
+        PARTICLE_CORNER_RADIUS="${{ inputs.particle-corner-radius }}"
         FOLDER_NAME="${{ inputs.folder-name }}"
         SRC_DIR="$FOLDER_NAME/src"
         ASSETS_DIR="$FOLDER_NAME/assets"
@@ -146,9 +156,11 @@ runs:
         **パーティクル設定**:
         - パーティクル数: $PARTICLE_COUNT個
         - パーティクルサイズ: $PARTICLE_SIZE
-        - 形状: 円形（CircleGeometry使用）
+        - 形状: $PARTICLE_SHAPE（動的形状ジオメトリ使用）
+        - 角の丸み: $PARTICLE_CORNER_RADIUS（squareの場合のみ適用）
         - 材質: PointsMaterial
-        - アニメーション: 自動回転時に高速化"
+        - アニメーション: 自動回転時に高速化
+        - 形状実装: circle=CircleGeometry, square=PlaneGeometry+角丸み, triangle=三角形カスタムジオメトリ, star=星形カスタムジオメトリ, heart=ハート形カスタムジオメトリ"
         else
           PARTICLE_INTEGRATION="
         **パーティクル設定**:
@@ -179,7 +191,12 @@ runs:
         - **マウス制御**: ドラッグで視点移動、ホイールでズーム
         - **タッチ制御**: モバイル対応のタッチ操作
         - **自動回転**: ダブルクリックで時計回り自動回転モード
-        - **パーティクル**: 丸いパーティクル、カスタマイズ可能
+        - **パーティクル**: 形状選択可能（$PARTICLE_SHAPE）、カスタマイズ可能
+          - circle: CircleGeometry使用
+          - square: PlaneGeometry + 角丸み実装（corner_radius=$PARTICLE_CORNER_RADIUS）
+          - triangle: カスタム三角形ジオメトリ（頂点3つで構成）
+          - star: カスタム星形ジオメトリ（5つの尖った頂点）
+          - heart: カスタムハート形ジオメトリ（数学的ハート曲線）
         - **UI表示**: 操作説明（マウスドラッグ・ホイール・ダブルクリック）
         
         **技術要件**:
