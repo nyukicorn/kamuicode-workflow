@@ -72,7 +72,7 @@ runs:
           echo "📁 Created music folder: $MUSIC_DIR"
         fi
         
-# MCP設定の確認
+        # MCP設定の確認
         MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
         MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
         
