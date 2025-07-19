@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>花の万華鏡 - 幻想的な3D体験</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            overflow: hidden;
+            height: 100vh;
+            color: white;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+        }
+
+        #canvas-container.grabbing {
+            cursor: grabbing;
+        }
+
+        #webgl-canvas {
+            display: block;
+            outline: none;
+        }
+
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 300px;
+        }
+
+        #audio-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .control-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .control-button.active {
+            background: rgba(255, 105, 180, 0.3);
+            border-color: rgba(255, 105, 180, 0.8);
+        }
+
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #ff69b4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #particle-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            #ui-overlay {
+                font-size: 12px;
+                max-width: 250px;
+                padding: 10px;
+            }
+            
+            #particle-controls {
+                bottom: 10px;
+                left: 10px;
+            }
+            
+            .control-button {
+                padding: 8px 12px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <p>花の万華鏡を読み込み中...</p>
+    </div>
+
+    <div id="canvas-container">
+        <canvas id="webgl-canvas"></canvas>
+    </div>
+
+    <div id="error-message">
+        <h3>エラーが発生しました</h3>
+        <p id="error-text"></p>
+    </div>
+
+    <div id="ui-overlay">
+        <h3>🌸 花の万華鏡 操作ガイド</h3>
+        <p>🖱️ <strong>マウスドラッグ:</strong> 視点移動</p>
+        <p>🎢 <strong>ホイール:</strong> ズーム</p>
+        <p>🔄 <strong>ダブルクリック:</strong> 自動回転ON/OFF</p>
+        <p>📱 <strong>タッチ:</strong> スワイプで視点移動</p>
+        <p>⭐ <strong>パーティクル:</strong> 下部ボタンで形状変更</p>
+    </div>
+
+    <div id="audio-controls">
+        <button class="control-button" id="music-toggle">🎵 音楽</button>
+        <button class="control-button" id="volume-toggle">🔊 音量</button>
+    </div>
+
+    <div id="particle-controls">
+        <button class="control-button active" data-shape="star">⭐ 星</button>
+        <button class="control-button" data-shape="circle">⭕ 円</button>
+        <button class="control-button" data-shape="square">⬜ 四角</button>
+        <button class="control-button" data-shape="triangle">🔺 三角</button>
+        <button class="control-button" data-shape="heart">💖 ハート</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class FlowerKaleidoscope {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.panoramaSphere = null;
+                this.particles = null;
+                this.audio = null;
+                
+                // Controls
+                this.isMouseDown = false;
+                this.isAutoRotating = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.targetRotationX = 0;
+                this.targetRotationY = 0;
+                this.currentRotationX = 0;
+                this.currentRotationY = 0;
+                
+                // Touch controls
+                this.isTouching = false;
+                this.lastTouchX = 0;
+                this.lastTouchY = 0;
+                
+                // Particle settings
+                this.particleShape = 'star';
+                this.particleCount = 3000;
+                this.particleSize = 0.8;
+                
+                // Audio settings
+                this.isMusicPlaying = false;
+                this.currentVolume = 0.3;
+                
+                this.init();
+            }
+
+            init() {
+                try {
+                    this.checkWebGLSupport();
+                    this.setupScene();
+                    this.setupCamera();
+                    this.setupRenderer();
+                    this.setupLights();
+                    this.loadPanorama();
+                    this.createParticles();
+                    this.setupAudio();
+                    this.setupControls();
+                    this.setupEventListeners();
+                    this.animate();
+                    this.hideLoadingScreen();
+                } catch (error) {
+                    this.showError('初期化エラー: ' + error.message);
+                    console.error('Initialization error:', error);
+                }
+            }
+
+            checkWebGLSupport() {
+                if (!window.WebGLRenderingContext) {
+                    throw new Error('WebGLがサポートされていません');
+                }
+                
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    throw new Error('WebGLコンテキストを作成できません');
+                }
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.fog = new THREE.Fog(0x1a1a2e, 50, 200);
+            }
+
+            setupCamera() {
+                const aspect = window.innerWidth / window.innerHeight;
+                this.camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+                this.camera.position.set(0, 0, 0);
+            }
+
+            setupRenderer() {
+                const canvas = document.getElementById('webgl-canvas');
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: canvas, 
+                    antialias: true,
+                    alpha: true 
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.setClearColor(0x1a1a2e, 1);
+            }
+
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 5, 5);
+                this.scene.add(directionalLight);
+            }
+
+            loadPanorama() {
+                const loader = new THREE.TextureLoader();
+                
+                const onLoad = (texture) => {
+                    console.log('Panorama loaded successfully');
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    
+                    const geometry = new THREE.SphereGeometry(100, 64, 32);
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture,
+                        side: THREE.BackSide,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    this.panoramaSphere = new THREE.Mesh(geometry, material);
+                    this.scene.add(this.panoramaSphere);
+                };
+
+                const onProgress = (progress) => {
+                    console.log('Loading progress:', progress);
+                };
+
+                const onError = (error) => {
+                    console.error('Panorama loading error:', error);
+                    this.showError('パノラマ画像の読み込みに失敗しました: ' + error.message);
+                };
+
+                try {
+                    loader.load('./panorama.jpg', onLoad, onProgress, onError);
+                } catch (error) {
+                    console.error('Panorama loading exception:', error);
+                    this.showError('パノラマ画像の読み込み中にエラーが発生しました');
+                }
+            }
+
+            createStarGeometry() {
+                const shape = new THREE.Shape();
+                const outerRadius = 1;
+                const innerRadius = 0.4;
+                const spikes = 5;
+
+                for (let i = 0; i < spikes * 2; i++) {
+                    const angle = (i / (spikes * 2)) * Math.PI * 2;
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        shape.moveTo(x, y);
+                    } else {
+                        shape.lineTo(x, y);
+                    }
+                }
+                shape.closePath();
+
+                const geometry = new THREE.ShapeGeometry(shape);
+                return geometry;
+            }
+
+            createHeartGeometry() {
+                const shape = new THREE.Shape();
+                const x = 0, y = 0;
+
+                shape.moveTo(x + 0.5, y + 0.5);
+                shape.bezierCurveTo(x + 0.5, y + 0.5, x + 0.4, y, x, y);
+                shape.bezierCurveTo(x - 0.6, y, x - 0.6, y + 0.7, x - 0.6, y + 0.7);
+                shape.bezierCurveTo(x - 0.6, y + 1.1, x - 0.3, y + 1.54, x + 0.5, y + 1.9);
+                shape.bezierCurveTo(x + 1.2, y + 1.54, x + 1.6, y + 1.1, x + 1.6, y + 0.7);
+                shape.bezierCurveTo(x + 1.6, y + 0.7, x + 1.6, y, x + 1, y);
+                shape.bezierCurveTo(x + 0.7, y, x + 0.5, y + 0.5, x + 0.5, y + 0.5);
+
+                const geometry = new THREE.ShapeGeometry(shape);
+                return geometry;
+            }
+
+            createTriangleGeometry() {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = new Float32Array([
+                    0, 1, 0,
+                    -1, -1, 0,
+                    1, -1, 0
+                ]);
+                geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                return geometry;
+            }
+
+            createParticles() {
+                if (this.particles) {
+                    this.scene.remove(this.particles);
+                }
+
+                let geometry;
+                
+                switch (this.particleShape) {
+                    case 'circle':
+                        geometry = new THREE.CircleGeometry(0.5, 8);
+                        break;
+                    case 'square':
+                        geometry = new THREE.PlaneGeometry(1, 1);
+                        break;
+                    case 'triangle':
+                        geometry = this.createTriangleGeometry();
+                        break;
+                    case 'heart':
+                        geometry = this.createHeartGeometry();
+                        break;
+                    case 'star':
+                    default:
+                        geometry = this.createStarGeometry();
+                        break;
+                }
+
+                const material = new THREE.PointsMaterial({
+                    color: 0xff69b4,
+                    size: this.particleSize,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true
+                });
+
+                const positions = new Float32Array(this.particleCount * 3);
+                const colors = new Float32Array(this.particleCount * 3);
+
+                for (let i = 0; i < this.particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // Random position in sphere
+                    const radius = 20 + Math.random() * 60;
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    
+                    positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                    positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                    positions[i3 + 2] = radius * Math.cos(phi);
+
+                    // Random colors (flower-like palette)
+                    const colorChoice = Math.random();
+                    if (colorChoice < 0.3) {
+                        colors[i3] = 1; colors[i3 + 1] = 0.4; colors[i3 + 2] = 0.7; // Pink
+                    } else if (colorChoice < 0.6) {
+                        colors[i3] = 1; colors[i3 + 1] = 1; colors[i3 + 2] = 0.8; // Light yellow
+                    } else {
+                        colors[i3] = 0.8; colors[i3 + 1] = 1; colors[i3 + 2] = 0.8; // Light green
+                    }
+                }
+
+                const particleGeometry = new THREE.BufferGeometry();
+                particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                material.vertexColors = true;
+                this.particles = new THREE.Points(particleGeometry, material);
+                this.scene.add(this.particles);
+            }
+
+            setupAudio() {
+                try {
+                    this.audio = new Audio('./generated-music.wav');
+                    this.audio.loop = true;
+                    this.audio.volume = this.currentVolume;
+                    
+                    this.audio.addEventListener('loadeddata', () => {
+                        console.log('Audio loaded successfully');
+                    });
+                    
+                    this.audio.addEventListener('error', (e) => {
+                        console.warn('Audio loading failed:', e);
+                    });
+                } catch (error) {
+                    console.warn('Audio setup failed:', error);
+                }
+            }
+
+            setupControls() {
+                // Mouse controls
+                const canvas = this.renderer.domElement;
+                
+                canvas.addEventListener('mousedown', (event) => {
+                    this.isMouseDown = true;
+                    this.mouseX = event.clientX;
+                    this.mouseY = event.clientY;
+                    document.getElementById('canvas-container').classList.add('grabbing');
+                });
+
+                document.addEventListener('mousemove', (event) => {
+                    if (this.isMouseDown) {
+                        const deltaX = event.clientX - this.mouseX;
+                        const deltaY = event.clientY - this.mouseY;
+                        
+                        this.targetRotationX += deltaY * 0.01;
+                        this.targetRotationY += deltaX * 0.01;
+                        
+                        this.mouseX = event.clientX;
+                        this.mouseY = event.clientY;
+                    }
+                });
+
+                document.addEventListener('mouseup', () => {
+                    this.isMouseDown = false;
+                    document.getElementById('canvas-container').classList.remove('grabbing');
+                });
+
+                // Wheel zoom
+                canvas.addEventListener('wheel', (event) => {
+                    event.preventDefault();
+                    const fov = this.camera.fov + event.deltaY * 0.05;
+                    this.camera.fov = Math.max(10, Math.min(100, fov));
+                    this.camera.updateProjectionMatrix();
+                });
+
+                // Double click auto rotation
+                canvas.addEventListener('dblclick', () => {
+                    this.isAutoRotating = !this.isAutoRotating;
+                    if (this.isAutoRotating) {
+                        console.log('Auto rotation enabled');
+                    } else {
+                        console.log('Auto rotation disabled');
+                    }
+                });
+
+                // Touch controls
+                canvas.addEventListener('touchstart', (event) => {
+                    event.preventDefault();
+                    if (event.touches.length === 1) {
+                        this.isTouching = true;
+                        this.lastTouchX = event.touches[0].clientX;
+                        this.lastTouchY = event.touches[0].clientY;
+                    }
+                });
+
+                canvas.addEventListener('touchmove', (event) => {
+                    event.preventDefault();
+                    if (this.isTouching && event.touches.length === 1) {
+                        const deltaX = event.touches[0].clientX - this.lastTouchX;
+                        const deltaY = event.touches[0].clientY - this.lastTouchY;
+                        
+                        this.targetRotationX += deltaY * 0.01;
+                        this.targetRotationY += deltaX * 0.01;
+                        
+                        this.lastTouchX = event.touches[0].clientX;
+                        this.lastTouchY = event.touches[0].clientY;
+                    }
+                });
+
+                canvas.addEventListener('touchend', () => {
+                    this.isTouching = false;
+                });
+            }
+
+            setupEventListeners() {
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Audio controls
+                document.getElementById('music-toggle').addEventListener('click', () => {
+                    this.toggleMusic();
+                });
+
+                document.getElementById('volume-toggle').addEventListener('click', () => {
+                    this.toggleVolume();
+                });
+
+                // Particle shape controls
+                document.querySelectorAll('#particle-controls .control-button').forEach(button => {
+                    button.addEventListener('click', () => {
+                        document.querySelectorAll('#particle-controls .control-button').forEach(b => 
+                            b.classList.remove('active'));
+                        button.classList.add('active');
+                        
+                        this.particleShape = button.getAttribute('data-shape');
+                        this.createParticles();
+                    });
+                });
+            }
+
+            toggleMusic() {
+                if (!this.audio) return;
+
+                const button = document.getElementById('music-toggle');
+                
+                if (this.isMusicPlaying) {
+                    this.audio.pause();
+                    this.isMusicPlaying = false;
+                    button.textContent = '🔇 音楽';
+                    button.classList.remove('active');
+                } else {
+                    this.audio.play().catch(e => {
+                        console.warn('Audio play failed:', e);
+                    });
+                    this.isMusicPlaying = true;
+                    button.textContent = '🎵 音楽';
+                    button.classList.add('active');
+                }
+            }
+
+            toggleVolume() {
+                if (!this.audio) return;
+
+                const button = document.getElementById('volume-toggle');
+                
+                if (this.currentVolume > 0) {
+                    this.currentVolume = 0;
+                    button.textContent = '🔇 音量';
+                } else {
+                    this.currentVolume = 0.3;
+                    button.textContent = '🔊 音量';
+                }
+                
+                this.audio.volume = this.currentVolume;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                // Smooth camera rotation
+                this.currentRotationX += (this.targetRotationX - this.currentRotationX) * 0.05;
+                this.currentRotationY += (this.targetRotationY - this.currentRotationY) * 0.05;
+
+                if (this.isAutoRotating) {
+                    this.targetRotationY += 0.005;
+                }
+
+                // Apply camera rotation
+                this.camera.rotation.x = this.currentRotationX;
+                this.camera.rotation.y = this.currentRotationY;
+
+                // Animate particles
+                if (this.particles) {
+                    const time = Date.now() * 0.001;
+                    const rotationSpeed = this.isAutoRotating ? 0.02 : 0.005;
+                    
+                    this.particles.rotation.x += rotationSpeed;
+                    this.particles.rotation.y += rotationSpeed * 0.7;
+                    
+                    // Subtle floating animation
+                    this.particles.position.y = Math.sin(time * 0.5) * 0.5;
+                }
+
+                // Animate panorama
+                if (this.panoramaSphere) {
+                    this.panoramaSphere.rotation.y += 0.001;
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            hideLoadingScreen() {
+                const loadingScreen = document.getElementById('loading-screen');
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }
+
+            showError(message) {
+                const errorDiv = document.getElementById('error-message');
+                const errorText = document.getElementById('error-text');
+                errorText.textContent = message;
+                errorDiv.style.display = 'block';
+                
+                setTimeout(() => {
+                    this.hideLoadingScreen();
+                }, 1000);
+            }
+        }
+
+        // Initialize the experience when page loads
+        window.addEventListener('load', () => {
+            new FlowerKaleidoscope();
+        });
+
+        // Handle page visibility for audio
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && window.kaleidoscope && window.kaleidoscope.audio) {
+                window.kaleidoscope.audio.pause();
+            }
+        });
+    </script>
+</body>
+</html>
