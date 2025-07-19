@@ -1,4 +1,4 @@
-name: Create Music Video (Modular)
+name: Create Music Video Modular
 
 on:
   workflow_dispatch:
