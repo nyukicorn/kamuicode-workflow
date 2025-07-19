@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "threejs": {
+      "type": "http",
+      "url": "https://www.pulsemcp.com/servers/locchung-three-js",
+      "description": "Three.js MCP Server by Loc Chung - Enables real-time manipulation of Three.js 3D scenes through WebSocket connections, allowing natural language control of object creation, movement, rotation, and scene state retrieval"
+    }
+  }
+}

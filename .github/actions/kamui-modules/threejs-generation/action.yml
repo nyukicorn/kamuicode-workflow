@@ -1,0 +1,242 @@
+name: 'Three.js Scene Generation'
+description: 'Generate Three.js 3D scenes with panorama and particles using Three.js MCP'
+author: 'KamuiCode Workflow'
+
+inputs:
+  experience-concept:
+    description: 'The 3D experience concept'
+    required: true
+  panorama-image-url:
+    description: 'Google URL of the panorama image'
+    required: true
+  include-music:
+    description: 'Whether to include music controls'
+    required: false
+    default: 'false'
+  music-url:
+    description: 'Google URL of the background music (if applicable)'
+    required: false
+  folder-name:
+    description: 'The folder name for storing Three.js files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  threejs-completed:
+    description: 'Whether Three.js scene generation was completed successfully'
+    value: ${{ steps.threejs.outputs.completed }}
+  scene-files-created:
+    description: 'Number of scene files created'
+    value: ${{ steps.threejs.outputs.scene-files-created }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Three.js Scene Generation Agent
+      id: threejs
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Three.js Scene Generation"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        EXPERIENCE_CONCEPT="${{ inputs.experience-concept }}"
+        PANORAMA_URL="${{ inputs.panorama-image-url }}"
+        INCLUDE_MUSIC="${{ inputs.include-music }}"
+        MUSIC_URL="${{ inputs.music-url }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        SRC_DIR="$FOLDER_NAME/src"
+        ASSETS_DIR="$FOLDER_NAME/assets"
+        
+        echo "Experience concept: $EXPERIENCE_CONCEPT"
+        echo "Panorama URL: $PANORAMA_URL"
+        echo "Include music: $INCLUDE_MUSIC"
+        echo "Target folders: $SRC_DIR, $ASSETS_DIR"
+        
+        # ディレクトリを事前に作成
+        mkdir -p "$SRC_DIR/js"
+        mkdir -p "$SRC_DIR/css"
+        mkdir -p "$SRC_DIR/libs"
+        mkdir -p "$ASSETS_DIR"
+        echo "📁 Created directory structure"
+        
+        # Three.js MCP設定の確認
+        MCP_CONFIG_PATH=".claude/mcp-threejs.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        echo "📋 Three.js MCP Configuration Check:"
+        echo "Working directory: $(pwd)"
+        echo "MCP config path: $MCP_CONFIG_PATH"
+        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
+        
+        # Three.js MCP設定ファイルが存在しない場合は作成
+        if [ ! -f "$MCP_CONFIG_ABS_PATH" ]; then
+          echo "Creating Three.js MCP configuration..."
+          mkdir -p .claude
+          cat > "$MCP_CONFIG_ABS_PATH" << 'EOF'
+{
+  "mcpServers": {
+    "threejs": {
+      "type": "http",
+      "url": "https://www.pulsemcp.com/servers/locchung-three-js",
+      "description": "Three.js MCP Server by Loc Chung for 3D scene manipulation"
+    }
+  }
+}
+EOF
+          echo "✅ Three.js MCP config file created"
+        else
+          echo "✅ Three.js MCP config file already exists"
+        fi
+        
+        # プロンプトの構築
+        MUSIC_INTEGRATION=""
+        if [ "$INCLUDE_MUSIC" == "true" ] && [ -n "$MUSIC_URL" ]; then
+          MUSIC_INTEGRATION="
+        **音楽統合**:
+        - BGM URL: $MUSIC_URL
+        - 音楽のオン/オフボタンを実装
+        - Web Audio APIでループ再生
+        - ボリューム制御機能"
+        fi
+        
+        PROMPT="Three.js 3D体験シーンを生成してください。
+        
+        **体験コンセプト**: $EXPERIENCE_CONCEPT
+        **パノラマ画像URL**: $PANORAMA_URL
+        
+        **実行手順**:
+        1. パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
+        2. Three.jsライブラリファイルを$SRC_DIR/libsに配置
+        3. メインHTMLファイル($SRC_DIR/index.html)を作成:
+           - Three.js WebGLRenderer設定
+           - パノラマ画像をSphereGeometryにマッピング
+           - OrbitControlsでマウス操作
+           - パーティクルシステム実装
+           - レスポンシブデザイン
+        4. JavaScriptファイルを作成:
+           - $SRC_DIR/js/main.js: メインアプリケーション
+           - $SRC_DIR/js/scene.js: 3Dシーン設定
+           - $SRC_DIR/js/particles.js: パーティクルアートシステム
+           - $SRC_DIR/js/controls.js: ユーザー操作制御
+        5. CSSファイル($SRC_DIR/css/style.css)を作成:
+           - フルスクリーン表示
+           - UI制御パネル
+           - ローディング画面
+        $MUSIC_INTEGRATION
+        
+        **技術仕様**:
+        - パノラマ: Equirectangular → SphereGeometry内側テクスチャ
+        - パーティクル: Points/ParticleSystemで「$EXPERIENCE_CONCEPT」テーマ
+        - 操作: マウスドラッグでカメラ回転、ホイールでズーム
+        - 最適化: requestAnimationFrame、適切なディスポーズ
+        
+        **重要な注意点**:
+        - パノラマ画像はGoogle URLから確実にダウンロード
+        - Three.jsはCDN版を使用（最新安定版）
+        - すべてのファイルを指定されたディレクトリ構造に配置
+        - WebGL対応チェックとフォールバック実装
+        - モバイル対応のタッチ操作
+        
+        **ファイル構造**:
+        $SRC_DIR/
+        ├── index.html
+        ├── js/
+        │   ├── main.js
+        │   ├── scene.js  
+        │   ├── particles.js
+        │   └── controls.js
+        ├── css/
+        │   └── style.css
+        └── libs/
+            └── three.min.js
+        $ASSETS_DIR/
+        └── panorama.jpg"
+        
+        echo "🚀 Starting Three.js Scene Generation Agent..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --mcp-config="$MCP_CONFIG_ABS_PATH" \
+          --allowedTools "Bash" \
+          --max-turns 30 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成されたファイルの確認
+        echo ""
+        echo "📸 Checking generated Three.js files..."
+        
+        # HTMLファイルの確認
+        if [ -f "$SRC_DIR/index.html" ]; then
+          echo "✅ Main HTML file created: $SRC_DIR/index.html"
+        else
+          echo "::error::❌ Main HTML file not found"
+          exit 1
+        fi
+        
+        # JSファイルの確認
+        JS_COUNT=$(find "$SRC_DIR/js" -name "*.js" 2>/dev/null | wc -l)
+        echo "✅ JavaScript files created: $JS_COUNT"
+        
+        # CSSファイルの確認
+        if [ -f "$SRC_DIR/css/style.css" ]; then
+          echo "✅ CSS file created: $SRC_DIR/css/style.css"
+        else
+          echo "::warning::⚠️ CSS file not found"
+        fi
+        
+        # パノラマ画像の確認
+        if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
+          echo "✅ Panorama image downloaded: $ASSETS_DIR/panorama.jpg"
+        else
+          echo "::warning::⚠️ Panorama image not found"
+        fi
+        
+        # 総ファイル数をカウント
+        TOTAL_FILES=$(find "$SRC_DIR" -type f | wc -l)
+        echo "scene-files-created=$TOTAL_FILES" >> $GITHUB_OUTPUT
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit and push Three.js files
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No Three.js files to commit"
+        else
+          git commit -m "Add Three.js scene: ${{ inputs.experience-concept }}"
+          git push origin ${{ inputs.branch-name }}
+        fi

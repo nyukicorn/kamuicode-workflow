@@ -1,0 +1,32 @@
+name: 'Setup Branch for Three.js Experience'
+description: 'Create a new branch and folder structure for Three.js experience generation'
+author: 'KamuiCode Workflow'
+
+outputs:
+  branch-name:
+    description: 'The name of the created branch'
+    value: ${{ steps.create-branch.outputs.branch-name }}
+  folder-name:
+    description: 'The name of the created folder'
+    value: ${{ steps.create-branch.outputs.folder-name }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Create branch for Three.js experience generation
+      id: create-branch
+      shell: bash
+      run: |
+        BRANCH_NAME="threejs-experience/$(date +%Y%m%d)-${{ github.run_id }}"
+        FOLDER_NAME="threejs-experience-$(date +%Y%m%d)-${{ github.run_id }}"
+        git checkout -b $BRANCH_NAME
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git push origin $BRANCH_NAME
+        echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+        echo "Created branch: $BRANCH_NAME"
+        echo "Folder name: $FOLDER_NAME"
