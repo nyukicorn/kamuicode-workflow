@@ -116,9 +116,22 @@ runs:
         - mcp__t2i-fal-imagen4-fast__imagen4_fast_statusでステータス確認
 
         ステップ5: 結果取得とファイル保存
-        - mcp__t2i-fal-imagen4-fast__imagen4_fast_resultで結果取得
-        - Google URLを「$FOLDER_NAME/google-image-url.txt」に保存
-        - 画像を「$IMAGES_DIR/generated-image.png」にダウンロード
+        - mcp__t2i-fal-imagen4-fast__imagen4_fast_resultで結果取得してGoogle URLを取得
+        - **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
+        - 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
+
+        **重要な注意点**:
+        - Google URLの有効期限は約1時間のため、生成後すぐにダウンロード
+        - 必ずGoogle提供の認証済URLを使用
+        - 画像は必ず「$IMAGES_DIR」ディレクトリに保存
+        - ファイル名は「generated-image.png」とする
+        - **最重要**: 生成時のGoogle URLを「$FOLDER_NAME/google-image-url.txt」に保存し、次のジョブで参照できるようにする
+        - **両方を実行**: ①Google URLをテキストファイルに保存 ②Google URLから画像をダウンロードしてローカル保存
+
+        **保存先**:
+        - 画像ディレクトリ: $IMAGES_DIR
+        - 画像ファイル: generated-image.png
+        - Google URL保存ファイル: $FOLDER_NAME/google-image-url.txt
 
         **確認事項**:
         - 翻訳が完了したら「翻訳結果: [英語プロンプト]」を必ず表示
