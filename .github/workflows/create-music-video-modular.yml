@@ -42,6 +42,16 @@ jobs:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
+      - name: Image Generation
+        id: image
+        uses: ./.github/actions/kamui-modules/image-generation
+        with:
+          image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
       - name: Summary
         run: |
           echo "🎯 Music Video Creation Summary (Modular Version):"
@@ -56,6 +66,9 @@ jobs:
           echo ""
           echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
           echo "🎶 Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
+          echo "🖼️ Google Image URL: ${{ steps.image.outputs.google-image-url }}"
           echo ""
           echo "🎉 Workflow completed successfully!"
           echo "================================================"
