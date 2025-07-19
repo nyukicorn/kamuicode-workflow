@@ -144,7 +144,7 @@
     </div>
 
     <audio id="background-music" loop>
-        <source src="generated-music.wav" type="audio/wav">
+        <source src="./generated-music.wav" type="audio/wav">
     </audio>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -253,7 +253,7 @@
                 
                 const loader = new THREE.TextureLoader();
                 loader.load(
-                    'panorama.jpg',
+                    './panorama.jpg',
                     (texture) => {
                         const material = new THREE.MeshBasicMaterial({
                             map: texture,
