@@ -293,5 +293,14 @@ runs:
           git commit -m "Add final Three.js experience package: ${{ inputs.experience-concept }}
 
         GitHub Pages preview: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/docs/${{ inputs.folder-name }}/"
+          # mainブランチにマージ
+          git checkout main
+          git pull origin main
+          git checkout ${{ inputs.branch-name }}
+          git checkout main -- docs/
+          git commit -m "Merge docs from ${{ inputs.branch-name }} to main for GitHub Pages"
+          git push origin main
+          # 元のブランチに戻る
+          git checkout ${{ inputs.branch-name }}
           git push origin ${{ inputs.branch-name }}
         fi
