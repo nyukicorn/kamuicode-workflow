@@ -1,0 +1,92 @@
+name: Create Music Video (Modular)
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        type: string
+
+jobs:
+  create-music-video-modular:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Music Planning
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Music Generation
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Summary
+        run: |
+          echo "🎯 Music Video Creation Summary (Modular Version):"
+          echo "================================================"
+          echo "📝 Concept: ${{ inputs.music_concept }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo ""
+          echo "✅ Planning Status: ${{ steps.planning.outputs.planning-completed }}"
+          echo "🎵 Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
+          echo "🖼️ Image Prompt: ${{ steps.planning.outputs.image-prompt }}"
+          echo ""
+          echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
+          echo "🎶 Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "🎉 Workflow completed successfully!"
+          echo "================================================"
+      
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create PR title and body
+          PR_TITLE="🎵 Add music video: ${{ inputs.music_concept }}"
+          PR_BODY="## 🎬 Music Video Creation Summary
+
+**Concept**: ${{ inputs.music_concept }}
+**Branch**: ${{ steps.setup.outputs.branch-name }}
+**Folder**: ${{ steps.setup.outputs.folder-name }}
+
+### 📊 Generation Results:
+- ✅ Planning: Completed
+- ✅ Music Generation: Completed
+- 🎵 Music URL: ${{ steps.music.outputs.music-url }}
+
+### 📁 Files Created:
+- Planning documents in \`planning/\` directory
+- Music files in \`music/\` directory
+
+---
+🤖 Generated with Create Music Video (Modular) workflow"
+
+          # Create the pull request
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head ${{ steps.setup.outputs.branch-name }} || echo "PR creation skipped or failed"
