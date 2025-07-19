@@ -94,14 +94,16 @@ runs:
         
         # プロンプトの構築
         PROMPT="画像生成を実行してください。
-        **画像プロンプト**: $IMAGE_PROMPT
+        **画像プロンプト（原文）**: $IMAGE_PROMPT
+        **重要**: 画像プロンプトが日本語の場合は、必ず英語に翻訳してからImagen4 Fastに送信してください。英語の場合はそのまま使用してください。
         **実行手順**:
-        1. 画像プロンプト（$IMAGE_PROMPT）を使用してImagen4 Fastで画像生成
-        2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
-        3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
-        4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
-        5. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
-        6. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
+        1. 画像プロンプトの言語判定と翻訳（必要に応じて日本語→英語）
+        2. 翻訳済み英語プロンプトを使用してImagen4 Fastで画像生成
+        3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
+        4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
+        5. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
+        6. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
+        7. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
         **重要な注意点**:
         - Google URLの有効期限は約1時間のため、生成後すぐにダウンロード
         - 必ずGoogle提供の認証済URLを使用
