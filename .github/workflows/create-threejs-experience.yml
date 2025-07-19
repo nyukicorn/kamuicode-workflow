@@ -33,6 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
     
     steps:
       - name: Checkout repository
@@ -89,6 +91,15 @@ jobs:
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+      
+      - name: Deploy to GitHub Pages
+        id: pages
+        uses: actions/deploy-pages@v4
+      
       - name: Summary
         run: |
           echo "🎯 Three.js Experience Creation Summary:"
@@ -113,7 +124,7 @@ jobs:
           echo "✅ Integration & Packaging: ${{ steps.integration.outputs.integration-completed }}"
           echo "📦 Final Package: ${{ steps.integration.outputs.final-package-path }}"
           echo ""
-          echo "🌐 GitHub Pages Preview URL: ${{ steps.integration.outputs.preview-url }}"
+          echo "🌐 GitHub Pages Preview URL: ${{ steps.pages.outputs.page_url }}"
           echo ""
           echo "🎉 Three.js Experience Creation Success!"
           echo "🌐 Interactive 3D scene with panorama and particles"
@@ -124,6 +135,6 @@ jobs:
           echo "✅ Three.js Experience workflow completed successfully!"
           echo "Branch: ${{ steps.setup.outputs.branch-name }}"
           echo ""
-          echo "🌐 **Live Preview**: ${{ steps.integration.outputs.preview-url }}"
+          echo "🌐 **Live Preview**: ${{ steps.pages.outputs.page_url }}"
           echo "📁 **Local Files**: Check the branch for generated files"
           echo "📦 **Download Package**: ${{ steps.integration.outputs.final-package-path }}"
