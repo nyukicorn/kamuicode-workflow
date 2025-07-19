@@ -1,0 +1,204 @@
+name: 'Video Concatenation & Music Integration'
+description: 'Concatenate video segments and integrate with music using ffmpeg'
+author: 'KamuiCode Workflow'
+
+inputs:
+  folder-name:
+    description: 'The folder name containing video and music files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  concatenation-completed:
+    description: 'Whether video concatenation was completed successfully'
+    value: ${{ steps.concat.outputs.completed }}
+  final-video-path:
+    description: 'Path to the final music video'
+    value: ${{ steps.concat.outputs.final-video-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 動画連結・音楽統合エージェント
+      id: concat
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎬 Video Concatenation & Music Integration Agent"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        VIDEOS_DIR="$FOLDER_NAME/videos"
+        MUSIC_DIR="$FOLDER_NAME/music"
+        OUTPUT_DIR="$FOLDER_NAME/final"
+        
+        echo "Folder name: $FOLDER_NAME"
+        echo "Videos directory: $VIDEOS_DIR"
+        echo "Music directory: $MUSIC_DIR"
+        echo "Output directory: $OUTPUT_DIR"
+        
+        # 最終出力フォルダを作成
+        if [ ! -d "$OUTPUT_DIR" ]; then
+          mkdir -p "$OUTPUT_DIR"
+          echo "📁 Created output folder: $OUTPUT_DIR"
+        fi
+        
+        # 動画と音楽ファイルの確認
+        echo "📁 Checking video segments..."
+        if [ -d "$VIDEOS_DIR" ]; then
+          ls -la "$VIDEOS_DIR"
+        else
+          echo "❌ Videos directory not found: $VIDEOS_DIR"
+          exit 1
+        fi
+        
+        echo "📁 Checking music files..."
+        if [ -d "$MUSIC_DIR" ]; then
+          ls -la "$MUSIC_DIR"
+        else
+          echo "❌ Music directory not found: $MUSIC_DIR"
+          exit 1
+        fi
+        
+        # 音楽ファイルの存在確認と形式特定
+        MUSIC_FILE=""
+        if [ -f "$MUSIC_DIR/generated-music.mp3" ]; then
+          MUSIC_FILE="$MUSIC_DIR/generated-music.mp3"
+          echo "✅ Found music file: $MUSIC_FILE"
+        elif [ -f "$MUSIC_DIR/generated-music.wav" ]; then
+          MUSIC_FILE="$MUSIC_DIR/generated-music.wav"
+          echo "✅ Found music file: $MUSIC_FILE"
+        else
+          echo "❌ Music file not found! Checking all audio files in $MUSIC_DIR..."
+          FOUND_MUSIC=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | head -1)
+          if [ -n "$FOUND_MUSIC" ]; then
+            MUSIC_FILE="$FOUND_MUSIC"
+            echo "✅ Found alternative music file: $MUSIC_FILE"
+          else
+            echo "❌ No audio files found in $MUSIC_DIR"
+            exit 1
+          fi
+        fi
+        
+        # 動画ファイルの確認
+        VIDEO_COUNT=$(find "$VIDEOS_DIR" -name "segment-*.mp4" | wc -l)
+        echo "📹 Found $VIDEO_COUNT video segments"
+        
+        if [ "$VIDEO_COUNT" -eq 0 ]; then
+          echo "❌ No video segments found"
+          exit 1
+        fi
+        
+        # プロンプトの構築
+        PROMPT="ffmpegで動画セグメントを連結し音楽と統合してミュージックビデオを作成してください。
+        **最重要**: 最終動画に音楽を必ず結合（音声なしは失敗）
+        
+        **現在の状況**:
+        - フォルダ: $FOLDER_NAME
+        - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
+        - 音楽ディレクトリ: $MUSIC_DIR
+        - 出力ディレクトリ: $OUTPUT_DIR
+        - 音楽ファイル: $MUSIC_FILE
+        
+        **実行手順**:
+        1. 利用可能な動画セグメントファイルを確認
+        2. 音楽ファイル（$MUSIC_FILE）の長さを確認
+        3. ffmpegで動画を音楽の長さに合わせて調整・延長
+        4. 複数セグメントがある場合は連結、1つの場合はループで延長
+        5. ffmpegで動画と音楽を統合
+        6. **必須**: '$OUTPUT_DIR/final-music-video.mp4'に保存
+        7. 最終動画の音声ストリーム確認
+        
+        **ffmpegコマンド例**:
+        - 動画延長: ffmpeg -i segment-1.mp4 -filter_complex 'loop=loop=7:size=150:start=0' segment-1-extended.mp4
+        - 複数セグメント連結: ffmpeg -i seg1.mp4 -i seg2.mp4 -i seg3.mp4 -filter_complex '[0:v][1:v][2:v]concat=n=3:v=1:a=0[outv]' -map '[outv]' video-concatenated.mp4
+        - 音楽統合: ffmpeg -i video-concatenated.mp4 -i \"$MUSIC_FILE\" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest '$OUTPUT_DIR/final-music-video.mp4'
+        - 音声確認: ffmpeg -i '$OUTPUT_DIR/final-music-video.mp4' -show_streams -select_streams a
+        
+        **重要事項**:
+        - 必ず音楽ファイル（$MUSIC_FILE）が存在することを確認
+        - 最終動画は音声ストリームを含む必要がある
+        - 動画の長さは音楽の長さに合わせる
+        - 最終ファイルは '$OUTPUT_DIR/final-music-video.mp4' に保存"
+        
+        echo "🚀 Starting Video Concatenation Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Bash" \
+          --max-turns 70 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 最終動画の確認
+        echo ""
+        echo "🎬 Checking final music video..."
+        FINAL_VIDEO="$OUTPUT_DIR/final-music-video.mp4"
+        
+        if [ -f "$FINAL_VIDEO" ]; then
+          echo "✅ Final music video created: $FINAL_VIDEO"
+          FILE_SIZE=$(ls -lah "$FINAL_VIDEO" | awk '{print $5}')
+          echo "File size: $FILE_SIZE"
+          
+          # 音声ストリームの確認
+          echo "🔊 Checking audio stream..."
+          if command -v ffmpeg &> /dev/null; then
+            AUDIO_STREAMS=$(ffmpeg -i "$FINAL_VIDEO" -hide_banner -f null - 2>&1 | grep "Stream.*Audio" | wc -l)
+            if [ "$AUDIO_STREAMS" -gt 0 ]; then
+              echo "✅ Audio stream detected in final video"
+            else
+              echo "⚠️ No audio stream detected in final video"
+            fi
+          fi
+          
+          echo "final-video-path=$FINAL_VIDEO" >> $GITHUB_OUTPUT
+          echo "completed=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Final music video not created"
+          echo "Checking output directory contents:"
+          ls -la "$OUTPUT_DIR" || echo "Output directory is empty"
+          exit 1
+        fi
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push final video
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No final video to commit"
+        else
+          git commit -m "Add final music video with integrated audio"
+          git push origin ${{ inputs.branch-name }}
+        fi

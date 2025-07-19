@@ -64,6 +64,14 @@ jobs:
           mcp-config: ${{ secrets.MCP_CONFIG }}
           segment-number: '1'
       
+      - name: Video Concatenation & Music Integration
+        id: concatenation
+        uses: ./.github/actions/kamui-modules/video-concatenation
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
       - name: Summary
         run: |
           echo "🎯 Music Video Creation Summary (Modular Version):"
@@ -84,8 +92,11 @@ jobs:
           echo ""
           echo "✅ Video Generation: ${{ steps.video.outputs.video-completed }}"
           echo ""
-          echo "🎉 4-Module Integration Test Completed Successfully!"
-          echo "📊 Generated: Music + Image + Video"
+          echo "✅ Video Concatenation & Music Integration: ${{ steps.concatenation.outputs.concatenation-completed }}"
+          echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
+          echo ""
+          echo "🎉 Complete Music Video Pipeline Success!"
+          echo "📊 Generated: Music + Image + Video + Final Integration"
           echo "================================================"
       
       - name: Final Status
