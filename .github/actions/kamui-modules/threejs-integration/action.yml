@@ -269,7 +269,7 @@ runs:
         fi
         
         # プレビューURLを生成
-        PREVIEW_URL="https://$REPO_OWNER.github.io/${REPO_NAME#*/}/$FOLDER_NAME/"
+        PREVIEW_URL="https://$REPO_OWNER.github.io/${REPO_NAME#*/}/docs/$FOLDER_NAME/"
         echo "preview-url=$PREVIEW_URL" >> $GITHUB_OUTPUT
         echo "📋 Preview URL: $PREVIEW_URL"
         
