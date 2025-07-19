@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>夏の花々が咲く美しい庭園 - Three.js VR体験</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #webgl-error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            display: none;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 100;
+        }
+        
+        #audio-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 100;
+        }
+        
+        .control-button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .control-button:hover {
+            background: #45a049;
+        }
+        
+        .control-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        #volume-slider {
+            width: 100px;
+            margin: 0 10px;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">読み込み中...</div>
+        
+        <div id="webgl-error">
+            <h2>WebGLがサポートされていません</h2>
+            <p>お使いのブラウザはWebGLに対応していません。<br>
+            最新版のChrome、Firefox、Safariをお試しください。</p>
+        </div>
+        
+        <div id="controls">
+            <strong>操作方法:</strong><br>
+            🖱️ マウスドラッグ: 視点移動<br>
+            🎯 ホイール: ズーム<br>
+            👆 ダブルクリック: 自動回転<br>
+            📱 タッチ: スワイプで視点移動
+        </div>
+        
+        <div id="audio-controls">
+            <button class="control-button" id="play-pause">▶️ 再生</button>
+            <label style="color: white;">音量:</label>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+            <span id="volume-display" style="color: white;">50%</span>
+        </div>
+        
+        <audio id="background-music" preload="auto" loop>
+            <source src="generated-music.wav" type="audio/wav">
+        </audio>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class PanoramicGarden {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.sphere = null;
+                this.particles = null;
+                
+                this.mouse = { x: 0, y: 0 };
+                this.mouseDown = false;
+                this.isAutoRotating = false;
+                this.autoRotationSpeed = 0.01;
+                
+                this.targetRotationX = 0;
+                this.targetRotationY = 0;
+                this.currentRotationX = 0;
+                this.currentRotationY = 0;
+                
+                this.camera_phi = 0;
+                this.camera_theta = 0;
+                this.camera_zoom = 1;
+                
+                this.touches = [];
+                this.lastTouchDistance = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                if (!this.checkWebGL()) {
+                    document.getElementById('webgl-error').style.display = 'block';
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupLights();
+                this.loadPanorama();
+                this.createParticles();
+                this.setupControls();
+                this.setupAudio();
+                this.animate();
+                
+                window.addEventListener('resize', () => this.onWindowResize());
+            }
+            
+            checkWebGL() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    return !!(window.WebGLRenderingContext && (
+                        canvas.getContext('webgl') || 
+                        canvas.getContext('experimental-webgl')
+                    ));
+                } catch(e) {
+                    return false;
+                }
+            }
+            
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87CEEB);
+            }
+            
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(0, 0, 0);
+            }
+            
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                document.getElementById('container').appendChild(this.renderer.domElement);
+            }
+            
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                directionalLight.position.set(1, 1, 1);
+                this.scene.add(directionalLight);
+            }
+            
+            loadPanorama() {
+                const loader = new THREE.TextureLoader();
+                loader.load(
+                    'panorama.jpg',
+                    (texture) => {
+                        const geometry = new THREE.SphereGeometry(100, 60, 40);
+                        geometry.scale(-1, 1, 1);
+                        
+                        const material = new THREE.MeshBasicMaterial({
+                            map: texture
+                        });
+                        
+                        this.sphere = new THREE.Mesh(geometry, material);
+                        this.scene.add(this.sphere);
+                        
+                        document.getElementById('loading').style.display = 'none';
+                        console.log('パノラマ画像の読み込みが完了しました');
+                    },
+                    (progress) => {
+                        console.log('パノラマ画像読み込み中:', (progress.loaded / progress.total * 100) + '%');
+                    },
+                    (error) => {
+                        console.error('パノラマ画像の読み込みに失敗しました:', error);
+                        document.getElementById('loading').textContent = 'パノラマ画像の読み込みに失敗しました';
+                    }
+                );
+            }
+            
+            createParticles() {
+                const particleCount = 800;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const phi = Math.acos(-1 + (2 * Math.random()));
+                    const theta = Math.sqrt(particleCount * Math.PI) * phi;
+                    
+                    const radius = 80 + Math.random() * 15;
+                    
+                    positions[i * 3] = radius * Math.cos(theta) * Math.sin(phi);
+                    positions[i * 3 + 1] = radius * Math.cos(phi);
+                    positions[i * 3 + 2] = radius * Math.sin(theta) * Math.sin(phi);
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    color: 0xFFFFFF,
+                    size: 0.6,
+                    transparent: true,
+                    opacity: 0.8,
+                    sizeAttenuation: true
+                });
+                
+                this.particles = new THREE.Points(geometry, material);
+                this.scene.add(this.particles);
+            }
+            
+            setupControls() {
+                const canvas = this.renderer.domElement;
+                
+                canvas.addEventListener('mousedown', (event) => this.onMouseDown(event));
+                canvas.addEventListener('mousemove', (event) => this.onMouseMove(event));
+                canvas.addEventListener('mouseup', () => this.onMouseUp());
+                canvas.addEventListener('wheel', (event) => this.onMouseWheel(event));
+                canvas.addEventListener('dblclick', () => this.toggleAutoRotation());
+                
+                canvas.addEventListener('touchstart', (event) => this.onTouchStart(event));
+                canvas.addEventListener('touchmove', (event) => this.onTouchMove(event));
+                canvas.addEventListener('touchend', (event) => this.onTouchEnd(event));
+                
+                canvas.style.touchAction = 'none';
+            }
+            
+            onMouseDown(event) {
+                this.mouseDown = true;
+                this.mouse.x = event.clientX;
+                this.mouse.y = event.clientY;
+                this.isAutoRotating = false;
+            }
+            
+            onMouseMove(event) {
+                if (!this.mouseDown) return;
+                
+                const deltaX = event.clientX - this.mouse.x;
+                const deltaY = event.clientY - this.mouse.y;
+                
+                this.targetRotationY += deltaX * 0.005;
+                this.targetRotationX += deltaY * 0.005;
+                
+                this.targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.targetRotationX));
+                
+                this.mouse.x = event.clientX;
+                this.mouse.y = event.clientY;
+            }
+            
+            onMouseUp() {
+                this.mouseDown = false;
+            }
+            
+            onMouseWheel(event) {
+                event.preventDefault();
+                this.camera_zoom += event.deltaY * 0.0005;
+                this.camera_zoom = Math.max(0.5, Math.min(2.0, this.camera_zoom));
+            }
+            
+            onTouchStart(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 1) {
+                    this.mouse.x = this.touches[0].clientX;
+                    this.mouse.y = this.touches[0].clientY;
+                    this.mouseDown = true;
+                } else if (this.touches.length === 2) {
+                    this.lastTouchDistance = this.getTouchDistance();
+                }
+                
+                this.isAutoRotating = false;
+            }
+            
+            onTouchMove(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 1 && this.mouseDown) {
+                    const deltaX = this.touches[0].clientX - this.mouse.x;
+                    const deltaY = this.touches[0].clientY - this.mouse.y;
+                    
+                    this.targetRotationY += deltaX * 0.005;
+                    this.targetRotationX += deltaY * 0.005;
+                    
+                    this.targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.targetRotationX));
+                    
+                    this.mouse.x = this.touches[0].clientX;
+                    this.mouse.y = this.touches[0].clientY;
+                } else if (this.touches.length === 2) {
+                    const currentDistance = this.getTouchDistance();
+                    if (this.lastTouchDistance > 0) {
+                        const delta = currentDistance - this.lastTouchDistance;
+                        this.camera_zoom += delta * 0.001;
+                        this.camera_zoom = Math.max(0.5, Math.min(2.0, this.camera_zoom));
+                    }
+                    this.lastTouchDistance = currentDistance;
+                }
+            }
+            
+            onTouchEnd(event) {
+                event.preventDefault();
+                this.touches = Array.from(event.touches);
+                
+                if (this.touches.length === 0) {
+                    this.mouseDown = false;
+                    this.lastTouchDistance = 0;
+                } else if (this.touches.length === 1) {
+                    this.lastTouchDistance = 0;
+                    this.mouse.x = this.touches[0].clientX;
+                    this.mouse.y = this.touches[0].clientY;
+                }
+            }
+            
+            getTouchDistance() {
+                if (this.touches.length < 2) return 0;
+                const dx = this.touches[0].clientX - this.touches[1].clientX;
+                const dy = this.touches[0].clientY - this.touches[1].clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            toggleAutoRotation() {
+                this.isAutoRotating = !this.isAutoRotating;
+                console.log('自動回転:', this.isAutoRotating ? 'ON' : 'OFF');
+            }
+            
+            setupAudio() {
+                const audio = document.getElementById('background-music');
+                const playPauseBtn = document.getElementById('play-pause');
+                const volumeSlider = document.getElementById('volume-slider');
+                const volumeDisplay = document.getElementById('volume-display');
+                
+                audio.volume = 0.5;
+                
+                playPauseBtn.addEventListener('click', () => {
+                    if (audio.paused) {
+                        audio.play().then(() => {
+                            playPauseBtn.textContent = '⏸️ 停止';
+                        }).catch(error => {
+                            console.log('音楽の再生に失敗しました:', error);
+                            playPauseBtn.textContent = '❌ エラー';
+                            playPauseBtn.disabled = true;
+                        });
+                    } else {
+                        audio.pause();
+                        playPauseBtn.textContent = '▶️ 再生';
+                    }
+                });
+                
+                volumeSlider.addEventListener('input', () => {
+                    const volume = parseFloat(volumeSlider.value);
+                    audio.volume = volume;
+                    volumeDisplay.textContent = Math.round(volume * 100) + '%';
+                });
+                
+                audio.addEventListener('error', () => {
+                    console.log('音楽ファイルが見つかりません');
+                    playPauseBtn.textContent = '❌ なし';
+                    playPauseBtn.disabled = true;
+                });
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            
+            updateCamera() {
+                this.currentRotationX += (this.targetRotationX - this.currentRotationX) * 0.1;
+                this.currentRotationY += (this.targetRotationY - this.currentRotationY) * 0.1;
+                
+                if (this.isAutoRotating) {
+                    this.currentRotationY += this.autoRotationSpeed;
+                    this.targetRotationY = this.currentRotationY;
+                }
+                
+                const x = 100 * this.camera_zoom * Math.sin(this.currentRotationX) * Math.cos(this.currentRotationY);
+                const y = 100 * this.camera_zoom * Math.cos(this.currentRotationX);
+                const z = 100 * this.camera_zoom * Math.sin(this.currentRotationX) * Math.sin(this.currentRotationY);
+                
+                this.camera.position.set(x, y, z);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            updateParticles() {
+                if (this.particles) {
+                    if (this.isAutoRotating) {
+                        this.particles.rotation.y += 0.002;
+                        this.particles.rotation.x += 0.001;
+                    } else {
+                        this.particles.rotation.y += 0.0005;
+                        this.particles.rotation.x += 0.0002;
+                    }
+                }
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateCamera();
+                this.updateParticles();
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            new PanoramicGarden();
+        });
+    </script>
+</body>
+</html>
