@@ -1,0 +1,100 @@
+{
+  "modules": {
+    "setup-branch": {
+      "path": "./.github/actions/kamui-modules/setup-branch",
+      "inputs": ["project-prefix"],
+      "outputs": ["branch-name", "folder-name"],
+      "dependencies": [],
+      "category": "setup",
+      "description": "Create branch and folder structure"
+    },
+    "music-planning": {
+      "path": "./.github/actions/kamui-modules/music-planning",
+      "inputs": ["music-concept", "folder-name", "branch-name", "oauth-token", "mcp-config"],
+      "outputs": ["planning-completed", "music-prompt", "image-prompt", "video-strategy"],
+      "dependencies": ["setup-branch"],
+      "category": "planning",
+      "description": "Strategic planning for music video creation"
+    },
+    "image-generation": {
+      "path": "./.github/actions/kamui-modules/image-generation",
+      "inputs": ["image-prompt", "folder-name", "branch-name", "oauth-token", "mcp-config"],
+      "outputs": ["image-completed", "google-image-url"],
+      "dependencies": ["setup-branch"],
+      "category": "content",
+      "description": "Generate images using Imagen4 Fast",
+      "providers": ["imagen4"]
+    },
+    "music-generation": {
+      "path": "./.github/actions/kamui-modules/music-generation",
+      "inputs": ["music-concept", "music-prompt", "folder-name", "branch-name", "oauth-token", "mcp-config"],
+      "outputs": ["music-completed", "music-url"],
+      "dependencies": ["setup-branch", "music-planning"],
+      "category": "content",
+      "description": "Generate music using Google Lyria",
+      "providers": ["google-lyria"]
+    },
+    "music-analysis": {
+      "path": "./.github/actions/kamui-modules/music-analysis",
+      "inputs": ["folder-name", "branch-name", "oauth-token"],
+      "outputs": ["analysis-completed", "image-prompt-1", "image-prompt-2", "image-prompt-3", "video-prompt-1", "video-prompt-2", "video-prompt-3"],
+      "dependencies": ["music-generation"],
+      "category": "analysis",
+      "description": "Analyze music for optimized video prompts"
+    },
+    "video-generation": {
+      "path": "./.github/actions/kamui-modules/video-generation",
+      "inputs": ["video-prompt", "google-image-url", "folder-name", "branch-name", "oauth-token", "mcp-config", "segment-number"],
+      "outputs": ["video-completed"],
+      "dependencies": ["image-generation"],
+      "category": "content",
+      "description": "Generate videos using Hailuo-02 Pro",
+      "providers": ["hailuo-02"]
+    },
+    "video-adjustment": {
+      "path": "./.github/actions/kamui-modules/video-adjustment",
+      "inputs": ["folder-name", "branch-name", "oauth-token", "video-prompt-1", "video-prompt-2", "video-prompt-3"],
+      "outputs": ["adjustment-completed"],
+      "dependencies": ["music-analysis"],
+      "category": "analysis",
+      "description": "Adjust video prompts for optimal results"
+    },
+    "video-concatenation": {
+      "path": "./.github/actions/kamui-modules/video-concatenation",
+      "inputs": ["folder-name", "branch-name", "oauth-token"],
+      "outputs": ["concatenation-completed", "final-video-path"],
+      "dependencies": ["video-generation", "music-generation"],
+      "category": "integration",
+      "description": "Concatenate videos with music integration"
+    }
+  },
+  "providers": {
+    "imagen4": {
+      "type": "image",
+      "module": "image-generation",
+      "description": "Google Imagen4 Fast image generation"
+    },
+    "flux": {
+      "type": "image", 
+      "module": "flux-generation",
+      "description": "Flux image generation",
+      "status": "planned"
+    },
+    "google-lyria": {
+      "type": "music",
+      "module": "music-generation", 
+      "description": "Google Lyria music generation"
+    },
+    "hailuo-02": {
+      "type": "video",
+      "module": "video-generation",
+      "description": "Hailuo-02 Pro video generation"
+    },
+    "baidu": {
+      "type": "video",
+      "module": "baidu-generation",
+      "description": "Baidu video generation",
+      "status": "planned"
+    }
+  }
+}

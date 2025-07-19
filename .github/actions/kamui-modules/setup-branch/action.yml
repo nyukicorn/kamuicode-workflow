@@ -1,6 +1,12 @@
-name: 'Setup Branch for Music Video'
-description: 'Create a new branch and folder structure for music video generation'
+name: 'Setup Branch for Project'
+description: 'Create a new branch and folder structure for project generation'
 author: 'KamuiCode Workflow'
+
+inputs:
+  project-prefix:
+    description: 'The project prefix for branch and folder naming (e.g., music-video, threejs-experience)'
+    required: false
+    default: 'music-video'
 
 outputs:
   branch-name:
@@ -16,12 +22,13 @@ runs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Create branch for music video generation
+    - name: Create branch for project generation
       id: create-branch
       shell: bash
       run: |
-        BRANCH_NAME="music-video/$(date +%Y%m%d)-${{ github.run_id }}"
-        FOLDER_NAME="music-video-$(date +%Y%m%d)-${{ github.run_id }}"
+        PROJECT_PREFIX="${{ inputs.project-prefix }}"
+        BRANCH_NAME="$PROJECT_PREFIX/$(date +%Y%m%d)-${{ github.run_id }}"
+        FOLDER_NAME="$PROJECT_PREFIX-$(date +%Y%m%d)-${{ github.run_id }}"
         git checkout -b $BRANCH_NAME
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"

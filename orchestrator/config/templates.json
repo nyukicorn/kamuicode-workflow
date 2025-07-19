@@ -1,0 +1,73 @@
+{
+  "workflows": {
+    "music-video": {
+      "name": "Create Music Video",
+      "description": "Generate music video with customizable modules",
+      "template": {
+        "name": "Create Music Video (Orchestrated)",
+        "on": {
+          "workflow_dispatch": {
+            "inputs": {
+              "music_concept": {
+                "description": "The music concept for the video",
+                "required": true,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "permissions": {
+          "contents": "write",
+          "pull-requests": "write"
+        },
+        "jobs": {
+          "create-music-video": {
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": 60,
+            "steps": [
+              {
+                "name": "Setup Project Structure",
+                "id": "setup",
+                "uses": "./.github/actions/kamui-modules/setup-branch"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "image-only": {
+      "name": "Generate Images Only",
+      "description": "Generate images using specified providers",
+      "template": {
+        "name": "Generate Images (Orchestrated)",
+        "on": {
+          "workflow_dispatch": {
+            "inputs": {
+              "image_concept": {
+                "description": "The image concept",
+                "required": true,
+                "type": "string"
+              }
+            }
+          }
+        },
+        "permissions": {
+          "contents": "write"
+        },
+        "jobs": {
+          "generate-images": {
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": 30,
+            "steps": [
+              {
+                "name": "Setup Project Structure", 
+                "id": "setup",
+                "uses": "./.github/actions/kamui-modules/setup-branch"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

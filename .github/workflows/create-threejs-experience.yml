@@ -1,0 +1,108 @@
+name: Create Three.js Experience
+
+on:
+  workflow_dispatch:
+    inputs:
+      experience_concept:
+        description: '3D体験のコンセプト（例：桜舞う京都庭園のVR散歩）'
+        required: true
+        type: string
+      include_music:
+        description: 'BGM付きにするか'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-threejs-experience:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        with:
+          project-prefix: "threejs-experience"
+      
+      - name: Image Generation (Panorama)
+        id: image
+        uses: ./.github/actions/kamui-modules/image-generation
+        with:
+          image-prompt: "360度パノラマ形式の${{ inputs.experience_concept }}、Equirectangular投影、4K高解像度、シームレスな左右接続、没入感のある環境"
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Music Generation (Optional BGM)
+        id: music
+        if: ${{ inputs.include_music == true }}
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: "${{ inputs.experience_concept }}をテーマにした環境音楽、アンビエント、ループ対応"
+          music-prompt: "${{ inputs.experience_concept }}の雰囲気に合う環境音楽。リラックスできるアンビエントサウンド、シームレスループ対応、3D空間BGMとして最適化"
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Three.js Scene Generation
+        id: threejs
+        uses: ./.github/actions/kamui-modules/threejs-generation
+        with:
+          experience-concept: ${{ inputs.experience_concept }}
+          panorama-image-url: ${{ steps.image.outputs.google-image-url }}
+          include-music: ${{ inputs.include_music }}
+          music-url: ${{ steps.music.outputs.music-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Three.js Integration & Packaging
+        id: integration
+        uses: ./.github/actions/kamui-modules/threejs-integration
+        with:
+          experience-concept: ${{ inputs.experience_concept }}
+          include-music: ${{ inputs.include_music }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Summary
+        run: |
+          echo "🎯 Three.js Experience Creation Summary:"
+          echo "========================================"
+          echo "📝 Concept: ${{ inputs.experience_concept }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo ""
+          echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
+          echo "🖼️ Panorama URL: ${{ steps.image.outputs.google-image-url }}"
+          echo ""
+          if [ "${{ inputs.include_music }}" == "true" ]; then
+            echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
+            echo "🎵 Music URL: ${{ steps.music.outputs.music-url }}"
+          else
+            echo "⏭️ Music Generation: Skipped"
+          fi
+          echo ""
+          echo "✅ Three.js Scene Generation: ${{ steps.threejs.outputs.threejs-completed }}"
+          echo "🎨 Scene Files: Generated"
+          echo ""
+          echo "✅ Integration & Packaging: ${{ steps.integration.outputs.integration-completed }}"
+          echo "📦 Final Package: ${{ steps.integration.outputs.final-package-path }}"
+          echo ""
+          echo "🎉 Three.js Experience Creation Success!"
+          echo "🌐 Interactive 3D scene with panorama and particles"
+          echo "========================================"
+      
+      - name: Final Status
+        run: |
+          echo "✅ Three.js Experience workflow completed successfully!"
+          echo "Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "Check the branch for the generated 3D experience files."
