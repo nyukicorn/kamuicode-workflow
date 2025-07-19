@@ -37,9 +37,9 @@ runs:
         # プロンプトの構築
         PROMPT="Translate the following Japanese prompt to accurate English. Output only the translation result without explanations.
 
-Japanese prompt: $JAPANESE_PROMPT
+Japanese text to translate - $JAPANESE_PROMPT
 
-Requirements: Accurate English translation suitable for Imagen4 image generation, proper technical terms for 360-degree panorama and Equirectangular projection, concise and optimized for image generation."
+Make sure the English translation is suitable for Imagen4 image generation with proper technical terms for 360-degree panorama and Equirectangular projection."
         
         echo "🚀 Starting Translation Agent..."
         echo "📝 Prompt length: ${#PROMPT}"
