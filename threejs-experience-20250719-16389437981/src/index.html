@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flower Kaleidoscope - 3D Panorama Experience</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            max-width: 300px;
+        }
+        
+        #ui h3 {
+            margin: 0 0 10px 0;
+            color: #ff69b4;
+        }
+        
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(255, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 200;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 150;
+        }
+        
+        .rotation-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff69b4;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="loading">Loading panorama...</div>
+        <div id="error">WebGL not supported or panorama failed to load</div>
+        <div id="ui">
+            <h3>🌸 Flower Kaleidoscope</h3>
+            <p><strong>Controls:</strong></p>
+            <p>🖱️ <strong>Mouse drag:</strong> Rotate view</p>
+            <p>🎯 <strong>Mouse wheel:</strong> Zoom in/out</p>
+            <p>👆 <strong>Double-click:</strong> Auto-rotate</p>
+            <p>📱 <strong>Touch:</strong> Drag to rotate, pinch to zoom</p>
+        </div>
+        <div class="rotation-indicator" id="rotationIndicator">
+            🔄 Auto-rotating...
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, sphere, particles;
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let previousMouseX = 0, previousMouseY = 0;
+        let rotationX = 0, rotationY = 0;
+        let autoRotate = false;
+        let autoRotateSpeed = 0.001;
+        let particleSystem;
+        let loadingElement = document.getElementById('loading');
+        let errorElement = document.getElementById('error');
+        let rotationIndicator = document.getElementById('rotationIndicator');
+        
+        // Touch support variables
+        let touches = [];
+        let lastTouchDistance = 0;
+        
+        function checkWebGL() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && 
+                         (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        function showError(message) {
+            loadingElement.style.display = 'none';
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+        
+        function hideLoading() {
+            loadingElement.style.display = 'none';
+        }
+        
+        function init() {
+            if (!checkWebGL()) {
+                showError('WebGL is not supported in your browser');
+                return;
+            }
+            
+            const container = document.getElementById('container');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Create sphere geometry for panorama
+            const geometry = new THREE.SphereGeometry(500, 32, 32);
+            geometry.scale(-1, 1, 1); // Invert sphere to see inside
+            
+            // Load panorama texture
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(
+                './panorama.jpg',
+                function(texture) {
+                    // Success callback
+                    hideLoading();
+                    const material = new THREE.MeshBasicMaterial({ map: texture });
+                    sphere = new THREE.Mesh(geometry, material);
+                    scene.add(sphere);
+                    
+                    // Create particle system
+                    createParticleSystem();
+                    
+                    // Start rendering
+                    animate();
+                },
+                function(progress) {
+                    // Progress callback
+                    console.log('Loading progress:', progress);
+                },
+                function(error) {
+                    // Error callback
+                    console.error('Error loading panorama:', error);
+                    showError('Failed to load panorama image');
+                }
+            );
+            
+            camera.position.set(0, 0, 0);
+            
+            // Event listeners
+            setupEventListeners();
+        }
+        
+        function createParticleSystem() {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleCount = 2000;
+            const positions = new Float32Array(particleCount * 3);
+            
+            // Generate random positions for particles
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // Random position in sphere
+                const radius = 100 + Math.random() * 300;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i + 2] = radius * Math.cos(phi);
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xff69b4,
+                size: 0.3,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+        
+        function setupEventListeners() {
+            const canvas = renderer.domElement;
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', onMouseDown, false);
+            canvas.addEventListener('mousemove', onMouseMove, false);
+            canvas.addEventListener('mouseup', onMouseUp, false);
+            canvas.addEventListener('wheel', onMouseWheel, false);
+            canvas.addEventListener('dblclick', onDoubleClick, false);
+            
+            // Touch events
+            canvas.addEventListener('touchstart', onTouchStart, false);
+            canvas.addEventListener('touchmove', onTouchMove, false);
+            canvas.addEventListener('touchend', onTouchEnd, false);
+            
+            // Window resize
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // Prevent context menu
+            canvas.addEventListener('contextmenu', function(e) { e.preventDefault(); }, false);
+        }
+        
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            previousMouseX = mouseX;
+            previousMouseY = mouseY;
+        }
+        
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            
+            const deltaX = mouseX - previousMouseX;
+            const deltaY = mouseY - previousMouseY;
+            
+            rotationY += deltaX * 0.005;
+            rotationX += deltaY * 0.005;
+            
+            // Limit vertical rotation
+            rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+            
+            previousMouseX = mouseX;
+            previousMouseY = mouseY;
+            
+            updateCameraRotation();
+        }
+        
+        function onMouseUp(event) {
+            isMouseDown = false;
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(120, fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        function onDoubleClick(event) {
+            autoRotate = !autoRotate;
+            rotationIndicator.style.display = autoRotate ? 'block' : 'none';
+        }
+        
+        function onTouchStart(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 1) {
+                mouseX = touches[0].clientX;
+                mouseY = touches[0].clientY;
+                previousMouseX = mouseX;
+                previousMouseY = mouseY;
+                isMouseDown = true;
+            } else if (touches.length === 2) {
+                lastTouchDistance = getTouchDistance(touches[0], touches[1]);
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 1 && isMouseDown) {
+                mouseX = touches[0].clientX;
+                mouseY = touches[0].clientY;
+                
+                const deltaX = mouseX - previousMouseX;
+                const deltaY = mouseY - previousMouseY;
+                
+                rotationY += deltaX * 0.005;
+                rotationX += deltaY * 0.005;
+                
+                rotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, rotationX));
+                
+                previousMouseX = mouseX;
+                previousMouseY = mouseY;
+                
+                updateCameraRotation();
+            } else if (touches.length === 2) {
+                const currentDistance = getTouchDistance(touches[0], touches[1]);
+                const delta = currentDistance - lastTouchDistance;
+                
+                const fov = camera.fov - delta * 0.1;
+                camera.fov = Math.max(10, Math.min(120, fov));
+                camera.updateProjectionMatrix();
+                
+                lastTouchDistance = currentDistance;
+            }
+        }
+        
+        function onTouchEnd(event) {
+            event.preventDefault();
+            touches = Array.from(event.touches);
+            
+            if (touches.length === 0) {
+                isMouseDown = false;
+            }
+        }
+        
+        function getTouchDistance(touch1, touch2) {
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function updateCameraRotation() {
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = rotationY;
+            camera.rotation.x = rotationX;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Auto rotation
+            if (autoRotate) {
+                rotationY += autoRotateSpeed;
+                updateCameraRotation();
+            }
+            
+            // Animate particles
+            if (particles) {
+                const time = Date.now() * 0.001;
+                const speed = autoRotate ? 0.02 : 0.005;
+                particles.rotation.y += speed;
+                particles.rotation.x += speed * 0.5;
+                
+                // Pulse particle opacity
+                particles.material.opacity = 0.5 + 0.3 * Math.sin(time * 2);
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the experience
+        init();
+    </script>
+</body>
+</html>
