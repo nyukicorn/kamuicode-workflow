@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜舞う京都の夜 - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        #canvas:active {
+            cursor: grabbing;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 300px;
+        }
+        
+        #colorControls {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            border: 2px solid rgba(255, 182, 193, 0.5);
+        }
+        
+        #colorControls:hover {
+            opacity: 1.0;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #FFB6C1;
+        }
+        
+        select, input[type="color"] {
+            width: 100%;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 12px;
+        }
+        
+        input[type="color"] {
+            height: 30px;
+            cursor: pointer;
+        }
+        
+        #audioControls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        #audioToggle {
+            background: #FFB6C1;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #audioToggle:hover {
+            background: #FF69B4;
+        }
+        
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 182, 193, 0.3);
+            border-top: 3px solid #FFB6C1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">
+        <div class="spinner"></div>
+        <div>桜舞う京都の夜を読み込み中...</div>
+    </div>
+    
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="info">
+            <h3>🌸 桜舞う京都の夜 🌸</h3>
+            <p><strong>操作方法:</strong></p>
+            <p>• マウスドラッグ: 視点移動</p>
+            <p>• ホイール: ズーム</p>
+            <p>• ダブルクリック: 自動回転</p>
+            <p>• 右側UI: 桜の色変更</p>
+        </div>
+        
+        <div id="colorControls">
+            <div class="control-group">
+                <label>色モード</label>
+                <select id="colorMode">
+                    <option value="single">単色</option>
+                    <option value="gradient" selected>同系色グラデーション</option>
+                    <option value="rainbow">レインボー</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>ベース色</label>
+                <input type="color" id="baseColor" value="#FFB6C1">
+            </div>
+        </div>
+        
+        <div id="audioControls">
+            <button id="audioToggle">🎵 音楽再生</button>
+        </div>
+        
+        <div id="error">
+            <h3>エラーが発生しました</h3>
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, panoramaMesh, particles;
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationY = 0, targetRotationX = 0;
+        let currentRotationY = 0, currentRotationX = 0;
+        let autoRotate = false;
+        let autoRotateSpeed = 0.01;
+        let particleColors = [];
+        let audio, isAudioPlaying = false;
+        
+        const experienceConcept = "桜舞う京都の夜、パーティクルは花びらのように舞い踊る";
+        
+        function init() {
+            try {
+                if (!window.WebGLRenderingContext && !window.WebGL2RenderingContext) {
+                    throw new Error('WebGLがサポートされていません');
+                }
+                
+                const container = document.getElementById('container');
+                const canvas = document.getElementById('canvas');
+                
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                
+                renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x000000);
+                
+                createPanorama();
+                createParticles();
+                setupControls();
+                setupAudio();
+                animate();
+                
+                document.getElementById('loadingScreen').style.display = 'none';
+                
+            } catch (error) {
+                showError('初期化エラー: ' + error.message);
+                console.error('Init error:', error);
+            }
+        }
+        
+        function createPanorama() {
+            const geometry = new THREE.SphereGeometry(500, 32, 32);
+            const loader = new THREE.TextureLoader();
+            
+            loader.load(
+                './panorama.jpg',
+                function(texture) {
+                    const material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        side: THREE.BackSide
+                    });
+                    panoramaMesh = new THREE.Mesh(geometry, material);
+                    scene.add(panoramaMesh);
+                    console.log('パノラマ画像が正常に読み込まれました');
+                },
+                function(progress) {
+                    console.log('パノラマ読み込み進行:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function(error) {
+                    console.error('パノラマ画像の読み込みに失敗:', error);
+                    showError('パノラマ画像の読み込みに失敗しました。panorama.jpgが存在することを確認してください。');
+                }
+            );
+        }
+        
+        function createHeartGeometry() {
+            const shape = new THREE.Shape();
+            const x = 0, y = 0;
+            
+            shape.moveTo(x + 0.5, y + 0.5);
+            shape.bezierCurveTo(x + 0.5, y + 0.5, x + 0.4, y, x, y);
+            shape.bezierCurveTo(x - 0.6, y, x - 0.6, y + 0.7, x - 0.6, y + 0.7);
+            shape.bezierCurveTo(x - 0.6, y + 1.1, x - 0.3, y + 1.54, x + 0.5, y + 1.9);
+            shape.bezierCurveTo(x + 1.2, y + 1.54, x + 1.6, y + 1.1, x + 1.6, y + 0.7);
+            shape.bezierCurveTo(x + 1.6, y + 0.7, x + 1.6, y, x + 1, y);
+            shape.bezierCurveTo(x + 0.7, y, x + 0.5, y + 0.5, x + 0.5, y + 0.5);
+            
+            const geometry = new THREE.ShapeGeometry(shape);
+            return geometry;
+        }
+        
+        function createParticles() {
+            const particleCount = 3000;
+            const heartGeometry = createHeartGeometry();
+            
+            particles = new THREE.Group();
+            particleColors = [];
+            
+            for (let i = 0; i < particleCount; i++) {
+                const material = new THREE.MeshBasicMaterial({ 
+                    transparent: true, 
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                
+                const particle = new THREE.Mesh(heartGeometry, material);
+                
+                const phi = Math.acos(-1 + (2 * i) / particleCount);
+                const theta = Math.sqrt(particleCount * Math.PI) * phi;
+                const radius = 100 + Math.random() * 200;
+                
+                particle.position.x = radius * Math.cos(theta) * Math.sin(phi);
+                particle.position.y = radius * Math.cos(phi);
+                particle.position.z = radius * Math.sin(theta) * Math.sin(phi);
+                
+                particle.scale.setScalar(0.6 + Math.random() * 0.4);
+                
+                particle.rotation.x = Math.random() * Math.PI * 2;
+                particle.rotation.y = Math.random() * Math.PI * 2;
+                particle.rotation.z = Math.random() * Math.PI * 2;
+                
+                particle.userData = {
+                    rotationSpeed: (Math.random() - 0.5) * 0.02,
+                    floatSpeed: (Math.random() - 0.5) * 0.005,
+                    originalY: particle.position.y
+                };
+                
+                particles.add(particle);
+            }
+            
+            scene.add(particles);
+            updateParticleColors();
+        }
+        
+        function updateParticleColors() {
+            const colorMode = document.getElementById('colorMode').value;
+            const baseColorHex = document.getElementById('baseColor').value;
+            const baseColor = new THREE.Color(baseColorHex);
+            
+            particles.children.forEach((particle, index) => {
+                let color;
+                
+                switch (colorMode) {
+                    case 'single':
+                        color = baseColor.clone();
+                        break;
+                    case 'gradient':
+                        color = baseColor.clone();
+                        const lightness = 0.5 + (Math.random() - 0.5) * 0.6;
+                        color.multiplyScalar(lightness);
+                        break;
+                    case 'rainbow':
+                        const hue = (index / particles.children.length + Math.random() * 0.1) % 1;
+                        color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                        break;
+                }
+                
+                particle.material.color = color;
+            });
+        }
+        
+        function setupControls() {
+            const canvas = document.getElementById('canvas');
+            
+            canvas.addEventListener('mousedown', onMouseDown, false);
+            canvas.addEventListener('mousemove', onMouseMove, false);
+            canvas.addEventListener('mouseup', onMouseUp, false);
+            canvas.addEventListener('wheel', onMouseWheel, false);
+            canvas.addEventListener('dblclick', onDoubleClick, false);
+            
+            canvas.addEventListener('touchstart', onTouchStart, false);
+            canvas.addEventListener('touchmove', onTouchMove, false);
+            canvas.addEventListener('touchend', onTouchEnd, false);
+            
+            document.getElementById('colorMode').addEventListener('change', updateParticleColors);
+            document.getElementById('baseColor').addEventListener('input', updateParticleColors);
+            
+            window.addEventListener('resize', onWindowResize, false);
+        }
+        
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            autoRotate = false;
+        }
+        
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            targetRotationY += deltaX * 0.005;
+            targetRotationX += deltaY * 0.005;
+            
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+        
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(120, fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+            console.log('自動回転:', autoRotate ? 'ON' : 'OFF');
+        }
+        
+        let touchStartX = 0, touchStartY = 0;
+        
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+                autoRotate = false;
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                const deltaX = event.touches[0].clientX - touchStartX;
+                const deltaY = event.touches[0].clientY - touchStartY;
+                
+                targetRotationY += deltaX * 0.005;
+                targetRotationX += deltaY * 0.005;
+                
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+                
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+            }
+        }
+        
+        function onTouchEnd() {
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function setupAudio() {
+            audio = new Audio('./generated-music.wav');
+            audio.loop = true;
+            audio.volume = 0.3;
+            
+            const audioToggle = document.getElementById('audioToggle');
+            audioToggle.addEventListener('click', function() {
+                if (isAudioPlaying) {
+                    audio.pause();
+                    audioToggle.textContent = '🎵 音楽再生';
+                    isAudioPlaying = false;
+                } else {
+                    audio.play().catch(error => {
+                        console.log('音楽の再生に失敗:', error);
+                        showError('音楽ファイルの再生に失敗しました');
+                    });
+                    audioToggle.textContent = '🔇 音楽停止';
+                    isAudioPlaying = true;
+                }
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (autoRotate) {
+                targetRotationY += autoRotateSpeed;
+                autoRotateSpeed = 0.02;
+            } else {
+                autoRotateSpeed = 0.01;
+            }
+            
+            currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+            currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+            
+            camera.position.x = Math.sin(currentRotationY) * Math.cos(currentRotationX) * 5;
+            camera.position.y = Math.sin(currentRotationX) * 5;
+            camera.position.z = Math.cos(currentRotationY) * Math.cos(currentRotationX) * 5;
+            camera.lookAt(0, 0, 0);
+            
+            if (particles) {
+                particles.children.forEach((particle) => {
+                    particle.rotation.x += particle.userData.rotationSpeed;
+                    particle.rotation.y += particle.userData.rotationSpeed;
+                    particle.rotation.z += particle.userData.rotationSpeed * 0.5;
+                    
+                    particle.position.y = particle.userData.originalY + 
+                        Math.sin(Date.now() * 0.001 + particle.position.x * 0.01) * 10;
+                });
+                
+                particles.rotation.y += autoRotate ? 0.005 : 0.001;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('loadingScreen').style.display = 'none';
+        }
+        
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
