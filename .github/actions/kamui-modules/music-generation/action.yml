@@ -72,16 +72,88 @@ runs:
           echo "📁 Created music folder: $MUSIC_DIR"
         fi
         
-        # テスト用のダミー音楽ファイルを作成
-        echo "Test music file for: $MUSIC_CONCEPT" > "$MUSIC_DIR/generated-music.txt"
-        echo "Music prompt: $MUSIC_PROMPT" >> "$MUSIC_DIR/generated-music.txt"
-        echo "Generated at: $(date)" >> "$MUSIC_DIR/generated-music.txt"
+# MCP設定の確認
+        MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
         
-        # テスト用のURLを作成
-        MUSIC_URL="https://example.com/test-music-$RANDOM.mp3"
-        echo "$MUSIC_URL" > "$FOLDER_NAME/music-url.txt"
+        echo "📋 MCP Configuration Check:"
+        echo "Working directory: $(pwd)"
+        echo "MCP config path: $MCP_CONFIG_PATH"
+        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
+        echo "Allowed tools: mcp__t2m-google-lyria__lyria_generate,Bash"
         
-        echo "music-url=$MUSIC_URL" >> $GITHUB_OUTPUT
+        # Create MCP config file from GitHub Secret
+        mkdir -p .claude
+        echo '${{ inputs.mcp-config }}' > "$MCP_CONFIG_ABS_PATH"
+        echo "✅ MCP config file created from GitHub Secret"
+        
+        # MCP設定ファイルの確認
+        if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
+          echo "✅ MCP config file exists at: $MCP_CONFIG_ABS_PATH"
+          echo "MCP servers configured:"
+          jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
+        else
+          echo "❌ MCP config file creation failed"
+          exit 1
+        fi
+        
+        # 一括実行: 音楽生成（Google Lyria Generate）
+        echo "🚀 Music Generation (Google Lyria Generate)"
+        MUSIC_PROMPT_FULL="Google Lyriaを使用して音楽生成を実行してください。
+        **音楽コンセプト**: $MUSIC_CONCEPT
+        **最適化された音楽生成プロンプト**: $MUSIC_PROMPT
+        **実行手順**:
+        1. \`mcp__t2m-google-lyria__lyria_generate\`ツールを使用して音楽生成を実行
+        2. 生成された音楽ファイルを「$MUSIC_DIR/generated-music.mp3」または「$MUSIC_DIR/generated-music.wav」に保存
+        3. 音楽ファイルのパスを「$FOLDER_NAME/music-url.txt」に保存（後の処理で参照用）
+        4. 生成完了の確認メッセージを表示
+        **重要**: 必ず正しいツール名 \`mcp__t2m-google-lyria__lyria_generate\` を使用してください。
+        
+        **保存先**:
+        - 音楽ディレクトリ: $MUSIC_DIR
+        - 音楽ファイル: generated-music.mp3 または generated-music.wav
+        - パス保存ファイル: $FOLDER_NAME/music-url.txt"
+        
+        npx @anthropic-ai/claude-code \
+          --mcp-config="$MCP_CONFIG_ABS_PATH" \
+          --allowedTools "mcp__t2m-google-lyria__lyria_generate,Bash" \
+          --max-turns 25 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$MUSIC_PROMPT_FULL" || {
+            echo "::error::❌ Music generation failed"
+            exit 1
+          }
+        
+        # 生成された音楽の確認
+        echo ""
+        echo "🎵 Checking generated music..."
+        if [ -d "$MUSIC_DIR" ]; then
+          MUSIC_COUNT=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | wc -l)
+          echo "::notice::🎵 Generated $MUSIC_COUNT music files"
+          if [ "$MUSIC_COUNT" -gt 0 ]; then
+            echo "Music files:"
+            FIRST_MUSIC=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | head -1)
+            echo "First music: $FIRST_MUSIC"
+            
+            # 音楽URLを確認してGitHub Outputに設定
+            if [ -f "$FOLDER_NAME/music-url.txt" ]; then
+              MUSIC_URL=$(cat "$FOLDER_NAME/music-url.txt")
+              echo "Music URL: $MUSIC_URL"
+              echo "music-url=$MUSIC_URL" >> $GITHUB_OUTPUT
+            else
+              echo "::warning::⚠️ Music URL not found in file"
+              echo "music-url=" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "::error::❌ No music files were generated"
+            exit 1
+          fi
+        else
+          echo "::error::❌ Music directory not found"
+          exit 1
+        fi
+        
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "::endgroup::"
     
