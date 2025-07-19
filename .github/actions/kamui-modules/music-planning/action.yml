@@ -70,19 +70,127 @@ runs:
           echo "📁 Created planning folder: $PLANNING_DIR"
         fi
         
-        # まず簡単なテストファイルを作成（テスト用）
-        echo "Test music prompt for: $MUSIC_CONCEPT" > "$PLANNING_DIR/music-prompt.txt"
-        echo "Test image prompt for: $MUSIC_CONCEPT" > "$PLANNING_DIR/image-prompt.txt"
-        echo "Test video strategy for: $MUSIC_CONCEPT" > "$PLANNING_DIR/video-strategy.txt"
+        # プロンプトの構築
+        PROMPT="あなたは音楽主導のミュージックビデオ制作の戦略的プランナーです。5秒×3つの動画を30-40秒の音楽に最適化する戦略を中心とした詳細な制作計画を立ててください。
+
+        **音楽コンセプト**: $MUSIC_CONCEPT
+        **重要制約**: 動画は5秒×3つのみ、音楽は30-40秒
+
+        **戦略的タスク**:
+        1. 音楽コンセプトを分析し、Google Lyriaで生成すべき音楽の詳細な設定を計画
+        2. **編集戦略の策定**: 5秒×3動画を30-40秒音楽に最適化する具体的戦略
+        3. **動画役割分析**: 3つの動画の戦略的役割（メイン、アクセント、トランジション）を定義
+        4. **使用頻度計画**: 各動画の音楽内での使用頻度・配置戦略を設計
+        5. 編集戦略に基づいた画像生成プロンプトを作成
+        6. ループ・速度調整・エフェクトを考慮した動画コンセプトを定義
+        7. 戦略的制作計画書を「$PLANNING_DIR/music-video-strategy.md」に保存
+        8. 音楽生成用プロンプトを「$PLANNING_DIR/music-prompt.txt」に保存
+        9. 戦略的画像プロンプトを「$PLANNING_DIR/image-prompt.txt」に保存
+        10. 編集最適化動画コンセプトを「$PLANNING_DIR/video-strategy.txt」に保存
+
+        **音楽生成プロンプトの要件**:
+        - Google Lyriaに最適化された詳細な音楽プロンプト
+        - 楽器、テンポ、雰囲気、感情を明確に指定
+        - ジャンルとスタイルを具体的に記述
+        - 「短い」「ショート」「イントロ」等の短時間を意図するキーワードを含む
+        - 注意：Google Lyriaは通常30-40秒の音楽を生成します
+
+        **画像生成プロンプトの要件**:
+        - 音楽のコンセプトと完全に一致する視覚的表現
+        - Imagen4 Fastに最適化された詳細なプロンプト
+        - 音楽の雰囲気を視覚的に表現する色彩、構図、スタイル
+        - 50-80語程度の適切な長さ
+
+        **戦略的動画コンセプトの要件**:
+        - **制約認識**: 5秒×3動画で30-40秒音楽をカバーする戦略的設計
+        - **役割分担戦略**:
+          * 動画1（メイン）: 音楽の50-60%で使用、基本的な雰囲気・テーマ表現
+          * 動画2（アクセント）: 音楽の20-30%で使用、クライマックス・転換点
+          * 動画3（トランジション）: 音楽の10-20%で使用、つなぎ・変化演出
+        - **編集最適化設計**:
+          * ループ耐性: 始点・終点が自然に連続する構成
+          * 速度可変性: 0.5-2倍速対応可能な動き設計
+          * エフェクト適応: フィルター・トランジション追加前提
+        - **戦略的配置計画**:
+          * 音楽構造分析に基づく各動画の最適配置タイミング
+          * ビート・テンポに合わせた使用頻度・速度調整計画
+          * 感情変化に対応した動画切り替え戦略
+        - **技術要件**: Hailuo-02 Pro最適化（5秒制限内で最大効果）
+
+        **重要**: 
+        1. 必ず以下の7つのファイルを作成してください：
+           - $PLANNING_DIR/music-video-strategy.md（戦略的制作計画）
+           - $PLANNING_DIR/music-prompt.txt
+           - $PLANNING_DIR/music-prompt.md（ユーザー確認用）
+           - $PLANNING_DIR/image-prompt.txt（編集戦略対応）
+           - $PLANNING_DIR/image-prompt.md（ユーザー確認用）
+           - $PLANNING_DIR/video-strategy.txt（編集最適化コンセプト）
+           - $PLANNING_DIR/video-strategy.md（ユーザー確認用）
+        2. txtファイルは機械処理用（1行テキスト）、mdファイルはユーザー確認用
+        3. 音楽→画像→動画の一貫したコンセプトを維持
+        4. 各ファイルの内容は具体的で詳細に記述してください
+        5. ファイル作成後、必ずファイルパスを確認・報告してください"
         
-        # アウトプットの設定
-        MUSIC_PROMPT=$(cat "$PLANNING_DIR/music-prompt.txt" | tr '\n' ' ')
-        IMAGE_PROMPT=$(cat "$PLANNING_DIR/image-prompt.txt" | tr '\n' ' ')
-        VIDEO_CONCEPT=$(head -5 "$PLANNING_DIR/video-strategy.txt" | tr '\n' ' ')
+        echo "🚀 Starting Music Video Planning Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
         
-        echo "music-prompt=$MUSIC_PROMPT" >> $GITHUB_OUTPUT
-        echo "image-prompt=$IMAGE_PROMPT" >> $GITHUB_OUTPUT
-        echo "video-concept=$VIDEO_CONCEPT" >> $GITHUB_OUTPUT
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit" \
+          --max-turns 25 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された計画の確認
+        echo ""
+        echo "📋 Checking generated planning files..."
+        
+        # 音楽プロンプトの確認
+        if [ -f "$PLANNING_DIR/music-prompt.txt" ]; then
+          MUSIC_PROMPT=$(cat "$PLANNING_DIR/music-prompt.txt" | tr '\n' ' ')
+          echo "::notice::✅ Music prompt generated"
+          echo "Music prompt: $MUSIC_PROMPT"
+          echo "music-prompt=$MUSIC_PROMPT" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Music prompt file not found"
+          exit 1
+        fi
+        
+        # 画像プロンプトの確認
+        if [ -f "$PLANNING_DIR/image-prompt.txt" ]; then
+          IMAGE_PROMPT=$(cat "$PLANNING_DIR/image-prompt.txt" | tr '\n' ' ')
+          echo "::notice::✅ Image prompt generated"
+          echo "Image prompt: $IMAGE_PROMPT"
+          echo "image-prompt=$IMAGE_PROMPT" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Image prompt file not found"
+          exit 1
+        fi
+        
+        # 動画コンセプトの確認
+        if [ -f "$PLANNING_DIR/video-strategy.txt" ]; then
+          VIDEO_CONCEPT=$(head -5 "$PLANNING_DIR/video-strategy.txt" | tr '\n' ' ')
+          echo "::notice::✅ Video concept generated"
+          echo "Video concept: $VIDEO_CONCEPT"
+          echo "video-concept=$VIDEO_CONCEPT" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Video concept file not found"
+          exit 1
+        fi
+        
+        # 計画書の確認
+        if [ -f "$PLANNING_DIR/music-video-strategy.md" ]; then
+          echo "::notice::✅ Music video plan document generated"
+          echo "First 10 lines of plan:"
+          head -10 "$PLANNING_DIR/music-video-strategy.md"
+        else
+          echo "::warning::⚠️ Music video plan document not found"
+        fi
+        
         echo "completed=true" >> $GITHUB_OUTPUT
         
         echo "::endgroup::"
