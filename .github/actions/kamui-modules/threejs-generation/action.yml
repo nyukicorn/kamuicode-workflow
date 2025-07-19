@@ -36,6 +36,14 @@ inputs:
     description: 'Particle corner radius (0.0-1.0, for square only)'
     required: false
     default: '0.0'
+  particle-color-mode:
+    description: 'Particle color mode (single/gradient/rainbow)'
+    required: false
+    default: 'single'
+  particle-base-color:
+    description: 'Base particle color (HEX format: #FF0000)'
+    required: false
+    default: '#FFFFFF'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -90,6 +98,8 @@ runs:
         PARTICLE_SIZE="${{ inputs.particle-size }}"
         PARTICLE_SHAPE="${{ inputs.particle-shape }}"
         PARTICLE_CORNER_RADIUS="${{ inputs.particle-corner-radius }}"
+        PARTICLE_COLOR_MODE="${{ inputs.particle-color-mode }}"
+        PARTICLE_BASE_COLOR="${{ inputs.particle-base-color }}"
         FOLDER_NAME="${{ inputs.folder-name }}"
         SRC_DIR="$FOLDER_NAME/src"
         ASSETS_DIR="$FOLDER_NAME/assets"
@@ -156,11 +166,13 @@ runs:
         **パーティクル設定**:
         - パーティクル数: $PARTICLE_COUNT個
         - パーティクルサイズ: $PARTICLE_SIZE
-        - 形状: $PARTICLE_SHAPE（動的形状ジオメトリ使用）
+        - 形状: $PARTICLE_SHAPE（固定、初期設定のみ）
         - 角の丸み: $PARTICLE_CORNER_RADIUS（squareの場合のみ適用）
-        - 材質: PointsMaterial
+        - 色モード: $PARTICLE_COLOR_MODE（single/gradient/rainbow）
+        - ベース色: $PARTICLE_BASE_COLOR
+        - 材質: PointsMaterial（色変更対応）
         - アニメーション: 自動回転時に高速化
-        - 形状実装: circle=CircleGeometry, square=PlaneGeometry+角丸み, triangle=三角形カスタムジオメトリ, star=星形カスタムジオメトリ, heart=ハート形カスタムジオメトリ"
+        - 色実装: リアルタイム色変更UI（単色・グラデーション・レインボー）"
         else
           PARTICLE_INTEGRATION="
         **パーティクル設定**:
@@ -198,11 +210,12 @@ runs:
           - star: カスタム星形ジオメトリ（5つの尖った頂点）
           - heart: カスタムハート形ジオメトリ（数学的ハート曲線）
         - **UI表示**: 操作説明（マウスドラッグ・ホイール・ダブルクリック）
-        - **パーティクル形状UI**: リアルタイム形状変更ボタン
-          - 画面下部に形状選択ボタン（Circle/Square/Triangle/Star/Heart）
-          - クリック時に即座にパーティクルジオメトリを再生成
-          - 各形状に対応する関数: createCircleParticles(), createSquareParticles(), createTriangleParticles(), createStarParticles(), createHeartParticles()
-          - パーティクルシステムの動的置き換え機能
+        - **パーティクル色変更UI**: リアルタイム色変更コントロール
+          - 画面下部に色変更コントロール（カラーピッカー、プリセット色、グラデーション、レインボー）
+          - 単色モード: カラーピッカーで任意の色選択
+          - グラデーションモード: 2色グラデーション設定
+          - レインボーモード: 時間経過で色相変化
+          - リアルタイム色更新機能（PointsMaterial.color を動的変更）
         
         **技術要件**:
         - パノラマ: './panorama.jpg'（同じディレクトリの相対パス、../assets/ではない）
@@ -215,8 +228,9 @@ runs:
         - **パノラマ読み込み**: 画像読み込み失敗時も適切なデバッグ情報をコンソールに出力
         - **カメラ制御**: マウス操作でカメラの向きが確実に変わるよう実装
         - **エラーハンドリング**: 画像読み込みエラーの詳細をユーザーに表示
-        - **パーティクル動的変更**: 必ずボタンクリック時にパーティクルシステムを完全に再生成し、scene.remove()とscene.add()で置き換える
-        - **UI機能実装**: 形状変更ボタンが表示されているなら、必ず機能を実装してクリック可能にする
+        - **パーティクル色動的変更**: 必ずリアルタイムで色変更が機能するよう実装（material.color.setHex()使用）
+        - **色変更UI実装**: カラーピッカーやプリセットボタンが表示されているなら、必ず機能を実装してクリック可能にする
+        - **形状変更削除**: 動的形状変更機能は削除し、初期形状のみ固定で使用
         
         **禁止事項**:
         - OrbitControls.jsの使用（読み込みエラーの原因）

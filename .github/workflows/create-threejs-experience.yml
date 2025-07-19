@@ -43,6 +43,20 @@ on:
         required: false
         type: string
         default: '0.0'
+      particle_color_mode:
+        description: 'パーティクル色モード (single/gradient/rainbow)'
+        required: false
+        type: choice
+        options:
+          - single
+          - gradient
+          - rainbow
+        default: 'single'
+      particle_base_color:
+        description: 'ベース色 (HEX形式: #FF0000など)'
+        required: false
+        type: string
+        default: '#FFFFFF'
 
 jobs:
   create-threejs-experience:
@@ -105,6 +119,8 @@ jobs:
           particle-size: ${{ inputs.particle_size }}
           particle-shape: ${{ inputs.particle_shape }}
           particle-corner-radius: ${{ inputs.particle_corner_radius }}
+          particle-color-mode: ${{ inputs.particle_color_mode }}
+          particle-base-color: ${{ inputs.particle_base_color }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
