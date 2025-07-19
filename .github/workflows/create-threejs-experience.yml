@@ -12,6 +12,21 @@ on:
         required: false
         type: boolean
         default: false
+      particle_enabled:
+        description: 'パーティクル効果を有効にするか'
+        required: false
+        type: boolean
+        default: true
+      particle_count:
+        description: 'パーティクル数 (100-5000)'
+        required: false
+        type: string
+        default: '1000'
+      particle_size:
+        description: 'パーティクルサイズ (0.1-2.0)'
+        required: false
+        type: string
+        default: '0.5'
 
 jobs:
   create-threejs-experience:
@@ -31,7 +46,7 @@ jobs:
         id: image
         uses: ./.github/actions/kamui-modules/image-generation
         with:
-          image-prompt: "360度パノラマ形式の${{ inputs.experience_concept }}、Equirectangular投影、4K高解像度、シームレスな左右接続、没入感のある環境"
+          image-prompt: "完全な360度パノラマ画像、${{ inputs.experience_concept }}、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある環境、パノラマ専用レンダリング"
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -57,6 +72,9 @@ jobs:
           panorama-image-url: ${{ steps.image.outputs.google-image-url }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ steps.music.outputs.music-url }}
+          particle-enabled: ${{ inputs.particle_enabled }}
+          particle-count: ${{ inputs.particle_count }}
+          particle-size: ${{ inputs.particle_size }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

@@ -16,6 +16,18 @@ inputs:
   music-url:
     description: 'Google URL of the background music (if applicable)'
     required: false
+  particle-enabled:
+    description: 'Whether to enable particle effects'
+    required: false
+    default: 'true'
+  particle-count:
+    description: 'Number of particles (100-5000)'
+    required: false
+    default: '1000'
+  particle-size:
+    description: 'Particle size (0.1-2.0)'
+    required: false
+    default: '0.5'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -65,6 +77,9 @@ runs:
         PANORAMA_URL="${{ inputs.panorama-image-url }}"
         INCLUDE_MUSIC="${{ inputs.include-music }}"
         MUSIC_URL="${{ inputs.music-url }}"
+        PARTICLE_ENABLED="${{ inputs.particle-enabled }}"
+        PARTICLE_COUNT="${{ inputs.particle-count }}"
+        PARTICLE_SIZE="${{ inputs.particle-size }}"
         FOLDER_NAME="${{ inputs.folder-name }}"
         SRC_DIR="$FOLDER_NAME/src"
         ASSETS_DIR="$FOLDER_NAME/assets"
@@ -72,6 +87,9 @@ runs:
         echo "Experience concept: $EXPERIENCE_CONCEPT"
         echo "Panorama URL: $PANORAMA_URL"
         echo "Include music: $INCLUDE_MUSIC"
+        echo "Particle enabled: $PARTICLE_ENABLED"
+        echo "Particle count: $PARTICLE_COUNT"
+        echo "Particle size: $PARTICLE_SIZE"
         echo "Target folders: $SRC_DIR, $ASSETS_DIR"
         
         # ディレクトリを事前に作成
@@ -121,6 +139,23 @@ runs:
         - 音楽ファイルを$SRC_DIR/generated-music.wavにコピー"
         fi
         
+        # パーティクル設定の構築
+        PARTICLE_INTEGRATION=""
+        if [ "$PARTICLE_ENABLED" == "true" ]; then
+          PARTICLE_INTEGRATION="
+        **パーティクル設定**:
+        - パーティクル数: $PARTICLE_COUNT個
+        - パーティクルサイズ: $PARTICLE_SIZE
+        - 形状: 円形（CircleGeometry使用）
+        - 材質: PointsMaterial
+        - アニメーション: 自動回転時に高速化"
+        else
+          PARTICLE_INTEGRATION="
+        **パーティクル設定**:
+        - パーティクル効果: 無効
+        - パーティクルシステムをスキップ"
+        fi
+        
         PROMPT="安定したThree.js 3D体験シーンを生成してください。
 
         **体験コンセプト**: $EXPERIENCE_CONCEPT
@@ -145,7 +180,7 @@ runs:
         - **タッチ制御**: モバイル対応のタッチ操作
         - **自動回転**: ダブルクリックで時計回り自動回転モード
         - **音楽制御**: HTML5 Audioでの再生/停止、ボリューム調整
-        - **パーティクル**: 舞い散るパーティクル（自動回転時は高速化）
+        - **パーティクル**: 丸いパーティクル、カスタマイズ可能
         - **UI表示**: 操作説明（マウスドラッグ・ホイール・ダブルクリック）
         
         **技術要件**:
@@ -169,6 +204,8 @@ runs:
         - パーティクルシステムとの連動
         
         $MUSIC_INTEGRATION
+        
+        $PARTICLE_INTEGRATION
         
         **最終ファイル**: $SRC_DIR/index.html（完全動作する単一ファイル）"
         
