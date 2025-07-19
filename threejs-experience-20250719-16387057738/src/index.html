@@ -182,7 +182,7 @@
         // パノラマ背景の作成
         function createPanorama() {
             const loader = new THREE.TextureLoader();
-            loader.load('panorama.jpg', function(texture) {
+            loader.load('../assets/panorama.jpg', function(texture) {
                 const geometry = new THREE.SphereGeometry(500, 60, 40);
                 geometry.scale(-1, 1, 1); // 内側を向くように反転
                 
@@ -255,7 +255,7 @@
 
         // 音楽の初期化
         function initAudio() {
-            audio = new Audio('generated-music.wav');
+            audio = new Audio('../music/generated-music.wav');
             audio.loop = true;
             audio.volume = 0.5;
             
