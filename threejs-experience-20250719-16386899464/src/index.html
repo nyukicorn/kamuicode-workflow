@@ -197,7 +197,7 @@
 
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load(
-                'panorama.jpg',
+                '../assets/panorama.jpg',
                 function(texture) {
                     const material = new THREE.MeshBasicMaterial({ map: texture });
                     panoramaSphere = new THREE.Mesh(geometry, material);
@@ -268,7 +268,7 @@
 
         // 音楽設定
         function setupAudio() {
-            audio = new Audio('generated-music.wav');
+            audio = new Audio('../music/generated-music.wav');
             audio.loop = true;
             audio.volume = 0.5;
 
