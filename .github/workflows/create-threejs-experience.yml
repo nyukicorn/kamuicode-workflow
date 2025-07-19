@@ -47,11 +47,18 @@ jobs:
         id: setup
         uses: ./.github/actions/kamui-modules/setup-threejs-branch
       
+      - name: Translate Prompt to English
+        id: translation
+        uses: ./.github/actions/kamui-modules/prompt-translation
+        with:
+          japanese-prompt: "完全な360度パノラマ画像、${{ inputs.experience_concept }}、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある環境、パノラマ専用レンダリング"
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
       - name: Image Generation (Panorama)
         id: image
         uses: ./.github/actions/kamui-modules/image-generation
         with:
-          image-prompt: "完全な360度パノラマ画像、${{ inputs.experience_concept }}、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある環境、パノラマ専用レンダリング"
+          image-prompt: ${{ steps.translation.outputs.english-prompt }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
