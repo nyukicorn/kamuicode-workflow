@@ -131,9 +131,10 @@ runs:
            - 不要なファイルの削除
            - HTMLのminification確認
         
-        4. 最終パッケージ作成:
-           - $FINAL_DIR/threejs-experience.zipに全ファイルを圧縮
-           - アーカイブ内容の確認
+        4. 最終パッケージ作成（必須）:
+           - **重要**: Bashツールを使用してzipパッケージを必ず作成
+           - コマンド: cd $FOLDER_NAME/.. && zip -r $FINAL_DIR/threejs-experience.zip $(basename $FOLDER_NAME)/
+           - 作成確認: $FINAL_DIR/threejs-experience.zip が存在することを確認
            - ファイルサイズの記録
         
         **品質チェック項目**:
@@ -181,6 +182,10 @@ runs:
         else
           echo "::warning::⚠️ README file not found"
         fi
+        
+        # 生成されたファイルの確認
+        echo ""
+        echo "📸 Checking generated Three.js files..."
         
         # zipパッケージの確認
         ZIP_PATH="$FINAL_DIR/threejs-experience.zip"
