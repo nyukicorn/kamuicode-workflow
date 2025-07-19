@@ -42,11 +42,23 @@ jobs:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
+      - name: Music Analysis
+        id: analysis
+        uses: ./.github/actions/kamui-modules/music-analysis
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          original-image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          original-video-prompt: ${{ steps.planning.outputs.video-concept }}
+          music-url: ${{ steps.music.outputs.music-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
       - name: Image Generation
         id: image
         uses: ./.github/actions/kamui-modules/image-generation
         with:
-          image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          image-prompt: ${{ steps.analysis.outputs.image-prompt-1 }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -56,7 +68,7 @@ jobs:
         id: video
         uses: ./.github/actions/kamui-modules/video-generation
         with:
-          video-prompt: ${{ steps.planning.outputs.video-concept }}
+          video-prompt: ${{ steps.analysis.outputs.video-prompt-1 }}
           google-image-url: ${{ steps.image.outputs.google-image-url }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
@@ -87,6 +99,10 @@ jobs:
           echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
           echo "🎶 Music URL: ${{ steps.music.outputs.music-url }}"
           echo ""
+          echo "✅ Music Analysis: ${{ steps.analysis.outputs.analysis-completed }}"
+          echo "🔍 Optimized Image Prompt: ${{ steps.analysis.outputs.image-prompt-1 }}"
+          echo "🎭 Optimized Video Prompt: ${{ steps.analysis.outputs.video-prompt-1 }}"
+          echo ""
           echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
           echo "🖼️ Google Image URL: ${{ steps.image.outputs.google-image-url }}"
           echo ""
@@ -96,7 +112,7 @@ jobs:
           echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
           echo ""
           echo "🎉 Complete Music Video Pipeline Success!"
-          echo "📊 Generated: Music + Image + Video + Final Integration"
+          echo "📊 Generated: Music + Analysis + Image + Video + Final Integration"
           echo "================================================"
       
       - name: Final Status

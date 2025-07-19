@@ -1,0 +1,232 @@
+name: 'Music Analysis & Prompt Optimization'
+description: 'Analyze generated music and optimize image/video prompts based on musical characteristics'
+author: 'KamuiCode Workflow'
+
+inputs:
+  music-concept:
+    description: 'The music concept for context'
+    required: true
+  original-image-prompt:
+    description: 'Original image prompt from planning'
+    required: true
+  original-video-prompt:
+    description: 'Original video concept from planning'
+    required: true
+  music-url:
+    description: 'Generated music file path'
+    required: true
+  folder-name:
+    description: 'The folder name containing music files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  analysis-completed:
+    description: 'Whether music analysis was completed successfully'
+    value: ${{ steps.analysis.outputs.completed }}
+  image-prompt-1:
+    description: 'Optimized image prompt for segment 1'
+    value: ${{ steps.analysis.outputs.image-prompt-1 }}
+  image-prompt-2:
+    description: 'Optimized image prompt for segment 2'
+    value: ${{ steps.analysis.outputs.image-prompt-2 }}
+  image-prompt-3:
+    description: 'Optimized image prompt for segment 3'
+    value: ${{ steps.analysis.outputs.image-prompt-3 }}
+  video-prompt-1:
+    description: 'Optimized video prompt for segment 1'
+    value: ${{ steps.analysis.outputs.video-prompt-1 }}
+  video-prompt-2:
+    description: 'Optimized video prompt for segment 2'
+    value: ${{ steps.analysis.outputs.video-prompt-2 }}
+  video-prompt-3:
+    description: 'Optimized video prompt for segment 3'
+    value: ${{ steps.analysis.outputs.video-prompt-3 }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 音楽分析・プロンプト最適化エージェント
+      id: analysis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎵 Music Analysis & Prompt Optimization Agent"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        MUSIC_CONCEPT="${{ inputs.music-concept }}"
+        ORIGINAL_IMAGE_PROMPT="${{ inputs.original-image-prompt }}"
+        ORIGINAL_VIDEO_PROMPT="${{ inputs.original-video-prompt }}"
+        MUSIC_URL="${{ inputs.music-url }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        MUSIC_DIR="$FOLDER_NAME/music"
+        ANALYSIS_DIR="$FOLDER_NAME/analysis"
+        
+        echo "Music concept: $MUSIC_CONCEPT"
+        echo "Original image prompt: $ORIGINAL_IMAGE_PROMPT"
+        echo "Original video prompt: $ORIGINAL_VIDEO_PROMPT"
+        echo "Music URL: $MUSIC_URL"
+        echo "Analysis folder: $ANALYSIS_DIR"
+        
+        # 分析フォルダを事前に作成
+        if [ ! -d "$ANALYSIS_DIR" ]; then
+          mkdir -p "$ANALYSIS_DIR"
+          echo "📁 Created analysis folder: $ANALYSIS_DIR"
+        fi
+        
+        # 生成された音楽ファイルの確認
+        if [ ! -d "$MUSIC_DIR" ]; then
+          echo "::error::❌ Music directory not found: $MUSIC_DIR"
+          exit 1
+        fi
+        
+        GENERATED_MUSIC=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | head -1)
+        if [ -z "$GENERATED_MUSIC" ]; then
+          echo "::error::❌ No generated music found"
+          exit 1
+        fi
+        
+        echo "Generated music file: $GENERATED_MUSIC"
+        
+        # プロンプトの構築
+        PROMPT="音楽分析専門家として、生成された音楽の特徴を分析し、既存の戦略計画をベースに音楽に最適化された画像・動画プロンプトを微調整してください。
+
+        **重要**: 戦略を再策定するのではなく、既存の戦略計画に音楽の特徴を反映した微調整を実施
+
+        **参照すべき戦略計画**: $FOLDER_NAME/planning/music-video-strategy.md、$FOLDER_NAME/planning/video-strategy.txt
+        **音楽コンセプト**: $MUSIC_CONCEPT
+        **生成済み音楽ファイル**: $GENERATED_MUSIC
+        **元の画像プロンプト**: $ORIGINAL_IMAGE_PROMPT
+        **元の動画プロンプト**: $ORIGINAL_VIDEO_PROMPT
+
+        **タスク**:
+        1. 戦略計画書を読み込み、既存の編集戦略と動画役割を理解
+        2. 生成された音楽ファイルを分析して音楽的特徴を把握
+        3. 既存戦略を維持しながら、音楽の実際の特徴に合わせてプロンプトを微調整
+        4. 元の画像・動画プロンプトを音楽の特徴に合わせて微調整
+        5. 調整されたプロンプトを指定ファイルに保存
+
+        **微調整の原則**:
+        - 戦略計画で定義された役割分担（メイン50-60%、アクセント20-30%、トランジション10-20%）を維持
+        - 音楽の実際のテンポ、雰囲気、楽器構成を元プロンプトに反映
+        - 編集戦略（ループ耐性、速度可変、エフェクト対応）を保持
+
+        **実行手順**:
+        1. 戦略計画書を読み込み
+        2. 音楽ファイルを分析（テンポ、雰囲気、構造）
+        3. 元プロンプトに音楽の特徴を加味して微調整
+        4. 以下の成果物を保存:
+
+        **保存すべき成果物**:
+        - **音楽分析レポート**: 「$ANALYSIS_DIR/music-analysis.md」
+          * 音楽の特徴分析結果（テンポ、楽器、雰囲気）
+          * 既存戦略との整合性確認
+          * 微調整の根拠と理由
+        - **調整済み画像プロンプト**: 
+          * 「$ANALYSIS_DIR/image-prompt-1.txt」（機械処理用1行テキスト）
+          * 「$ANALYSIS_DIR/image-prompt-2.txt」（機械処理用1行テキスト）
+          * 「$ANALYSIS_DIR/image-prompt-3.txt」（機械処理用1行テキスト）
+        - **調整済み動画プロンプト**:
+          * 「$ANALYSIS_DIR/video-prompt-1.txt」（機械処理用1行テキスト）
+          * 「$ANALYSIS_DIR/video-prompt-2.txt」（機械処理用1行テキスト）
+          * 「$ANALYSIS_DIR/video-prompt-3.txt」（機械処理用1行テキスト）
+        - **ユーザー確認用**:
+          * 「$ANALYSIS_DIR/image-prompt-1.md」〜「$ANALYSIS_DIR/image-prompt-3.md」
+          * 「$ANALYSIS_DIR/video-prompt-1.md」〜「$ANALYSIS_DIR/video-prompt-3.md」
+
+        **必須**: 戦略の大幅変更ではなく、音楽に合わせた細かな調整のみ実施"
+        
+        echo "🚀 Starting Music Analysis & Prompt Optimization Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit" \
+          --max-turns 50 \
+          --verbose \
+          --permission-mode "acceptEdits" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 最適化結果の確認
+        echo ""
+        echo "🎵 Checking music analysis and optimized prompts..."
+        
+        # 画像プロンプトの確認
+        SEGMENTS_COUNT=3
+        echo "segments-count=$SEGMENTS_COUNT" >> $GITHUB_OUTPUT
+        
+        for i in $(seq 1 $SEGMENTS_COUNT); do
+          if [ -f "$ANALYSIS_DIR/image-prompt-$i.txt" ]; then
+            IMAGE_PROMPT=$(cat "$ANALYSIS_DIR/image-prompt-$i.txt" | tr '\n' ' ')
+            echo "::notice::✅ Image prompt $i generated"
+            echo "Image prompt $i: $IMAGE_PROMPT"
+            echo "image-prompt-$i=$IMAGE_PROMPT" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Image prompt $i file not found"
+            exit 1
+          fi
+        done
+        
+        # 動画プロンプトの確認
+        for i in $(seq 1 $SEGMENTS_COUNT); do
+          if [ -f "$ANALYSIS_DIR/video-prompt-$i.txt" ]; then
+            VIDEO_PROMPT=$(cat "$ANALYSIS_DIR/video-prompt-$i.txt" | tr '\n' ' ')
+            echo "::notice::✅ Video prompt $i generated"
+            echo "Video prompt $i: $VIDEO_PROMPT"
+            echo "video-prompt-$i=$VIDEO_PROMPT" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Video prompt $i file not found"
+            exit 1
+          fi
+        done
+        
+        # 音楽分析レポートの確認
+        if [ -f "$ANALYSIS_DIR/music-analysis.md" ]; then
+          echo "::notice::✅ Music analysis report generated"
+          echo "Music analysis preview:"
+          head -10 "$ANALYSIS_DIR/music-analysis.md"
+        else
+          echo "::warning::⚠️ Music analysis report not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "::endgroup::"
+    
+    - name: Commit analysis results
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No analysis results to commit"
+        else
+          git commit -m "Add music analysis and optimized prompts: ${{ inputs.music-concept }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
