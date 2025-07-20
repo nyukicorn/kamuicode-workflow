@@ -66,7 +66,7 @@ if [ "$INCLUDE_MUSIC" = "true" ] && [ -n "$MUSIC_URL" ]; then
   - NO automatic playback on page load
   - User must click Play button first (browser policy)
   - Loop playback when playing
-  - Music file from: $MUSIC_URL"
+  - Music file path: '../music/generated-music.wav' (relative from src/index.html)"
 fi
 
 # 基本機能
