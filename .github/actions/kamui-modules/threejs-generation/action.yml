@@ -339,7 +339,13 @@ runs:
         echo "🚀 Starting Three.js Scene Generation Agent..."
         echo "📝 Prompt length: ${#PROMPT}"
         
-        # Claude Code CLIの実行
+        # Claude Code CLIの実行（ワーキングディレクトリを明示的に指定）
+        echo "🔧 Working directory: $(pwd)"
+        echo "🔧 Target directories: $SRC_DIR, $ASSETS_DIR"
+        
+        # ワーキングディレクトリを確実に設定
+        cd "$(pwd)"
+        
         npx @anthropic-ai/claude-code \
           --mcp-config="$MCP_CONFIG_ABS_PATH" \
           --allowedTools "Bash" \
@@ -354,14 +360,38 @@ runs:
         # 生成されたファイルの確認
         echo ""
         echo "📸 Checking generated Three.js files..."
+        echo "🔧 Current working directory: $(pwd)"
+        echo "🔧 Directory listing:"
+        ls -la
+        echo "🔧 Target folder contents:"
+        if [ -d "$FOLDER_NAME" ]; then
+          ls -la "$FOLDER_NAME"
+          if [ -d "$SRC_DIR" ]; then
+            echo "🔧 SRC directory contents:"
+            ls -la "$SRC_DIR"
+          else
+            echo "🔧 SRC directory does not exist: $SRC_DIR"
+          fi
+        else
+          echo "🔧 Target folder does not exist: $FOLDER_NAME"
+        fi
         
-        # メインHTMLファイルの確認
+        # メインHTMLファイルの確認（絶対パスで）
+        ABS_SRC_DIR="$(pwd)/$SRC_DIR"
+        echo "🔧 Absolute SRC path: $ABS_SRC_DIR"
+        
         if [ -f "$SRC_DIR/index.html" ]; then
           echo "✅ Main HTML file created: $SRC_DIR/index.html"
           HTML_SIZE=$(wc -c < "$SRC_DIR/index.html")
           echo "  HTML file size: $HTML_SIZE bytes"
+        elif [ -f "$ABS_SRC_DIR/index.html" ]; then
+          echo "✅ Main HTML file found at absolute path: $ABS_SRC_DIR/index.html"
+          HTML_SIZE=$(wc -c < "$ABS_SRC_DIR/index.html")
+          echo "  HTML file size: $HTML_SIZE bytes"
         else
-          echo "::error::❌ Main HTML file not found"
+          echo "::error::❌ Main HTML file not found at either:"
+          echo "  - Relative: $SRC_DIR/index.html"
+          echo "  - Absolute: $ABS_SRC_DIR/index.html"
           exit 1
         fi
         
