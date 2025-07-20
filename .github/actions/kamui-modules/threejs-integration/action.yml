@@ -39,6 +39,12 @@ runs:
       with:
         ref: ${{ inputs.branch-name }}
     
+    - name: Download Three.js files artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: threejs-files-${{ inputs.folder-name }}
+        path: ./
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:

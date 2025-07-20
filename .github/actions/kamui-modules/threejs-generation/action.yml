@@ -438,6 +438,13 @@ runs:
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "::endgroup::"
     
+    - name: Upload Three.js files as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: threejs-files-${{ inputs.folder-name }}
+        path: ${{ inputs.folder-name }}/
+        retention-days: 1
+    
     - name: Commit and push Three.js files
       shell: bash
       env:
