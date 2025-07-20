@@ -13,14 +13,19 @@ echo "Target folders: $SRC_DIR"
 mkdir -p "$SRC_DIR"
 echo "📁 Created directory structure"
 
-PROMPT="Please generate a single, self-contained HTML file named 'index.html' in the '$SRC_DIR' directory.\n\nThis file should create a simple Three.js scene with the following requirements:\n- Use the Three.js CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js\n- The scene should have a black background.\n- Create a single BoxGeometry mesh (a cube).\n- The cube should have a basic material (MeshBasicMaterial) with a visible color (e.g., 0x00ff00).\n- Animate the cube to rotate on its Y-axis.\n- No user controls, no particles, no UI, and no other complex features are needed.\n- Ensure the final output is only one file: '$SRC_DIR/index.html'."
+PROMPT="Create a simple Three.js HTML file at $SRC_DIR/index.html with:
+- Three.js CDN import
+- Black background
+- Green rotating cube
+- Basic animation loop
+Just one HTML file with inline JavaScript."
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
 echo "📝 Prompt: $PROMPT"
 
 # Claude Code CLIの実行
 npx @anthropic-ai/claude-code \
-  --allowedTools "Bash" \
+  --allowedTools "Bash,Write" \
   --max-turns 10 \
   --verbose \
   --permission-mode "acceptEdits" \
