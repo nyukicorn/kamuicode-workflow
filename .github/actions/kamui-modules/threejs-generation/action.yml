@@ -113,10 +113,7 @@ This file should create a simple Three.js scene with the following requirements:
           --max-turns 10 \
           --verbose \
           --permission-mode "acceptEdits" \
-          -p "$PROMPT" || {
-            echo "::error::❌ Claude Code CLI execution failed"
-            exit 1
-          }
+          -p "$PROMPT"
         
         # 生成されたファイルの確認
         echo ""
