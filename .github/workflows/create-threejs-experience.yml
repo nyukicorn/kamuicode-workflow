@@ -55,6 +55,43 @@ on:
         required: false
         type: string
         default: '0.0'
+      background_type:
+        description: '背景タイプ'
+        required: false
+        type: choice
+        options:
+          - panorama
+          - solid_black
+          - solid_white
+          - transparent
+          - gradient
+        default: 'panorama'
+      art_mode:
+        description: 'アート作品創作モード'
+        required: false
+        type: choice
+        options:
+          - none
+          - sculptural
+          - organic
+          - geometric
+          - abstract
+        default: 'none'
+      art_object_type:
+        description: '立体アート種類 (flower/tree/crystal/spiral/mandala等)'
+        required: false
+        type: string
+        default: ''
+      complexity_level:
+        description: '複雑さレベル'
+        required: false
+        type: choice
+        options:
+          - simple
+          - medium
+          - complex
+          - masterpiece
+        default: 'medium'
 
 jobs:
   create-threejs-experience:
@@ -77,13 +114,15 @@ jobs:
       
       - name: Translate Prompt to English
         id: translation
+        if: ${{ inputs.background_type == 'panorama' }}
         uses: ./.github/actions/kamui-modules/prompt-translation
         with:
-          japanese-prompt: "美しい完全な360度パノラマ画像、${{ inputs.experience_concept }}、美しい風景、美しい色彩、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある美しい環境、パノラマ専用レンダリング"
+          japanese-prompt: "美しい完全な360度パノラマ画像、${{ inputs.experience_concept }}、美しい色彩、Equirectangular投影形式、4K高解像度、左端と右端が完全にシームレス接続、継ぎ目なし、タイリング対応、wraparound無限ループ、球体マッピング最適化、没入感のある美しい環境、パノラマ専用レンダリング"
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       
       - name: Image Generation (Panorama)
         id: image
+        if: ${{ inputs.background_type == 'panorama' }}
         uses: ./.github/actions/kamui-modules/image-generation
         with:
           image-prompt: ${{ steps.translation.outputs.english-prompt }}
@@ -111,6 +150,10 @@ jobs:
         with:
           experience-concept: ${{ inputs.experience_concept }}
           panorama-image-url: ${{ steps.image.outputs.google-image-url }}
+          background-type: ${{ inputs.background_type }}
+          art-mode: ${{ inputs.art_mode }}
+          art-object-type: ${{ inputs.art_object_type }}
+          complexity-level: ${{ inputs.complexity_level }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ steps.music.outputs.music-url }}
           particle-enabled: ${{ inputs.particle_enabled }}

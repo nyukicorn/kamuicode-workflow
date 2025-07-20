@@ -8,7 +8,22 @@ inputs:
     required: true
   panorama-image-url:
     description: 'Google URL of the panorama image'
-    required: true
+    required: false
+  background-type:
+    description: 'Background type (panorama/solid_black/solid_white/transparent/gradient)'
+    required: false
+    default: 'panorama'
+  art-mode:
+    description: 'Art creation mode (none/sculptural/organic/geometric/abstract)'
+    required: false
+    default: 'none'
+  art-object-type:
+    description: 'Type of 3D art object to create'
+    required: false
+  complexity-level:
+    description: 'Complexity level (simple/medium/complex/masterpiece)'
+    required: false
+    default: 'medium'
   include-music:
     description: 'Whether to include music controls'
     required: false
@@ -83,6 +98,10 @@ runs:
         # 設定
         EXPERIENCE_CONCEPT="${{ inputs.experience-concept }}"
         PANORAMA_URL="${{ inputs.panorama-image-url }}"
+        BACKGROUND_TYPE="${{ inputs.background-type }}"
+        ART_MODE="${{ inputs.art-mode }}"
+        ART_OBJECT_TYPE="${{ inputs.art-object-type }}"
+        COMPLEXITY_LEVEL="${{ inputs.complexity-level }}"
         INCLUDE_MUSIC="${{ inputs.include-music }}"
         MUSIC_URL="${{ inputs.music-url }}"
         PARTICLE_ENABLED="${{ inputs.particle-enabled }}"
@@ -97,6 +116,10 @@ runs:
         ASSETS_DIR="$FOLDER_NAME/assets"
         
         echo "Experience concept: $EXPERIENCE_CONCEPT"
+        echo "Background type: $BACKGROUND_TYPE"
+        echo "Art mode: $ART_MODE"
+        echo "Art object type: $ART_OBJECT_TYPE"
+        echo "Complexity level: $COMPLEXITY_LEVEL"
         echo "Panorama URL: $PANORAMA_URL"
         echo "Include music: $INCLUDE_MUSIC"
         echo "Particle enabled: $PARTICLE_ENABLED"
@@ -140,6 +163,54 @@ runs:
           echo "✅ Three.js MCP config file already exists"
         fi
         
+        # 背景設定の構築
+        BACKGROUND_INTEGRATION=""
+        if [ "$BACKGROUND_TYPE" == "panorama" ]; then
+          BACKGROUND_INTEGRATION="
+        **背景設定（パノラマ）**:
+        - パノラマ画像URL: $PANORAMA_URL
+        - パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
+        - パノラマ画像を$SRC_DIR/panorama.jpgにもコピー（相対パス問題解決）
+        - 球体ジオメトリにマッピング"
+        elif [ "$BACKGROUND_TYPE" == "solid_black" ]; then
+          BACKGROUND_INTEGRATION="
+        **背景設定（黒背景）**:
+        - 純粋な黒背景（#000000）
+        - パノラマ画像処理をスキップ
+        - 3Dオブジェクト・アート作品に最適化"
+        elif [ "$BACKGROUND_TYPE" == "solid_white" ]; then
+          BACKGROUND_INTEGRATION="
+        **背景設定（白背景）**:
+        - 純粋な白背景（#FFFFFF）
+        - パノラマ画像処理をスキップ
+        - 展示・プレゼンテーション用"
+        elif [ "$BACKGROUND_TYPE" == "transparent" ]; then
+          BACKGROUND_INTEGRATION="
+        **背景設定（透明背景）**:
+        - 透明背景（alpha=0）
+        - パノラマ画像処理をスキップ
+        - オブジェクト単体表示用"
+        elif [ "$BACKGROUND_TYPE" == "gradient" ]; then
+          BACKGROUND_INTEGRATION="
+        **背景設定（グラデーション）**:
+        - 美しいグラデーション背景
+        - コンセプトに基づいた色調選択
+        - アート作品に適した配色"
+        fi
+        
+        # 3Dアート設定の構築
+        ART_INTEGRATION=""
+        if [ "$ART_MODE" != "none" ] && [ -n "$ART_OBJECT_TYPE" ]; then
+          ART_INTEGRATION="
+        **3Dアート作品生成**:
+        - アートモード: $ART_MODE
+        - オブジェクトタイプ: $ART_OBJECT_TYPE
+        - 複雑さレベル: $COMPLEXITY_LEVEL
+        - プロシージャル3Dジオメトリ生成
+        - 高度な材質・ライティング効果
+        - コンセプトに基づいた芸術的表現"
+        fi
+        
         # プロンプトの構築
         MUSIC_INTEGRATION=""
         if [ "$INCLUDE_MUSIC" == "true" ] && [ -n "$MUSIC_URL" ]; then
@@ -173,20 +244,25 @@ runs:
         - パーティクルシステムをスキップ"
         fi
         
-        PROMPT="安定したThree.js 3D体験シーンを生成してください。
+        PROMPT="高度なThree.js 3Dアート体験シーンを生成してください。
 
         **体験コンセプト**: 美しい$EXPERIENCE_CONCEPT
-        **パノラマ画像URL**: $PANORAMA_URL
+        **背景タイプ**: $BACKGROUND_TYPE
+        **アートモード**: $ART_MODE
         
         **テーマ連動実装**:
-        - コンセプト内容を解析して美しいパーティクルの色調、動き、配置を自動調整
+        - コンセプト内容を解析して美しい3D空間を構築
+        - アートモードに応じた高度な3Dオブジェクト生成
+        - 背景タイプに最適化された視覚効果
         - 例: 「桜」→美しいピンク系色調、「海」→美しい青系色調、「夜」→美しい暗めトーン
-        - パーティクル動作もテーマに連動して美しく（花びら→美しく舞う動き、雪→美しい落下動き）
+        
+        $BACKGROUND_INTEGRATION
+        
+        $ART_INTEGRATION
         
         **必須実行手順**:
         1. **ファイル配置（重要）**:
-           - パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
-           - パノラマ画像を$SRC_DIR/panorama.jpgにもコピー（相対パス問題解決）
+           - 背景がパノラマの場合のみ画像ダウンロード・配置
            - 音楽ファイルがあれば$SRC_DIR/generated-music.wavにもコピー
         
         2. **単一HTMLファイル作成（$SRC_DIR/index.html）**:
@@ -222,30 +298,40 @@ runs:
           - 各スライダーは右端UIパネル内に配置、ラベル表示付き
         
         **技術要件**:
-        - パノラマ: './panorama.jpg'（同じディレクトリの相対パス、../assets/ではない）
+        - 背景: panoramaの場合のみ'./panorama.jpg'使用、その他は背景タイプに応じた実装
         - WebGL対応チェックとエラー表示
         - レスポンシブデザイン
         - すべて単一HTMLファイルに統合
+        - 背景タイプ別実装:
+          - panorama: 球体ジオメトリ + テクスチャマッピング
+          - solid_black: scene.background = new THREE.Color(0x000000)
+          - solid_white: scene.background = new THREE.Color(0xFFFFFF)
+          - transparent: renderer.setClearColor(0x000000, 0)
+          - gradient: シェーダーマテリアルでグラデーション背景
+        
+        **3Dアートオブジェクト生成要件**:
+        - **sculptural**: 複数プリミティブ形状の芸術的組み合わせ
+        - **organic**: 自然形状（花、木、葉など）のプロシージャル生成
+        - **geometric**: フラクタル、結晶、幾何学パターン
+        - **abstract**: 流体シミュレーション風、抽象的形状
+        - 複雑さレベルに応じたポリゴン数・詳細度調整
+        - コンセプトに基づいた色調・材質の自動選択
         
         **重要な修正事項**:
         - **マウスドラッグ**: 必ずcanvas要素に正しくイベントリスナーを登録し、視覚的フィードバックを追加
-        - **パノラマ読み込み**: 画像読み込み失敗時も適切なデバッグ情報をコンソールに出力
+        - **背景システム**: 背景タイプに応じた適切な実装（パノラマ読み込みは条件付き）
         - **カメラ制御**: マウス操作でカメラの向きが確実に変わるよう実装
-        - **エラーハンドリング**: 画像読み込みエラーの詳細をユーザーに表示
+        - **エラーハンドリング**: ファイル読み込みエラーの詳細をユーザーに表示
         - **パーティクル色動的変更**: 必ずリアルタイムで色変更が機能するよう実装（個別パーティクル色制御対応）
         - **色変更UI実装**: 右端縦型レイアウト、マウスオーバー表示機能、半透明アニメーション必須実装
-        - **グラデーション改善**: 単色時は同系色明度変化、レインボー時は多彩色ランダム配置
         - **リアルタイム調整実装**: 必ずスライダー操作でリアルタイム変更が機能するよう実装
-          - 回転速度: autoRotationSpeed 変数を直接変更
-          - パーティクルサイズ: material.size プロパティを動的変更
-          - パーティクル数: パーティクルシステム再生成（scene.remove/add）
-        - **形状変更削除**: 動的形状変更機能は削除し、初期形状のみ固定で使用
+        - **3Dアートオブジェクト**: アートモードに応じた高度な3D形状生成
         
         **禁止事項**:
         - OrbitControls.jsの使用（読み込みエラーの原因）
         - Web Audio APIの使用（デコードエラーの原因）
         - 複数JSファイルへの分割
-        - 相対パス '../assets/' の使用（ファイルは同じディレクトリにある）
+        - 相対パス '../assets/' の使用（panorama以外では不要）
         
         **実装参考コード構造**:
         - カスタムマウス制御変数とイベントリスナー
