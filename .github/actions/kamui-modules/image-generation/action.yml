@@ -200,7 +200,7 @@ runs:
           --allowedTools "mcp__*,Bash" \
           --max-turns 25 \
           --verbose \
-          --permission-mode "acceptEdits" \
+          --permission-mode "acceptAll" \
           -p "$PROMPT" || {
             echo "::error::❌ Claude Code CLI execution failed"
             exit 1
