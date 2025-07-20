@@ -191,7 +191,7 @@ jobs:
           npx @anthropic-ai/claude-code \
             --mcp-config="$MCP_CONFIG_PATH" \
             --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
-            --max-turns 25 \
+            --max-turns 70 \
             --verbose \
             --permission-mode "bypassPermissions" \
             -p "$SMART_PROMPT" || {
