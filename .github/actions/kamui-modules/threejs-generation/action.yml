@@ -79,58 +79,8 @@ runs:
       shell: bash
       env:
         CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
-      run: |
-        echo "::group::🎨 Three.js Scene Generation"
-        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
-        
-        # 設定
-        FOLDER_NAME="${{ inputs.folder-name }}"
-        SRC_DIR="$FOLDER_NAME/src"
-        
-        echo "Target folders: $SRC_DIR"
-        
-        # ディレクトリを事前に作成
-        mkdir -p "$SRC_DIR"
-        echo "📁 Created directory structure"
-        
-        PROMPT="Please generate a single, self-contained HTML file named 'index.html' in the '$SRC_DIR' directory.
-
-This file should create a simple Three.js scene with the following requirements:
-- Use the Three.js CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
-- The scene should have a black background.
-- Create a single BoxGeometry mesh (a cube).
-- The cube should have a basic material (MeshBasicMaterial) with a visible color (e.g., 0x00ff00).
-- Animate the cube to rotate on its Y-axis.
-- No user controls, no particles, no UI, and no other complex features are needed.
-- Ensure the final output is only one file: '$SRC_DIR/index.html'."
-        
-        echo "🚀 Starting Three.js Scene Generation Agent..."
-        echo "📝 Prompt: $PROMPT"
-        
-        # Claude Code CLIの実行
-        npx @anthropic-ai/claude-code \
-          --allowedTools "Bash" \
-          --max-turns 10 \
-          --verbose \
-          --permission-mode "acceptEdits" \
-          -p "$PROMPT"
-        
-        # 生成されたファイルの確認
-        echo ""
-        echo "📸 Checking generated Three.js files..."
-        if [ -f "$SRC_DIR/index.html" ]; then
-          echo "✅ Main HTML file created: $SRC_DIR/index.html"
-          HTML_SIZE=$(wc -c < "$SRC_DIR/index.html")
-          echo "  HTML file size: $HTML_SIZE bytes"
-        else
-          echo "::error::❌ Main HTML file not found at $SRC_DIR/index.html"
-          exit 1
-        fi
-        
-        TOTAL_FILES=$(find "$SRC_DIR" -type f | wc -l)
-        echo "scene-files-created=$TOTAL_FILES" >> $GITHUB_OUTPUT
-        echo "completed=true" >> $GITHUB_OUTPUT
-        echo "::endgroup::"
+        FOLDER_NAME: ${{ inputs.folder-name }}
+      run: ${{ github.action_path }}/../../scripts/generate-threejs-scene.sh
     
     - name: Upload Three.js files as artifact
       uses: actions/upload-artifact@v4
@@ -147,6 +97,7 @@ This file should create a simple Three.js scene with the following requirements:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git add ${{ inputs.folder-name }}/
+        git add .github/scripts/generate-threejs-scene.sh
         if git diff --cached --quiet; then
           echo "No Three.js files to commit"
         else
