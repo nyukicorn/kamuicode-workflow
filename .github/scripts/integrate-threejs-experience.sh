@@ -55,16 +55,20 @@ fi
 PROMPT="Create final package for Three.js experience.
 
 Tasks:
-1. Create README.md in $FOLDER_NAME/ with:
+1. Copy music file if exists:
+   - If $FOLDER_NAME/music/generated-music.wav exists, copy to $SRC_DIR/generated-music.wav
+   - This ensures music works on GitHub Pages
+
+2. Create README.md in $FOLDER_NAME/ with:
    - Experience concept: $EXPERIENCE_CONCEPT
    - Controls: mouse drag, wheel zoom, double-click auto-rotate
    - Tech: Three.js, WebGL required
    
-2. Create zip package:
+3. Create zip package:
    - Use bash: cd $FOLDER_NAME/.. && zip -r $FINAL_DIR/threejs-experience.zip $(basename $FOLDER_NAME)/
    - File must exist: $FINAL_DIR/threejs-experience.zip
 
-Simple tasks only. Focus on README and zip creation."
+Simple tasks only. Focus on music copy, README and zip creation."
 
 echo "🚀 Starting Integration & Packaging Agent..."
 echo "📝 Prompt length: ${#PROMPT}"
