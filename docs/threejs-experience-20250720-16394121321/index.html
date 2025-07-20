@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>静かな森 - Three.js 3D体験</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c5530, #1a3d1f);
+            color: white;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #canvas3d {
+            display: block;
+            cursor: grab;
+        }
+        
+        #canvas3d:active {
+            cursor: grabbing;
+        }
+        
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 300px;
+            z-index: 100;
+        }
+        
+        #instructions h3 {
+            margin-bottom: 10px;
+            color: #98FB98;
+            font-size: 16px;
+        }
+        
+        #instructions p {
+            margin-bottom: 8px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        #colorControls {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 250px;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+        
+        #colorControls:hover {
+            opacity: 1.0;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-group h4 {
+            color: #98FB98;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .color-mode-buttons {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .mode-btn {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+        
+        .mode-btn.active {
+            background: #98FB98;
+            color: #000;
+        }
+        
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ccc;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #98FB98;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #98FB98;
+            cursor: pointer;
+            border: none;
+        }
+        
+        #colorPicker {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #errorMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1000;
+        }
+        
+        @media (max-width: 768px) {
+            #instructions {
+                top: 10px;
+                left: 10px;
+                max-width: 250px;
+                padding: 10px;
+            }
+            
+            #colorControls {
+                width: 200px;
+                right: 10px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas3d"></canvas>
+        
+        <div id="instructions">
+            <h3>操作方法</h3>
+            <p>🖱️ ドラッグ: 視点移動</p>
+            <p>🎯 ホイール: ズーム</p>
+            <p>🔄 ダブルクリック: 自動回転</p>
+            <p>📱 タッチ対応</p>
+        </div>
+        
+        <div id="colorControls">
+            <div class="control-group">
+                <h4>パーティクル色</h4>
+                <div class="color-mode-buttons">
+                    <button class="mode-btn active" data-mode="single">単色</button>
+                    <button class="mode-btn" data-mode="gradient">同系色</button>
+                    <button class="mode-btn" data-mode="rainbow">多彩色</button>
+                </div>
+                <input type="color" id="colorPicker" value="#98FB98">
+            </div>
+            
+            <div class="control-group">
+                <h4>リアルタイム調整</h4>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>回転速度</span>
+                        <span id="speedValue">0.01</span>
+                    </div>
+                    <input type="range" id="speedSlider" class="slider" min="0.001" max="0.05" step="0.001" value="0.01">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>粒子サイズ</span>
+                        <span id="sizeValue">0.8</span>
+                    </div>
+                    <input type="range" id="sizeSlider" class="slider" min="0.1" max="3.0" step="0.1" value="0.8">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>粒子数</span>
+                        <span id="countValue">1500</span>
+                    </div>
+                    <input type="range" id="countSlider" class="slider" min="100" max="5000" step="100" value="1500">
+                </div>
+            </div>
+        </div>
+        
+        <div id="errorMessage"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // WebGL対応チェック
+        if (!window.WebGLRenderingContext) {
+            document.getElementById('errorMessage').textContent = 'WebGLがサポートされていません。';
+            document.getElementById('errorMessage').style.display = 'block';
+        }
+        
+        // Three.js シーン設定
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('canvas3d'),
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        
+        // パノラマ画像読み込み
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            './panorama.jpg',
+            function(texture) {
+                console.log('パノラマ画像読み込み成功');
+                const geometry = new THREE.SphereGeometry(500, 60, 40);
+                geometry.scale(-1, 1, 1);
+                
+                const material = new THREE.MeshBasicMaterial({ map: texture });
+                const sphere = new THREE.Mesh(geometry, material);
+                scene.add(sphere);
+            },
+            function(progress) {
+                console.log('読み込み中:', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.error('パノラマ画像読み込みエラー:', error);
+                document.getElementById('errorMessage').textContent = 'パノラマ画像の読み込みに失敗しました。';
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        );
+        
+        // カメラ制御変数
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        let autoRotate = false;
+        let autoRotationSpeed = 0.01;
+        
+        // パーティクルシステム
+        let particles;
+        let particleSystem;
+        let particleCount = 1500;
+        let particleSize = 0.8;
+        let colorMode = 'single';
+        let baseColor = new THREE.Color('#98FB98');
+        
+        function createParticleSystem() {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // 静かな森テーマに適した配置（森の中の光の粒子のように）
+                const radius = Math.random() * 200 + 50;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = (Math.random() - 0.5) * 100;
+                positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+                
+                // 色設定
+                updateParticleColor(colors, i3);
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: particleSize,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+        
+        function updateParticleColor(colors, index) {
+            const color = new THREE.Color();
+            
+            switch (colorMode) {
+                case 'single':
+                    color.copy(baseColor);
+                    break;
+                case 'gradient':
+                    // 同系色グラデーション（明度変化）
+                    const brightness = 0.5 + Math.random() * 0.5;
+                    color.copy(baseColor).multiplyScalar(brightness);
+                    break;
+                case 'rainbow':
+                    // 多彩色ランダム
+                    color.setHSL(Math.random(), 0.7, 0.6);
+                    break;
+            }
+            
+            colors[index] = color.r;
+            colors[index + 1] = color.g;
+            colors[index + 2] = color.b;
+        }
+        
+        function updateAllParticleColors() {
+            if (!particleSystem) return;
+            
+            const colors = particleSystem.geometry.attributes.color.array;
+            for (let i = 0; i < particleCount; i++) {
+                updateParticleColor(colors, i * 3);
+            }
+            particleSystem.geometry.attributes.color.needsUpdate = true;
+        }
+        
+        function updateParticleSize(size) {
+            if (particleSystem) {
+                particleSystem.material.size = size;
+            }
+        }
+        
+        // 初期パーティクルシステム作成
+        createParticleSystem();
+        
+        // カメラ位置設定
+        camera.position.set(0, 0, 0.1);
+        
+        // マウスイベント
+        const canvas = document.getElementById('canvas3d');
+        
+        canvas.addEventListener('mousedown', (event) => {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+        
+        canvas.addEventListener('mousemove', (event) => {
+            if (!isMouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            targetRotationY += deltaX * 0.005;
+            targetRotationX += deltaY * 0.005;
+            
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            canvas.style.cursor = 'grab';
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isMouseDown = false;
+            canvas.style.cursor = 'grab';
+        });
+        
+        // ホイールイベント
+        canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(100, fov));
+            camera.updateProjectionMatrix();
+        });
+        
+        // ダブルクリックで自動回転
+        canvas.addEventListener('dblclick', () => {
+            autoRotate = !autoRotate;
+            console.log('自動回転:', autoRotate ? 'ON' : 'OFF');
+        });
+        
+        // タッチイベント
+        let lastTouchX = 0, lastTouchY = 0;
+        let lastTouchDistance = 0;
+        
+        canvas.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                lastTouchX = event.touches[0].clientX;
+                lastTouchY = event.touches[0].clientY;
+            } else if (event.touches.length === 2) {
+                const dx = event.touches[0].clientX - event.touches[1].clientX;
+                const dy = event.touches[0].clientY - event.touches[1].clientY;
+                lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
+            }
+        });
+        
+        canvas.addEventListener('touchmove', (event) => {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                const deltaX = event.touches[0].clientX - lastTouchX;
+                const deltaY = event.touches[0].clientY - lastTouchY;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+                
+                lastTouchX = event.touches[0].clientX;
+                lastTouchY = event.touches[0].clientY;
+            } else if (event.touches.length === 2) {
+                const dx = event.touches[0].clientX - event.touches[1].clientX;
+                const dy = event.touches[0].clientY - event.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const scale = distance / lastTouchDistance;
+                const fov = camera.fov / scale;
+                camera.fov = Math.max(10, Math.min(100, fov));
+                camera.updateProjectionMatrix();
+                
+                lastTouchDistance = distance;
+            }
+        });
+        
+        // UIコントロール
+        const colorPicker = document.getElementById('colorPicker');
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const speedSlider = document.getElementById('speedSlider');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const countSlider = document.getElementById('countSlider');
+        const speedValue = document.getElementById('speedValue');
+        const sizeValue = document.getElementById('sizeValue');
+        const countValue = document.getElementById('countValue');
+        
+        // カラーモード切り替え
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                colorMode = btn.dataset.mode;
+                updateAllParticleColors();
+            });
+        });
+        
+        // カラーピッカー
+        colorPicker.addEventListener('input', (event) => {
+            baseColor.setStyle(event.target.value);
+            updateAllParticleColors();
+        });
+        
+        // スライダー
+        speedSlider.addEventListener('input', (event) => {
+            autoRotationSpeed = parseFloat(event.target.value);
+            speedValue.textContent = autoRotationSpeed.toFixed(3);
+        });
+        
+        sizeSlider.addEventListener('input', (event) => {
+            particleSize = parseFloat(event.target.value);
+            sizeValue.textContent = particleSize;
+            updateParticleSize(particleSize);
+        });
+        
+        countSlider.addEventListener('input', (event) => {
+            particleCount = parseInt(event.target.value);
+            countValue.textContent = particleCount;
+            createParticleSystem();
+        });
+        
+        // レスポンシブ対応
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        window.addEventListener('resize', onWindowResize);
+        
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // スムーズなカメラ回転
+            currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+            
+            // 自動回転
+            if (autoRotate) {
+                targetRotationY += autoRotationSpeed;
+            }
+            
+            // カメラ向き更新
+            camera.lookAt(
+                Math.cos(currentRotationX) * Math.sin(currentRotationY),
+                Math.sin(currentRotationX),
+                Math.cos(currentRotationX) * Math.cos(currentRotationY)
+            );
+            
+            // パーティクル回転（静かな森の雰囲気）
+            if (particleSystem) {
+                particleSystem.rotation.y += autoRotate ? autoRotationSpeed * 0.5 : 0.002;
+                
+                // 森の風のような動き
+                const time = Date.now() * 0.001;
+                const positions = particleSystem.geometry.attributes.position.array;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    const originalY = positions[i3 + 1];
+                    positions[i3 + 1] = originalY + Math.sin(time + i * 0.1) * 0.5;
+                }
+                
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // 初期化完了
+        console.log('Three.js 静かな森体験シーン初期化完了');
+        animate();
+    </script>
+</body>
+</html>
