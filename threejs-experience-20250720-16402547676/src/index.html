@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユーザー操作音楽付きパーティクル - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #playButton {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        #playButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        
+        #playButton:active {
+            transform: translateY(0);
+        }
+        
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            z-index: 100;
+        }
+        
+        #info p {
+            margin: 2px 0;
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                top: 10px;
+                left: 10px;
+            }
+            
+            #playButton {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+            
+            #info {
+                bottom: 10px;
+                left: 10px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="controls">
+        <button id="playButton">▶ Play Music</button>
+    </div>
+    
+    <div id="info">
+        <p>Mouse: Drag to rotate</p>
+        <p>Wheel: Zoom in/out</p>
+        <p>Double-click: Auto-rotation</p>
+    </div>
+    
+    <audio id="backgroundMusic" loop muted>
+        <source src="../music/generated-music.wav" type="audio/wav">
+        Your browser does not support the audio element.
+    </audio>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        class ThreeJSExperience {
+            constructor() {
+                this.container = document.getElementById('container');
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.particles = null;
+                this.particleSystem = null;
+                
+                this.mouse = { x: 0, y: 0 };
+                this.isMouseDown = false;
+                this.autoRotate = false;
+                this.rotationSpeed = 0.01;
+                
+                this.cameraDistance = 50;
+                this.targetCameraDistance = 50;
+                this.cameraAngleX = 0;
+                this.cameraAngleY = 0;
+                this.targetAngleX = 0;
+                this.targetAngleY = 0;
+                
+                this.init();
+                this.createParticleSystem();
+                this.addEventListeners();
+                this.setupAudio();
+                this.animate();
+            }
+            
+            init() {
+                this.scene = new THREE.Scene();
+                
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.z = this.cameraDistance;
+                
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.container.appendChild(this.renderer.domElement);
+                
+                this.createGradientBackground();
+            }
+            
+            createGradientBackground() {
+                const vertexShader = `
+                    void main() {
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `;
+                
+                const fragmentShader = `
+                    uniform vec3 color1;
+                    uniform vec3 color2;
+                    uniform vec2 resolution;
+                    
+                    void main() {
+                        vec2 uv = gl_FragCoord.xy / resolution.xy;
+                        vec3 color = mix(color1, color2, uv.y);
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `;
+                
+                const geometry = new THREE.PlaneGeometry(2, 2);
+                const material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        color1: { value: new THREE.Color(0x1a1a2e) },
+                        color2: { value: new THREE.Color(0x16213e) },
+                        resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+                    },
+                    vertexShader: vertexShader,
+                    fragmentShader: fragmentShader
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.z = -100;
+                this.scene.add(mesh);
+                this.backgroundMesh = mesh;
+            }
+            
+            createParticleSystem() {
+                const particleCount = 1000;
+                const geometry = new THREE.BufferGeometry();
+                
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    positions[i3] = (Math.random() - 0.5) * 100;
+                    positions[i3 + 1] = (Math.random() - 0.5) * 100;
+                    positions[i3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const hue = Math.random();
+                    const color = new THREE.Color().setHSL(hue, 0.8, 0.7);
+                    colors[i3] = color.r;
+                    colors[i3 + 1] = color.g;
+                    colors[i3 + 2] = color.b;
+                    
+                    velocities[i3] = (Math.random() - 0.5) * 0.02;
+                    velocities[i3 + 1] = (Math.random() - 0.5) * 0.02;
+                    velocities[i3 + 2] = (Math.random() - 0.5) * 0.02;
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                this.particleSystem = new THREE.Points(geometry, material);
+                this.scene.add(this.particleSystem);
+                
+                this.particleVelocities = velocities;
+            }
+            
+            addEventListeners() {
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                this.renderer.domElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.renderer.domElement.addEventListener('mouseup', () => this.onMouseUp());
+                this.renderer.domElement.addEventListener('wheel', (e) => this.onWheel(e));
+                this.renderer.domElement.addEventListener('dblclick', () => this.onDoubleClick());
+                
+                this.renderer.domElement.addEventListener('touchstart', (e) => this.onTouchStart(e));
+                this.renderer.domElement.addEventListener('touchmove', (e) => this.onTouchMove(e));
+                this.renderer.domElement.addEventListener('touchend', () => this.onTouchEnd());
+            }
+            
+            setupAudio() {
+                const audio = document.getElementById('backgroundMusic');
+                const playButton = document.getElementById('playButton');
+                let isPlaying = false;
+                
+                playButton.addEventListener('click', () => {
+                    if (!isPlaying) {
+                        audio.muted = false;
+                        audio.play().then(() => {
+                            isPlaying = true;
+                            playButton.textContent = '⏸ Pause Music';
+                        }).catch(console.error);
+                    } else {
+                        audio.pause();
+                        isPlaying = false;
+                        playButton.textContent = '▶ Play Music';
+                    }
+                });
+                
+                audio.addEventListener('ended', () => {
+                    isPlaying = false;
+                    playButton.textContent = '▶ Play Music';
+                });
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                
+                if (this.backgroundMesh) {
+                    this.backgroundMesh.material.uniforms.resolution.value.set(
+                        window.innerWidth,
+                        window.innerHeight
+                    );
+                }
+            }
+            
+            onMouseDown(event) {
+                this.isMouseDown = true;
+                this.mouse.x = event.clientX;
+                this.mouse.y = event.clientY;
+                this.autoRotate = false;
+            }
+            
+            onMouseMove(event) {
+                if (!this.isMouseDown) return;
+                
+                const deltaX = event.clientX - this.mouse.x;
+                const deltaY = event.clientY - this.mouse.y;
+                
+                this.targetAngleY += deltaX * 0.01;
+                this.targetAngleX += deltaY * 0.01;
+                
+                this.mouse.x = event.clientX;
+                this.mouse.y = event.clientY;
+            }
+            
+            onMouseUp() {
+                this.isMouseDown = false;
+            }
+            
+            onWheel(event) {
+                event.preventDefault();
+                this.targetCameraDistance += event.deltaY * 0.1;
+                this.targetCameraDistance = Math.max(10, Math.min(100, this.targetCameraDistance));
+            }
+            
+            onDoubleClick() {
+                this.autoRotate = !this.autoRotate;
+            }
+            
+            onTouchStart(event) {
+                if (event.touches.length === 1) {
+                    this.isMouseDown = true;
+                    this.mouse.x = event.touches[0].clientX;
+                    this.mouse.y = event.touches[0].clientY;
+                    this.autoRotate = false;
+                }
+            }
+            
+            onTouchMove(event) {
+                event.preventDefault();
+                if (!this.isMouseDown || event.touches.length !== 1) return;
+                
+                const deltaX = event.touches[0].clientX - this.mouse.x;
+                const deltaY = event.touches[0].clientY - this.mouse.y;
+                
+                this.targetAngleY += deltaX * 0.01;
+                this.targetAngleX += deltaY * 0.01;
+                
+                this.mouse.x = event.touches[0].clientX;
+                this.mouse.y = event.touches[0].clientY;
+            }
+            
+            onTouchEnd() {
+                this.isMouseDown = false;
+            }
+            
+            updateParticles() {
+                const positions = this.particleSystem.geometry.attributes.position.array;
+                const time = Date.now() * 0.001;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    const velocityIndex = i;
+                    
+                    positions[i] += this.particleVelocities[velocityIndex] + Math.sin(time + i) * 0.01;
+                    positions[i + 1] += this.particleVelocities[velocityIndex + 1] + Math.cos(time + i) * 0.01;
+                    positions[i + 2] += this.particleVelocities[velocityIndex + 2];
+                    
+                    if (positions[i] > 50) positions[i] = -50;
+                    if (positions[i] < -50) positions[i] = 50;
+                    if (positions[i + 1] > 50) positions[i + 1] = -50;
+                    if (positions[i + 1] < -50) positions[i + 1] = 50;
+                    if (positions[i + 2] > 50) positions[i + 2] = -50;
+                    if (positions[i + 2] < -50) positions[i + 2] = 50;
+                }
+                
+                this.particleSystem.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            updateCamera() {
+                this.cameraAngleX += (this.targetAngleX - this.cameraAngleX) * 0.1;
+                this.cameraAngleY += (this.targetAngleY - this.cameraAngleY) * 0.1;
+                this.cameraDistance += (this.targetCameraDistance - this.cameraDistance) * 0.1;
+                
+                if (this.autoRotate) {
+                    this.targetAngleY += this.rotationSpeed;
+                }
+                
+                const x = this.cameraDistance * Math.cos(this.cameraAngleX) * Math.sin(this.cameraAngleY);
+                const y = this.cameraDistance * Math.sin(this.cameraAngleX);
+                const z = this.cameraDistance * Math.cos(this.cameraAngleX) * Math.cos(this.cameraAngleY);
+                
+                this.camera.position.set(x, y, z);
+                this.camera.lookAt(0, 0, 0);
+            }
+            
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                this.updateParticles();
+                this.updateCamera();
+                
+                if (this.particleSystem) {
+                    this.particleSystem.rotation.y += 0.001;
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            new ThreeJSExperience();
+        });
+    </script>
+</body>
+</html>
