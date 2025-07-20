@@ -218,6 +218,21 @@ jobs:
           
           echo "::endgroup::"
       
+      - name: Commit and push generated files (after video)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ steps.setup.outputs.folder-name }}/
+          if git diff --cached --quiet; then
+            echo "No files to commit"
+          else
+            git commit -m "Add generated files (orchestrated): images and videos"
+            git push origin ${{ steps.setup.outputs.branch-name }}
+          fi
+      
       - name: Video Adjustment
         id: adjustment
         uses: ./.github/actions/kamui-modules/video-adjustment

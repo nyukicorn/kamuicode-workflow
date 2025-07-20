@@ -40,7 +40,7 @@ runs:
         ref: ${{ inputs.branch-name }}
     
     - name: Download Three.js files artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: threejs-files-${{ inputs.folder-name }}
         path: ./

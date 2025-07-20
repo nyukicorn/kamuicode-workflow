@@ -439,7 +439,7 @@ runs:
         echo "::endgroup::"
     
     - name: Upload Three.js files as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: threejs-files-${{ inputs.folder-name }}
         path: ${{ inputs.folder-name }}/
