@@ -323,7 +323,7 @@
         function loadPanorama() {
             const loader = new THREE.TextureLoader();
             loader.load(
-                './panorama.jpg',
+                '../assets/panorama.jpg',
                 function(texture) {
                     console.log('パノラマ画像読み込み成功');
                     const geometry = new THREE.SphereGeometry(500, 60, 40);
@@ -395,7 +395,7 @@
         // 音楽初期化
         function initAudio() {
             try {
-                audio = new Audio('./generated-music.wav');
+                audio = new Audio('../music/generated-music.wav');
                 audio.loop = true;
                 audio.volume = 0.6;
                 
