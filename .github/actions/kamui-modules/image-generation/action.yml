@@ -133,20 +133,31 @@ runs:
           echo "📁 Created images folder: $IMAGES_DIR"
         fi
         
-        # MCP設定の確認
-        MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+        # GitHub SecretsからT2I特化MCP設定を動的生成
+        MCP_CONFIG_PATH=".claude/mcp-image-generation.json"
         MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
         
-        echo "📋 MCP Configuration Check:"
+        echo "📋 Dynamic T2I MCP Configuration:"
         echo "Working directory: $(pwd)"
         echo "MCP config path: $MCP_CONFIG_PATH"
-        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
+        echo "Selected model: $MODEL_NAME"
         echo "Allowed tools: $TOOLS_LIST"
         
-        # Create MCP config file from GitHub Secret
+        # SecretsからT2Iサービスのみを抽出して軽量MCP設定を作成
         mkdir -p .claude
-        echo '${{ inputs.mcp-config }}' > "$MCP_CONFIG_ABS_PATH"
-        echo "✅ MCP config file created from GitHub Secret"
+        echo '${{ inputs.mcp-config }}' | jq '
+          .mcpServers | 
+          to_entries | 
+          map(select(.key | startswith("t2i-"))) |
+          from_entries |
+          {"mcpServers": .}
+        ' > "$MCP_CONFIG_ABS_PATH"
+        
+        echo "✅ T2I-only MCP config created dynamically from GitHub Secrets"
+        
+        # 利用可能なT2Iサービスをログ出力
+        echo "Available T2I services:"
+        jq -r '.mcpServers | keys[]' "$MCP_CONFIG_ABS_PATH" || true
         
         # MCP設定ファイルの確認
         if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
