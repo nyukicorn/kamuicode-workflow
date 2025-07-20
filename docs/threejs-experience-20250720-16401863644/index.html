@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルなテスト - Three.js VR体験</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: white;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .ui-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .info {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            pointer-events: auto;
+        }
+        
+        .info h1 {
+            margin: 0 0 10px 0;
+            font-size: 24px;
+            font-weight: 300;
+        }
+        
+        .info p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        #webgl-error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            background: rgba(255, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1001;
+        }
+        
+        @media (max-width: 768px) {
+            .ui-panel {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .info h1 {
+                font-size: 20px;
+            }
+            
+            .info p {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p>VR体験を読み込み中...</p>
+        </div>
+    </div>
+
+    <div class="ui-panel">
+        <div></div>
+        <div class="info">
+            <h1>シンプルなテスト</h1>
+            <p>マウスドラッグで視点移動 • ホイールでズーム • タッチ操作対応</p>
+        </div>
+    </div>
+
+    <div id="webgl-error" style="display: none;">
+        <h2>WebGLに対応していません</h2>
+        <p>このブラウザはWebGLをサポートしていません。最新のブラウザをご利用ください。</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // WebGL対応チェック
+        function checkWebGL() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && 
+                         (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+            } catch (e) {
+                return false;
+            }
+        }
+
+        if (!checkWebGL()) {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('webgl-error').style.display = 'block';
+            throw new Error('WebGL not supported');
+        }
+
+        // シーン設定
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(0x000022, 1);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1;
+        document.body.appendChild(renderer.domElement);
+
+        // パノラマ球体の作成
+        const panoramaGeometry = new THREE.SphereGeometry(500, 60, 40);
+        panoramaGeometry.scale(-1, 1, 1); // 内側から見えるように反転
+        
+        // グラデーション背景テクスチャ作成
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+        gradient.addColorStop(0, '#1a1a2e');
+        gradient.addColorStop(0.5, '#16213e');
+        gradient.addColorStop(1, '#0f3460');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 256);
+        
+        const panoramaTexture = new THREE.CanvasTexture(canvas);
+        panoramaTexture.wrapS = THREE.RepeatWrapping;
+        panoramaTexture.repeat.x = 2;
+        
+        const panoramaMaterial = new THREE.MeshBasicMaterial({ map: panoramaTexture });
+        const panoramaMesh = new THREE.Mesh(panoramaGeometry, panoramaMaterial);
+        scene.add(panoramaMesh);
+
+        // パーティクルシステム
+        const particleCount = 2000;
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        const sizes = new Float32Array(particleCount);
+        
+        const colorPalette = [
+            new THREE.Color(0x4facfe),
+            new THREE.Color(0x00f2fe),
+            new THREE.Color(0xa8edea),
+            new THREE.Color(0xfed6e3),
+            new THREE.Color(0xffecd2)
+        ];
+        
+        for (let i = 0; i < particleCount; i++) {
+            const i3 = i * 3;
+            
+            positions[i3] = (Math.random() - 0.5) * 200;
+            positions[i3 + 1] = (Math.random() - 0.5) * 200;
+            positions[i3 + 2] = (Math.random() - 0.5) * 200;
+            
+            const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+            colors[i3] = color.r;
+            colors[i3 + 1] = color.g;
+            colors[i3 + 2] = color.b;
+            
+            sizes[i] = Math.random() * 2 + 0.5;
+        }
+        
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        particleGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+        
+        const particleMaterial = new THREE.PointsMaterial({
+            size: 2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particles);
+
+        // カメラコントロール（簡易版OrbitControls）
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetX = 0, targetY = 0;
+        let currentX = 0, currentY = 0;
+        
+        const mouse = new THREE.Vector2();
+        
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+        
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            targetX += deltaX * 0.01;
+            targetY += deltaY * 0.01;
+            targetY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetY));
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+        
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+        
+        function onWheel(event) {
+            camera.fov += event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(100, camera.fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        // タッチイベント
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+                isMouseDown = true;
+            }
+        }
+        
+        function onTouchMove(event) {
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouseX;
+                const deltaY = event.touches[0].clientY - mouseY;
+                
+                targetX += deltaX * 0.01;
+                targetY += deltaY * 0.01;
+                targetY = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetY));
+                
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+            event.preventDefault();
+        }
+        
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+        
+        // イベントリスナー
+        renderer.domElement.addEventListener('mousedown', onMouseDown);
+        renderer.domElement.addEventListener('mousemove', onMouseMove);
+        renderer.domElement.addEventListener('mouseup', onMouseUp);
+        renderer.domElement.addEventListener('wheel', onWheel);
+        
+        renderer.domElement.addEventListener('touchstart', onTouchStart);
+        renderer.domElement.addEventListener('touchmove', onTouchMove);
+        renderer.domElement.addEventListener('touchend', onTouchEnd);
+        
+        // リサイズ対応
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        window.addEventListener('resize', onWindowResize);
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // スムーズなカメラ移動
+            currentX += (targetX - currentX) * 0.05;
+            currentY += (targetY - currentY) * 0.05;
+            
+            camera.position.x = Math.sin(currentX) * Math.cos(currentY) * 10;
+            camera.position.y = Math.sin(currentY) * 10;
+            camera.position.z = Math.cos(currentX) * Math.cos(currentY) * 10;
+            camera.lookAt(0, 0, 0);
+            
+            // パーティクルアニメーション
+            const time = Date.now() * 0.001;
+            const positions = particles.geometry.attributes.position.array;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                positions[i3 + 1] += Math.sin(time + i * 0.01) * 0.02;
+                positions[i3] += Math.cos(time + i * 0.01) * 0.02;
+            }
+            
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.rotation.y += 0.001;
+            
+            renderer.render(scene, camera);
+        }
+        
+        // 初期化完了後にローディング画面を非表示
+        setTimeout(() => {
+            document.getElementById('loading-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+            }, 500);
+        }, 1000);
+        
+        animate();
+    </script>
+</body>
+</html>
