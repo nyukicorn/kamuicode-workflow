@@ -57,6 +57,18 @@ on:
         required: false
         type: string
         default: '#FFFFFF'
+      image_model:
+        description: '画像生成モデル'
+        required: false
+        type: choice
+        options:
+          - auto
+          - imagen4-ultra
+          - imagen4-fast
+          - imagen3
+          - flux-schnell
+          - photo-flux
+        default: 'auto'
 
 jobs:
   create-threejs-experience:
@@ -89,6 +101,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-generation
         with:
           image-prompt: ${{ steps.translation.outputs.english-prompt }}
+          image-model: ${{ inputs.image_model }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

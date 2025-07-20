@@ -6,6 +6,10 @@ inputs:
   image-prompt:
     description: 'The image generation prompt'
     required: true
+  image-model:
+    description: 'Image generation model (auto/imagen4-ultra/imagen4-fast/imagen3/flux-schnell/photo-flux)'
+    required: false
+    default: 'auto'
   folder-name:
     description: 'The folder name for storing image files'
     required: true
@@ -55,11 +59,73 @@ runs:
         
         # 設定
         IMAGE_PROMPT="${{ inputs.image-prompt }}"
+        IMAGE_MODEL="${{ inputs.image-model }}"
         FOLDER_NAME="${{ inputs.folder-name }}"
         IMAGES_DIR="$FOLDER_NAME/images"
         
         echo "Image prompt: $IMAGE_PROMPT"
+        echo "Selected model: $IMAGE_MODEL"
         echo "Target folder: $IMAGES_DIR"
+        
+        # モデル選択ロジック（AI自動選択対応）
+        if [ "$IMAGE_MODEL" == "auto" ]; then
+          echo "🤖 AI Auto Selection Mode"
+          # コンセプト解析でモデル自動選択
+          if echo "$IMAGE_PROMPT" | grep -iE "(realistic|photo|real|portrait|landscape)" > /dev/null; then
+            SELECTED_MODEL="imagen4-ultra"
+            echo "📸 Detected realistic content → Imagen4 Ultra"
+          elif echo "$IMAGE_PROMPT" | grep -iE "(anime|cartoon|illustration|art)" > /dev/null; then
+            SELECTED_MODEL="flux-schnell"
+            echo "🎨 Detected artistic content → Flux Schnell"
+          elif echo "$IMAGE_PROMPT" | grep -iE "(fast|quick|speed)" > /dev/null; then
+            SELECTED_MODEL="imagen4-fast"
+            echo "⚡ Detected speed preference → Imagen4 Fast"
+          else
+            SELECTED_MODEL="imagen4-fast"
+            echo "🔄 Default selection → Imagen4 Fast"
+          fi
+        else
+          SELECTED_MODEL="$IMAGE_MODEL"
+          echo "👤 User selection → $SELECTED_MODEL"
+        fi
+        
+        # モデル別MCP設定
+        case "$SELECTED_MODEL" in
+          "imagen4-ultra")
+            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-ultra"
+            TOOLS_LIST="mcp__t2i-fal-imagen4-ultra__imagen4_ultra_submit,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_status,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_result,Bash"
+            MODEL_NAME="Imagen4 Ultra"
+            ;;
+          "imagen4-fast")
+            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-fast"
+            TOOLS_LIST="mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
+            MODEL_NAME="Imagen4 Fast"
+            ;;
+          "imagen3")
+            MCP_SERVICE_PREFIX="mcp__t2i-google-imagen3"
+            TOOLS_LIST="mcp__t2i-google-imagen3__imagen3_submit,mcp__t2i-google-imagen3__imagen3_status,mcp__t2i-google-imagen3__imagen3_result,Bash"
+            MODEL_NAME="Google Imagen3"
+            ;;
+          "flux-schnell")
+            MCP_SERVICE_PREFIX="mcp__t2i-fal-flux-schnell"
+            TOOLS_LIST="mcp__t2i-fal-flux-schnell__flux_schnell_submit,mcp__t2i-fal-flux-schnell__flux_schnell_status,mcp__t2i-fal-flux-schnell__flux_schnell_result,Bash"
+            MODEL_NAME="Flux Schnell"
+            ;;
+          "photo-flux")
+            MCP_SERVICE_PREFIX="mcp__t2i-fal-rundiffusion-photo-flux"
+            TOOLS_LIST="mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_submit,mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_status,mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_result,Bash"
+            MODEL_NAME="Photo Flux"
+            ;;
+          *)
+            echo "⚠️ Unknown model: $SELECTED_MODEL, falling back to Imagen4 Fast"
+            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-fast"
+            TOOLS_LIST="mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
+            MODEL_NAME="Imagen4 Fast (Fallback)"
+            ;;
+        esac
+        
+        echo "✅ Final selection: $MODEL_NAME"
+        echo "🔧 MCP Service: $MCP_SERVICE_PREFIX"
         
         # 画像フォルダを事前に作成
         if [ ! -d "$IMAGES_DIR" ]; then
@@ -75,7 +141,7 @@ runs:
         echo "Working directory: $(pwd)"
         echo "MCP config path: $MCP_CONFIG_PATH"
         echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
-        echo "Allowed tools: mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
+        echo "Allowed tools: $TOOLS_LIST"
         
         # Create MCP config file from GitHub Secret
         mkdir -p .claude
@@ -92,16 +158,17 @@ runs:
           exit 1
         fi
         
-        # プロンプトの構築 - 英語プロンプト版
+        # プロンプトの構築 - 動的モデル対応版
         PROMPT="画像生成を実行してください。
 
+        **選択モデル**: $MODEL_NAME
         **画像プロンプト（英語）**: $IMAGE_PROMPT
 
         **実行手順**:
-        1. 上記の英語プロンプトを使用してImagen4 Fastで画像生成
-        2. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_submit\`ツールで画像生成を開始
-        3. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_status\`でステータス確認
-        4. \`mcp__t2i-fal-imagen4-fast__imagen4_fast_result\`で結果取得してGoogle URLを取得
+        1. 上記の英語プロンプトを使用して$MODEL_NAMEで画像生成
+        2. \`${MCP_SERVICE_PREFIX}__submit\`ツールで画像生成を開始
+        3. \`${MCP_SERVICE_PREFIX}__status\`でステータス確認
+        4. \`${MCP_SERVICE_PREFIX}__result\`で結果取得してGoogle URLを取得
         5. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
         6. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
 
@@ -124,7 +191,7 @@ runs:
         # Claude Code CLIの実行
         npx @anthropic-ai/claude-code \
           --mcp-config="$MCP_CONFIG_ABS_PATH" \
-          --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
+          --allowedTools "$TOOLS_LIST" \
           --max-turns 25 \
           --verbose \
           --permission-mode "acceptEdits" \
