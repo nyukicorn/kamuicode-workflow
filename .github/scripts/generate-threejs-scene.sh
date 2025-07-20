@@ -56,6 +56,16 @@ if [ "$PARTICLE_ENABLED" = "true" ]; then
   - Simple animation"
 fi
 
+# 音楽設定
+if [ "$INCLUDE_MUSIC" = "true" ] && [ -n "$MUSIC_URL" ]; then
+  PROMPT="$PROMPT
+- Add music controls:
+  - HTML5 Audio element
+  - Play/Pause button in UI
+  - Loop playback
+  - Music file from: $MUSIC_URL"
+fi
+
 # 基本機能
 PROMPT="$PROMPT
 - Mouse drag to rotate view
