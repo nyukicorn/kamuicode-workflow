@@ -80,7 +80,7 @@ runs:
       env:
         CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
         FOLDER_NAME: ${{ inputs.folder-name }}
-      run: ${{ github.action_path }}/../../scripts/generate-threejs-scene.sh
+      run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     
     - name: Upload Three.js files as artifact
       uses: actions/upload-artifact@v4
