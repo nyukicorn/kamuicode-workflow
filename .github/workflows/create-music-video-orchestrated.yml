@@ -113,7 +113,7 @@ jobs:
             --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
             --max-turns 25 \
             --verbose \
-            --permission-mode "acceptEdits" \
+            --permission-mode "bypassPermissions" \
             -p "$SMART_PROMPT" || {
               echo "::error::❌ Intent-to-Prompt Image generation failed"
               exit 1
@@ -184,10 +184,10 @@ jobs:
           # Claude Code SDK実行
           npx @anthropic-ai/claude-code \
             --mcp-config="$MCP_CONFIG_PATH" \
-            --allowedTools "mcp__i2v-hailuo-02-pro__hailuo_submit,mcp__i2v-hailuo-02-pro__hailuo_status,mcp__i2v-hailuo-02-pro__hailuo_result,Bash" \
+            --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
             --max-turns 25 \
             --verbose \
-            --permission-mode "acceptEdits" \
+            --permission-mode "bypassPermissions" \
             -p "$SMART_PROMPT" || {
               echo "::error::❌ Intent-to-Prompt Video generation failed"
               exit 1

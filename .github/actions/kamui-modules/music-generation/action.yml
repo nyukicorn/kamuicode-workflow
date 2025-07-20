@@ -102,16 +102,23 @@ runs:
         MUSIC_PROMPT_FULL="Google Lyriaを使用して音楽生成を実行してください。
         **音楽コンセプト**: $MUSIC_CONCEPT
         **最適化された音楽生成プロンプト**: $MUSIC_PROMPT
-        **実行手順**:
-        1. \`mcp__t2m-google-lyria__lyria_generate\`ツールを使用して音楽生成を実行
-        2. 生成された音楽ファイルを「$MUSIC_DIR/generated-music.mp3」または「$MUSIC_DIR/generated-music.wav」に保存
-        3. 音楽ファイルのパスを「$FOLDER_NAME/music-url.txt」に保存（後の処理で参照用）
-        4. 生成完了の確認メッセージを表示
-        **重要**: 必ず正しいツール名 \`mcp__t2m-google-lyria__lyria_generate\` を使用してください。
         
-        **保存先**:
+        **厳密な実行手順（必ず順番通りに実行）**:
+        1. \`mcp__t2m-google-lyria__lyria_generate\`ツールを使用して音楽生成を実行
+        2. **重要**: 生成された音楽ファイルのダウンロードURLを取得
+        3. **重要**: Bashツールを使用してダウンロードURLから音楽ファイルを「$MUSIC_DIR/generated-music.wav」として必ずダウンロード保存
+        4. **重要**: 音楽ファイルのローカルパス「$MUSIC_DIR/generated-music.wav」を「$FOLDER_NAME/music-url.txt」に保存
+        5. **重要**: 実際にファイルが保存されたことを確認（ls コマンドで確認）
+        6. 生成完了の確認メッセージを表示
+        
+        **必須のファイル名規則**:
+        - 音楽ファイル名: 必ず「generated-music.wav」とする（他の名前は使用禁止）
+        - 保存ディレクトリ: 必ず「$MUSIC_DIR」とする
+        - パス保存ファイル: 必ず「$FOLDER_NAME/music-url.txt」とする
+        
+        **保存先（厳密に従うこと）**:
         - 音楽ディレクトリ: $MUSIC_DIR
-        - 音楽ファイル: generated-music.mp3 または generated-music.wav
+        - 音楽ファイル: generated-music.wav（固定）
         - パス保存ファイル: $FOLDER_NAME/music-url.txt"
         
         npx @anthropic-ai/claude-code \

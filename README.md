@@ -145,7 +145,41 @@ kamuicode-workflow/
 CLAUDE_ACCESS_TOKEN=your_access_token
 CLAUDE_REFRESH_TOKEN=your_refresh_token  
 CLAUDE_EXPIRES_AT=your_expires_at
+MCP_CONFIG=your_mcp_configuration_json
 ```
+
+## 🛠️ 開発者ガイドライン
+
+### MCP ツール名の正確性確保
+
+**重要**: ワークフローを作成・修正する際は、MCPツール名を正確に記述してください。
+
+**必須手順**:
+1. **GitHub Secrets MCP_CONFIG を確認**: 新しいワークフローを作成する際は、必ず GitHub Secrets の `MCP_CONFIG` から最新のサービス名とツール名を確認する
+2. **既存モジュールを参考にする**: 動作確認済みのモジュールから正確なツール名をコピー&ペーストする
+3. **推測で記述しない**: ツール名を推測で書かず、必ず GitHub Secrets の実際の設定を参照する
+4. **命名規則の理解**: `mcp__[サービス名]__[機能名]` の形式を遵守
+5. **ローカルファイル非推奨**: `.claude/mcp-kamuicode.json` は参考程度に留め、必ず GitHub Secrets を正式な情報源とする
+
+**例**:
+```bash
+# 正しい例（GitHub Secrets MCP_CONFIG から確認済み）
+--allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash"
+
+# 間違った例（推測で記述）
+--allowedTools "mcp__i2v-hailuo-02-pro__hailuo_submit,mcp__i2v-hailuo-02-pro__hailuo_status,mcp__i2v-hailuo-02-pro__hailuo_result,Bash"
+```
+
+**GitHub Secrets MCP_CONFIG 確認方法**:
+1. GitHub Repository Settings > Secrets and variables > Actions
+2. `MCP_CONFIG` の内容を確認
+3. `mcpServers` オブジェクト内のサービス名を参照
+4. 各サービスの正確な機能名（submit/status/result等）を確認
+
+**参考モジュール**:
+- 画像生成: `.github/actions/kamui-modules/image-generation/action.yml`
+- 動画生成: `.github/actions/kamui-modules/video-generation/action.yml`
+- 音楽生成: `.github/actions/kamui-modules/music-generation/action.yml`
 
 ### MCP設定
 `.claude/mcp-kamuicode.json` に利用可能なMCPサーバーを設定
