@@ -61,9 +61,11 @@ fi
 if [ "$INCLUDE_MUSIC" = "true" ] && [ -n "$MUSIC_URL" ]; then
   PROMPT="$PROMPT
 - Add music controls:
-  - HTML5 Audio element
-  - Play/Pause button in UI
-  - Loop playback
+  - HTML5 Audio element with muted autoplay initially
+  - Prominent Play/Pause button in UI
+  - NO automatic playback on page load
+  - User must click Play button first (browser policy)
+  - Loop playback when playing
   - Music file from: $MUSIC_URL"
 fi
 
