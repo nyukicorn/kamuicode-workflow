@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音楽デバッグテスト - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #music-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        #play-pause-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        #play-pause-btn:hover {
+            background: #ff5252;
+        }
+        
+        #play-pause-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="three-canvas"></canvas>
+        
+        <div id="music-controls">
+            <button id="play-pause-btn">▶ Play Music</button>
+            <audio id="background-music" loop muted>
+                <source src="./generated-music.wav" type="audio/wav">
+                Your browser does not support the audio element.
+            </audio>
+        </div>
+        
+        <div id="info">
+            🎵 音楽デバッグテスト<br>
+            Mouse: Drag to rotate • Wheel: Zoom • Double-click: Auto-rotate
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('three-canvas'),
+            antialias: true 
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        
+        // Music controls
+        const audio = document.getElementById('background-music');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        let isPlaying = false;
+        
+        playPauseBtn.addEventListener('click', async () => {
+            if (!isPlaying) {
+                try {
+                    audio.muted = false;
+                    await audio.play();
+                    isPlaying = true;
+                    playPauseBtn.textContent = '⏸ Pause Music';
+                } catch (e) {
+                    console.log('Audio play failed:', e);
+                    playPauseBtn.textContent = '❌ Audio Error';
+                }
+            } else {
+                audio.pause();
+                isPlaying = false;
+                playPauseBtn.textContent = '▶ Play Music';
+            }
+        });
+        
+        // Create a debug-themed scene
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshBasicMaterial({ 
+            color: 0x00ff00,
+            wireframe: true 
+        });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+        
+        // Add some debug elements
+        const sphereGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const sphereMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff0000,
+            wireframe: true 
+        });
+        
+        for (let i = 0; i < 5; i++) {
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(
+                (Math.random() - 0.5) * 6,
+                (Math.random() - 0.5) * 6,
+                (Math.random() - 0.5) * 6
+            );
+            scene.add(sphere);
+        }
+        
+        // Position camera
+        camera.position.z = 5;
+        
+        // Mouse controls
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let autoRotate = false;
+        
+        // Mouse drag rotation
+        document.addEventListener('mousedown', (event) => {
+            isDragging = true;
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+        
+        document.addEventListener('mousemove', (event) => {
+            if (!isDragging) return;
+            
+            const deltaMove = {
+                x: event.clientX - previousMousePosition.x,
+                y: event.clientY - previousMousePosition.y
+            };
+            
+            const rotationSpeed = 0.01;
+            scene.rotation.y += deltaMove.x * rotationSpeed;
+            scene.rotation.x += deltaMove.y * rotationSpeed;
+            
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        // Mouse wheel zoom
+        document.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const zoomSpeed = 0.1;
+            camera.position.z += event.deltaY * zoomSpeed * 0.01;
+            camera.position.z = Math.max(1, Math.min(20, camera.position.z));
+        });
+        
+        // Double-click auto-rotation
+        document.addEventListener('dblclick', () => {
+            autoRotate = !autoRotate;
+        });
+        
+        // Touch controls for mobile
+        let touchStartPosition = { x: 0, y: 0 };
+        
+        document.addEventListener('touchstart', (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            touchStartPosition = { x: touch.clientX, y: touch.clientY };
+        });
+        
+        document.addEventListener('touchmove', (event) => {
+            event.preventDefault();
+            const touch = event.touches[0];
+            const deltaMove = {
+                x: touch.clientX - touchStartPosition.x,
+                y: touch.clientY - touchStartPosition.y
+            };
+            
+            const rotationSpeed = 0.01;
+            scene.rotation.y += deltaMove.x * rotationSpeed;
+            scene.rotation.x += deltaMove.y * rotationSpeed;
+            
+            touchStartPosition = { x: touch.clientX, y: touch.clientY };
+        });
+        
+        // Responsive design
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Auto-rotation
+            if (autoRotate) {
+                scene.rotation.x += 0.005;
+                scene.rotation.y += 0.01;
+            }
+            
+            // Animate cube
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
