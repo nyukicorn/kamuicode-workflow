@@ -45,6 +45,29 @@ runs:
         name: threejs-files-${{ inputs.folder-name }}
         path: ./
     
+    - name: Debug artifact download
+      shell: bash
+      run: |
+        echo "🔧 デバッグ: アーティファクトダウンロード後のファイル構造確認"
+        echo "Current working directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Looking for folder: ${{ inputs.folder-name }}"
+        if [ -d "${{ inputs.folder-name }}" ]; then
+          echo "✅ フォルダが見つかりました"
+          ls -la "${{ inputs.folder-name }}/"
+          if [ -d "${{ inputs.folder-name }}/src" ]; then
+            echo "✅ srcディレクトリが見つかりました"
+            ls -la "${{ inputs.folder-name }}/src/"
+          else
+            echo "❌ srcディレクトリが見つかりません"
+          fi
+        else
+          echo "❌ メインフォルダが見つかりません"
+          echo "利用可能なディレクトリ:"
+          find . -type d -name "*threejs*" -o -name "*experience*" 2>/dev/null || echo "該当するディレクトリなし"
+        fi
+    
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
