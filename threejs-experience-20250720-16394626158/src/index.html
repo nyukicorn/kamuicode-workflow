@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜をテーマにした万華鏡のような美しい世界</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        #canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        #canvas:active {
+            cursor: grabbing;
+        }
+        
+        #ui {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        #controls {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 100;
+            width: 250px;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        #controls:hover {
+            opacity: 1;
+        }
+        
+        .control-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .control-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #FFB6C1;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        .slider {
+            width: 100%;
+            margin: 5px 0;
+            appearance: none;
+            height: 5px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FFB6C1;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #FFB6C1;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            font-size: 12px;
+            color: #FFC0CB;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .color-mode-btn {
+            background: rgba(255, 182, 193, 0.2);
+            border: 1px solid #FFB6C1;
+            color: white;
+            padding: 8px 12px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .color-mode-btn.active {
+            background: #FFB6C1;
+            color: black;
+        }
+        
+        .color-mode-btn:hover {
+            background: rgba(255, 182, 193, 0.5);
+        }
+        
+        #colorPicker {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        #musicControls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 100;
+            color: white;
+        }
+        
+        #musicBtn {
+            background: #FFB6C1;
+            border: none;
+            color: black;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        #volumeSlider {
+            width: 100px;
+            vertical-align: middle;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">読み込み中...</div>
+    
+    <div id="ui">
+        <strong>🌸 桜の万華鏡世界 🌸</strong><br>
+        マウスドラッグ: 視点移動<br>
+        ホイール: ズーム<br>
+        ダブルクリック: 自動回転
+    </div>
+    
+    <div id="controls">
+        <div class="control-section">
+            <label class="control-label">🎨 パーティクル色モード</label>
+            <div>
+                <button class="color-mode-btn active" data-mode="single">単色</button>
+                <button class="color-mode-btn" data-mode="gradient">グラデーション</button>
+                <button class="color-mode-btn" data-mode="rainbow">レインボー</button>
+            </div>
+            <input type="color" id="colorPicker" value="#FFB6C1">
+        </div>
+        
+        <div class="control-section">
+            <div class="slider-container">
+                <label class="control-label">🔄 回転速度</label>
+                <input type="range" class="slider" id="rotationSpeed" min="0.001" max="0.05" step="0.001" value="0.01">
+                <div class="value-display" id="rotationValue">0.01</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="slider-container">
+                <label class="control-label">⭐ パーティクルサイズ</label>
+                <input type="range" class="slider" id="particleSize" min="0.1" max="3.0" step="0.1" value="0.5">
+                <div class="value-display" id="sizeValue">0.5</div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="slider-container">
+                <label class="control-label">🌸 パーティクル数</label>
+                <input type="range" class="slider" id="particleCount" min="100" max="5000" step="100" value="1000">
+                <div class="value-display" id="countValue">1000</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="musicControls">
+        <button id="musicBtn">🎵 音楽 ON</button>
+        <label>音量: </label>
+        <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.5">
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // グローバル変数
+        let scene, camera, renderer, particles;
+        let mouse = { x: 0, y: 0 };
+        let mouseDown = false;
+        let autoRotate = false;
+        let autoRotationSpeed = 0.01;
+        let lastTime = 0;
+        let currentColorMode = 'single';
+        let baseColor = '#FFB6C1';
+        let particleGeometry, particleMaterial;
+        let audio, audioContext;
+        
+        // 桜テーマの美しい色設定
+        const sakuraColors = {
+            primary: '#FFB6C1',    // 桜のピンク
+            secondary: '#FFC0CB',  // 薄いピンク
+            accent: '#FF69B4',     // 濃いピンク
+            light: '#FFDBEF',      // 非常に薄いピンク
+            white: '#FFFFFF'       // 白
+        };
+        
+        // 初期化
+        function init() {
+            // WebGL対応チェック
+            if (!window.WebGLRenderingContext) {
+                alert('WebGLがサポートされていません');
+                return;
+            }
+            
+            // シーン作成
+            scene = new THREE.Scene();
+            
+            // カメラ作成
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 5);
+            
+            // レンダラー作成
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('canvas'),
+                antialias: true 
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+            
+            // パノラマ背景を読み込み
+            loadPanorama();
+            
+            // パーティクルシステム作成
+            createParticleSystem();
+            
+            // イベントリスナー設定
+            setupEventListeners();
+            
+            // 音楽設定
+            setupAudio();
+            
+            // UIコントロール設定
+            setupUIControls();
+            
+            // アニメーション開始
+            animate();
+            
+            // ローディング画面を非表示
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        // パノラマ背景読み込み
+        function loadPanorama() {
+            const loader = new THREE.TextureLoader();
+            loader.load('./panorama.jpg',
+                function(texture) {
+                    console.log('パノラマ画像読み込み成功');
+                    
+                    // スフィアジオメトリ作成（内側から見る）
+                    const geometry = new THREE.SphereGeometry(500, 60, 40);
+                    geometry.scale(-1, 1, 1); // 内側から見えるように反転
+                    
+                    const material = new THREE.MeshBasicMaterial({ 
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const sphere = new THREE.Mesh(geometry, material);
+                    scene.add(sphere);
+                },
+                function(progress) {
+                    console.log('パノラマ読み込み進行:', progress);
+                },
+                function(error) {
+                    console.error('パノラマ読み込みエラー:', error);
+                    alert('パノラマ画像の読み込みに失敗しました: ' + error.message);
+                }
+            );
+        }
+        
+        // パーティクルシステム作成
+        function createParticleSystem() {
+            const particleCount = parseInt(document.getElementById('particleCount').value);
+            
+            // 既存のパーティクルを削除
+            if (particles) {
+                scene.remove(particles);
+                if (particleGeometry) particleGeometry.dispose();
+                if (particleMaterial) particleMaterial.dispose();
+            }
+            
+            // 円形ジオメトリ（桜の花びらのような形）
+            particleGeometry = new THREE.CircleGeometry(0.1, 8);
+            
+            // 個別色配列を準備
+            const colors = new Float32Array(particleCount * 3);
+            updateParticleColors(colors, particleCount);
+            
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            particleMaterial = new THREE.PointsMaterial({
+                size: parseFloat(document.getElementById('particleSize').value),
+                transparent: true,
+                opacity: 0.8,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending
+            });
+            
+            // パーティクル位置設定
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // 球面上にランダム配置（桜が舞うように）
+                const radius = Math.random() * 20 + 10;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = radius * Math.cos(phi) + Math.sin(Date.now() * 0.001 + i) * 2;
+                positions[i3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            particles = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particles);
+        }
+        
+        // パーティクル色更新
+        function updateParticleColors(colors, particleCount) {
+            const baseColorObj = new THREE.Color(baseColor);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                let color;
+                
+                switch (currentColorMode) {
+                    case 'single':
+                        color = baseColorObj;
+                        break;
+                        
+                    case 'gradient':
+                        // 同系色グラデーション（明度変化）
+                        const hsl = {};
+                        baseColorObj.getHSL(hsl);
+                        const lightness = Math.max(0.2, Math.min(0.9, hsl.l + (Math.random() - 0.5) * 0.4));
+                        color = new THREE.Color().setHSL(hsl.h, hsl.s, lightness);
+                        break;
+                        
+                    case 'rainbow':
+                        // レインボーモード（多彩色）
+                        const hue = Math.random();
+                        const saturation = 0.7 + Math.random() * 0.3;
+                        const lightness2 = 0.6 + Math.random() * 0.3;
+                        color = new THREE.Color().setHSL(hue, saturation, lightness2);
+                        break;
+                }
+                
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+        }
+        
+        // イベントリスナー設定
+        function setupEventListeners() {
+            const canvas = document.getElementById('canvas');
+            
+            // マウスイベント
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            
+            // タッチイベント
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+            
+            // リサイズイベント
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // マウス/タッチイベントハンドラー
+        function onMouseDown(event) {
+            mouseDown = true;
+            updateMousePosition(event.clientX, event.clientY);
+        }
+        
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouse.x;
+            const deltaY = event.clientY - mouse.y;
+            
+            // カメラ回転
+            camera.rotation.y += deltaX * 0.005;
+            camera.rotation.x += deltaY * 0.005;
+            
+            // X軸回転制限
+            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+            
+            updateMousePosition(event.clientX, event.clientY);
+        }
+        
+        function onMouseUp() {
+            mouseDown = false;
+        }
+        
+        function onMouseWheel(event) {
+            const zoomSpeed = 0.1;
+            camera.position.z += event.deltaY * zoomSpeed * 0.01;
+            camera.position.z = Math.max(1, Math.min(50, camera.position.z));
+        }
+        
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+            console.log('自動回転:', autoRotate ? 'ON' : 'OFF');
+        }
+        
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                mouseDown = true;
+                updateMousePosition(event.touches[0].clientX, event.touches[0].clientY);
+            }
+        }
+        
+        function onTouchMove(event) {
+            if (!mouseDown || event.touches.length !== 1) return;
+            
+            const deltaX = event.touches[0].clientX - mouse.x;
+            const deltaY = event.touches[0].clientY - mouse.y;
+            
+            camera.rotation.y += deltaX * 0.005;
+            camera.rotation.x += deltaY * 0.005;
+            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+            
+            updateMousePosition(event.touches[0].clientX, event.touches[0].clientY);
+            event.preventDefault();
+        }
+        
+        function onTouchEnd() {
+            mouseDown = false;
+        }
+        
+        function updateMousePosition(x, y) {
+            mouse.x = x;
+            mouse.y = y;
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // 音楽設定
+        function setupAudio() {
+            audio = new Audio('./generated-music.wav');
+            audio.loop = true;
+            audio.volume = 0.5;
+            
+            const musicBtn = document.getElementById('musicBtn');
+            const volumeSlider = document.getElementById('volumeSlider');
+            
+            musicBtn.addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        musicBtn.textContent = '🎵 音楽 OFF';
+                    }).catch(e => {
+                        console.error('音楽再生エラー:', e);
+                    });
+                } else {
+                    audio.pause();
+                    musicBtn.textContent = '🎵 音楽 ON';
+                }
+            });
+            
+            volumeSlider.addEventListener('input', (e) => {
+                audio.volume = parseFloat(e.target.value);
+            });
+        }
+        
+        // UIコントロール設定
+        function setupUIControls() {
+            // 色モードボタン
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.color-mode-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentColorMode = e.target.dataset.mode;
+                    updateParticleColorsRealtime();
+                });
+            });
+            
+            // カラーピッカー
+            document.getElementById('colorPicker').addEventListener('input', (e) => {
+                baseColor = e.target.value;
+                updateParticleColorsRealtime();
+            });
+            
+            // 回転速度スライダー
+            document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+                autoRotationSpeed = parseFloat(e.target.value);
+                document.getElementById('rotationValue').textContent = autoRotationSpeed.toFixed(3);
+            });
+            
+            // パーティクルサイズスライダー
+            document.getElementById('particleSize').addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                if (particleMaterial) {
+                    particleMaterial.size = size;
+                }
+                document.getElementById('sizeValue').textContent = size.toFixed(1);
+            });
+            
+            // パーティクル数スライダー
+            document.getElementById('particleCount').addEventListener('input', (e) => {
+                const count = parseInt(e.target.value);
+                document.getElementById('countValue').textContent = count;
+                createParticleSystem(); // パーティクルシステムを再生成
+            });
+        }
+        
+        // リアルタイム色更新
+        function updateParticleColorsRealtime() {
+            if (!particles || !particleGeometry) return;
+            
+            const colors = particleGeometry.attributes.color.array;
+            const particleCount = colors.length / 3;
+            
+            updateParticleColors(colors, particleCount);
+            particleGeometry.attributes.color.needsUpdate = true;
+        }
+        
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const currentTime = Date.now();
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            // 自動回転
+            if (autoRotate) {
+                camera.rotation.y += autoRotationSpeed;
+            }
+            
+            // パーティクル アニメーション（桜が舞うように）
+            if (particles && particleGeometry) {
+                const positions = particleGeometry.attributes.position.array;
+                const time = currentTime * 0.001;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    // 縦方向の揺らぎ（桜が舞い散る動き）
+                    positions[i + 1] += Math.sin(time + i) * 0.02;
+                    
+                    // 軽やかな回転運動
+                    const angle = time * 0.5 + i * 0.1;
+                    positions[i] += Math.cos(angle) * 0.01;
+                    positions[i + 2] += Math.sin(angle) * 0.01;
+                }
+                
+                particleGeometry.attributes.position.needsUpdate = true;
+                
+                // パーティクル全体の回転
+                particles.rotation.y += autoRotate ? autoRotationSpeed * 2 : 0.001;
+                particles.rotation.x += 0.0005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // 初期化実行
+        init();
+    </script>
+</body>
+</html>
