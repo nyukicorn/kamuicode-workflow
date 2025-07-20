@@ -374,17 +374,21 @@ runs:
           exit 1
         fi
         
-        # パノラマ画像の確認（両方の場所）
-        if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
-          echo "✅ Panorama image in assets: $ASSETS_DIR/panorama.jpg"
+        # パノラマ画像の確認（パノラマ背景の場合のみ）
+        if [ "$BACKGROUND_TYPE" == "panorama" ]; then
+          if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
+            echo "✅ Panorama image in assets: $ASSETS_DIR/panorama.jpg"
+          else
+            echo "::warning::⚠️ Panorama image not found in assets"
+          fi
+          
+          if [ -f "$SRC_DIR/panorama.jpg" ]; then
+            echo "✅ Panorama image in src: $SRC_DIR/panorama.jpg"
+          else
+            echo "::warning::⚠️ Panorama image not found in src (may cause loading issues)"
+          fi
         else
-          echo "::warning::⚠️ Panorama image not found in assets"
-        fi
-        
-        if [ -f "$SRC_DIR/panorama.jpg" ]; then
-          echo "✅ Panorama image in src: $SRC_DIR/panorama.jpg"
-        else
-          echo "::warning::⚠️ Panorama image not found in src (may cause loading issues)"
+          echo "✅ Background type: $BACKGROUND_TYPE (panorama image not required)"
         fi
         
         # 音楽ファイルの確認（音楽が有効な場合）

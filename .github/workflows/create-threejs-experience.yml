@@ -149,13 +149,13 @@ jobs:
         uses: ./.github/actions/kamui-modules/threejs-generation
         with:
           experience-concept: ${{ inputs.experience_concept }}
-          panorama-image-url: ${{ steps.image.outputs.google-image-url }}
+          panorama-image-url: ${{ inputs.background_type == 'panorama' && steps.image.outputs.google-image-url || '' }}
           background-type: ${{ inputs.background_type }}
           art-mode: ${{ inputs.art_mode }}
           art-object-type: ${{ inputs.art_object_type }}
           complexity-level: ${{ inputs.complexity_level }}
           include-music: ${{ inputs.include_music }}
-          music-url: ${{ steps.music.outputs.music-url }}
+          music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
           particle-enabled: ${{ inputs.particle_enabled }}
           particle-count: ${{ inputs.particle_count }}
           particle-size: ${{ inputs.particle_size }}
@@ -189,12 +189,18 @@ jobs:
           echo "🎯 Three.js Experience Creation Summary:"
           echo "========================================"
           echo "📝 Concept: ${{ inputs.experience_concept }}"
-          echo "🖼️ Used Image Model: ${{ steps.image.outputs.used-model }}"
           echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
           echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo "🎨 Background Type: ${{ inputs.background_type }}"
+          echo "🎨 Art Mode: ${{ inputs.art_mode }}"
           echo ""
-          echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
-          echo "🖼️ Panorama URL: ${{ steps.image.outputs.google-image-url }}"
+          if [ "${{ inputs.background_type }}" == "panorama" ]; then
+            echo "🖼️ Used Image Model: ${{ steps.image.outputs.used-model }}"
+            echo "✅ Image Generation: ${{ steps.image.outputs.image-completed }}"
+            echo "🖼️ Panorama URL: ${{ steps.image.outputs.google-image-url }}"
+          else
+            echo "⏭️ Image Generation: Skipped (using ${{ inputs.background_type }} background)"
+          fi
           echo ""
           if [ "${{ inputs.include_music }}" == "true" ]; then
             echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
