@@ -89,43 +89,38 @@ runs:
           echo "👤 User selection → $SELECTED_MODEL"
         fi
         
-        # モデル別MCP設定
+        # モデル選択に基づくサービス名のマッピング
         case "$SELECTED_MODEL" in
           "imagen4-ultra")
-            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-ultra"
-            TOOLS_LIST="mcp__t2i-fal-imagen4-ultra__imagen4_ultra_submit,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_status,mcp__t2i-fal-imagen4-ultra__imagen4_ultra_result,Bash"
+            TARGET_SERVICE="t2i-fal-imagen4-ultra"
             MODEL_NAME="Imagen4 Ultra"
             ;;
           "imagen4-fast")
-            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-fast"
-            TOOLS_LIST="mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
+            TARGET_SERVICE="t2i-fal-imagen4-fast"
             MODEL_NAME="Imagen4 Fast"
             ;;
           "imagen3")
-            MCP_SERVICE_PREFIX="mcp__t2i-google-imagen3"
-            TOOLS_LIST="mcp__t2i-google-imagen3__imagen3_submit,mcp__t2i-google-imagen3__imagen3_status,mcp__t2i-google-imagen3__imagen3_result,Bash"
+            TARGET_SERVICE="t2i-google-imagen3"
             MODEL_NAME="Google Imagen3"
             ;;
           "flux-schnell")
-            MCP_SERVICE_PREFIX="mcp__t2i-fal-flux-schnell"
-            TOOLS_LIST="mcp__t2i-fal-flux-schnell__flux_schnell_submit,mcp__t2i-fal-flux-schnell__flux_schnell_status,mcp__t2i-fal-flux-schnell__flux_schnell_result,Bash"
+            TARGET_SERVICE="t2i-fal-flux-schnell"
             MODEL_NAME="Flux Schnell"
             ;;
           "photo-flux")
-            MCP_SERVICE_PREFIX="mcp__t2i-fal-rundiffusion-photo-flux"
-            TOOLS_LIST="mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_submit,mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_status,mcp__t2i-fal-rundiffusion-photo-flux__photo_flux_result,Bash"
+            TARGET_SERVICE="t2i-fal-rundiffusion-photo-flux"
             MODEL_NAME="Photo Flux"
             ;;
           *)
             echo "⚠️ Unknown model: $SELECTED_MODEL, falling back to Imagen4 Fast"
-            MCP_SERVICE_PREFIX="mcp__t2i-fal-imagen4-fast"
-            TOOLS_LIST="mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash"
+            TARGET_SERVICE="t2i-fal-imagen4-fast"
             MODEL_NAME="Imagen4 Fast (Fallback)"
             ;;
         esac
         
+        echo "🎯 Target service: $TARGET_SERVICE"
+        
         echo "✅ Final selection: $MODEL_NAME"
-        echo "🔧 MCP Service: $MCP_SERVICE_PREFIX"
         
         # 画像フォルダを事前に作成
         if [ ! -d "$IMAGES_DIR" ]; then
@@ -141,7 +136,7 @@ runs:
         echo "Working directory: $(pwd)"
         echo "MCP config path: $MCP_CONFIG_PATH"
         echo "Selected model: $MODEL_NAME"
-        echo "Allowed tools: $TOOLS_LIST"
+        echo "Target service: $TARGET_SERVICE"
         
         # SecretsからT2Iサービスのみを抽出して軽量MCP設定を作成
         mkdir -p .claude
@@ -173,15 +168,15 @@ runs:
         PROMPT="画像生成を実行してください。
 
         **選択モデル**: $MODEL_NAME
+        **使用サービス**: $TARGET_SERVICE
         **画像プロンプト（英語）**: $IMAGE_PROMPT
 
         **実行手順**:
         1. 上記の英語プロンプトを使用して$MODEL_NAMEで画像生成
-        2. \`${MCP_SERVICE_PREFIX}__submit\`ツールで画像生成を開始
-        3. \`${MCP_SERVICE_PREFIX}__status\`でステータス確認
-        4. \`${MCP_SERVICE_PREFIX}__result\`で結果取得してGoogle URLを取得
-        5. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
-        6. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
+        2. 利用可能なMCPツールから$TARGET_SERVICEに対応するツールを使用
+        3. submit → status → result の順序で実行してGoogle URLを取得
+        4. **重要**: 生成時に取得したGoogle URLを「$FOLDER_NAME/google-image-url.txt」ファイルに保存
+        5. 取得したGoogle URLをBashツールで「$IMAGES_DIR/generated-image.png」にダウンロード保存
 
         **重要な注意点**:
         - Google URLの有効期限は約1時間のため、生成後すぐにダウンロード
@@ -199,10 +194,10 @@ runs:
         echo "🚀 Starting Image Generation Agent Claude Code CLI..."
         echo "📝 Prompt length: ${#PROMPT}"
         
-        # Claude Code CLIの実行
+        # Claude Code CLIの実行（全T2Iツールへのアクセスを許可）
         npx @anthropic-ai/claude-code \
           --mcp-config="$MCP_CONFIG_ABS_PATH" \
-          --allowedTools "$TOOLS_LIST" \
+          --allowedTools "mcp__*,Bash" \
           --max-turns 25 \
           --verbose \
           --permission-mode "acceptEdits" \
