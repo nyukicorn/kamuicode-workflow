@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜の万華鏡 - Cherry Blossom Kaleidoscope</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c1810, #4a2c2a);
+            overflow: hidden;
+            cursor: grab;
+        }
+        
+        body.grabbing {
+            cursor: grabbing;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .ui-instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .ui-instructions h3 {
+            margin-bottom: 10px;
+            color: #ffb3d9;
+            font-size: 16px;
+        }
+        
+        .controls-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(15px);
+            border-radius: 15px;
+            padding: 20px;
+            color: #fff;
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+        
+        .controls-panel:hover {
+            opacity: 1.0;
+        }
+        
+        .control-section {
+            margin-bottom: 20px;
+        }
+        
+        .control-section h4 {
+            color: #ffb3d9;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .color-mode-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .color-mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .color-mode-btn.active {
+            background: #ff6bb3;
+            box-shadow: 0 0 15px rgba(255, 107, 179, 0.5);
+        }
+        
+        .color-picker-container {
+            margin-bottom: 15px;
+        }
+        
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        
+        .slider-container {
+            margin-bottom: 15px;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ddd;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #ff6bb3;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255, 107, 179, 0.5);
+        }
+        
+        .audio-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .audio-btn {
+            background: linear-gradient(45deg, #ff6bb3, #ff9ee5);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .audio-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 179, 0.3);
+        }
+        
+        .volume-slider {
+            width: 100px;
+            margin-left: 10px;
+        }
+        
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffb3d9;
+            font-size: 18px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="loading" id="loading">🌸 読み込み中... Loading Beautiful Sakura World...</div>
+        <div class="error-message" id="error"></div>
+        
+        <div class="ui-instructions">
+            <h3>🌸 桜の万華鏡操作</h3>
+            <div>🖱️ マウスドラッグ: 視点移動</div>
+            <div>🎡 ホイール: ズーム</div>
+            <div>✨ ダブルクリック: 自動回転</div>
+            <div>🎨 右パネル: リアルタイム調整</div>
+        </div>
+        
+        <div class="controls-panel">
+            <div class="control-section">
+                <h4>🎨 パーティクル色</h4>
+                <div class="color-mode-buttons">
+                    <button class="color-mode-btn active" data-mode="single">単色</button>
+                    <button class="color-mode-btn" data-mode="gradient">グラデ</button>
+                    <button class="color-mode-btn" data-mode="rainbow">虹色</button>
+                </div>
+                <div class="color-picker-container">
+                    <input type="color" id="colorPicker" value="#ffb3d9">
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <h4>🌸 リアルタイム調整</h4>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>回転速度</span>
+                        <span id="rotationValue">0.01</span>
+                    </div>
+                    <input type="range" id="rotationSlider" min="0.001" max="0.05" step="0.001" value="0.01">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>パーティクルサイズ</span>
+                        <span id="sizeValue">0.5</span>
+                    </div>
+                    <input type="range" id="sizeSlider" min="0.1" max="3.0" step="0.1" value="0.5">
+                </div>
+                
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>パーティクル数</span>
+                        <span id="countValue">1000</span>
+                    </div>
+                    <input type="range" id="countSlider" min="100" max="5000" step="100" value="1000">
+                </div>
+            </div>
+        </div>
+        
+        <div class="audio-controls">
+            <button class="audio-btn" id="playPauseBtn">🎵 再生</button>
+            <button class="audio-btn" id="stopBtn">⏹️ 停止</button>
+            <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="50">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, panoramaMesh, particleSystem;
+        let mouse = { x: 0, y: 0 };
+        let previousMouse = { x: 0, y: 0 };
+        let isDragging = false;
+        let isAutoRotating = false;
+        let autoRotationSpeed = 0.01;
+        let cameraRotation = { x: 0, y: 0 };
+        let particles = [];
+        let particleGeometry, particleMaterial;
+        let colorMode = 'single';
+        let baseColor = '#ffb3d9';
+        let audio, isPlaying = false;
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            console.error('Error:', message);
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && 
+                    (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+            } catch (e) {
+                return false;
+            }
+        }
+        
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16) / 255,
+                g: parseInt(result[2], 16) / 255,
+                b: parseInt(result[3], 16) / 255
+            } : null;
+        }
+        
+        function hslToRgb(h, s, l) {
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            const m = l - c / 2;
+            let r, g, b;
+            
+            if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+            else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+            else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+            else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+            else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+            else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+            
+            return { r: r + m, g: g + m, b: b + m };
+        }
+        
+        function initAudio() {
+            audio = new Audio('./generated-music.wav');
+            audio.loop = true;
+            audio.volume = 0.5;
+            
+            audio.addEventListener('loadeddata', () => {
+                console.log('Audio loaded successfully');
+            });
+            
+            audio.addEventListener('error', (e) => {
+                console.warn('Audio load failed:', e);
+            });
+        }
+        
+        function createParticleSystem(count = 1000) {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            particleGeometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            
+            for (let i = 0; i < count; i++) {
+                const phi = Math.random() * Math.PI * 2;
+                const theta = Math.random() * Math.PI;
+                const radius = 100 + Math.random() * 400;
+                
+                positions[i * 3] = radius * Math.sin(theta) * Math.cos(phi);
+                positions[i * 3 + 1] = radius * Math.sin(theta) * Math.sin(phi);
+                positions[i * 3 + 2] = radius * Math.cos(theta);
+                
+                updateParticleColor(colors, i);
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            particleMaterial = new THREE.PointsMaterial({
+                size: 0.5,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            scene.add(particleSystem);
+        }
+        
+        function updateParticleColor(colors, index) {
+            const baseRgb = hexToRgb(baseColor);
+            let r, g, b;
+            
+            switch (colorMode) {
+                case 'single':
+                    r = baseRgb.r;
+                    g = baseRgb.g;
+                    b = baseRgb.b;
+                    break;
+                case 'gradient':
+                    const lightness = 0.3 + Math.random() * 0.7;
+                    r = Math.min(1, baseRgb.r * lightness);
+                    g = Math.min(1, baseRgb.g * lightness);
+                    b = Math.min(1, baseRgb.b * lightness);
+                    break;
+                case 'rainbow':
+                    const hue = Math.random() * 360;
+                    const saturation = 0.7 + Math.random() * 0.3;
+                    const lightness2 = 0.5 + Math.random() * 0.4;
+                    const hslColor = hslToRgb(hue, saturation, lightness2);
+                    r = hslColor.r;
+                    g = hslColor.g;
+                    b = hslColor.b;
+                    break;
+            }
+            
+            colors[index * 3] = r;
+            colors[index * 3 + 1] = g;
+            colors[index * 3 + 2] = b;
+        }
+        
+        function updateAllParticleColors() {
+            if (!particleGeometry) return;
+            
+            const colors = particleGeometry.attributes.color.array;
+            const count = colors.length / 3;
+            
+            for (let i = 0; i < count; i++) {
+                updateParticleColor(colors, i);
+            }
+            
+            particleGeometry.attributes.color.needsUpdate = true;
+        }
+        
+        function init() {
+            if (!checkWebGLSupport()) {
+                showError('WebGLがサポートされていません。最新のブラウザをご利用ください。');
+                return;
+            }
+            
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 1);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            const panoramaGeometry = new THREE.SphereGeometry(500, 60, 40);
+            panoramaGeometry.scale(-1, 1, 1);
+            
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(
+                './panorama.jpg',
+                function(texture) {
+                    console.log('Panorama loaded successfully');
+                    const panoramaMaterial = new THREE.MeshBasicMaterial({ map: texture });
+                    panoramaMesh = new THREE.Mesh(panoramaGeometry, panoramaMaterial);
+                    scene.add(panoramaMesh);
+                    hideLoading();
+                },
+                function(progress) {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function(error) {
+                    console.error('Panorama loading error:', error);
+                    showError('パノラマ画像の読み込みに失敗しました: ' + error.message);
+                    hideLoading();
+                }
+            );
+            
+            createParticleSystem(1000);
+            setupControls();
+            initAudio();
+            animate();
+        }
+        
+        function setupControls() {
+            const canvas = renderer.domElement;
+            
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+            
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            const colorModeButtons = document.querySelectorAll('.color-mode-btn');
+            colorModeButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    colorModeButtons.forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    colorMode = e.target.dataset.mode;
+                    updateAllParticleColors();
+                });
+            });
+            
+            const colorPicker = document.getElementById('colorPicker');
+            colorPicker.addEventListener('input', (e) => {
+                baseColor = e.target.value;
+                updateAllParticleColors();
+            });
+            
+            const rotationSlider = document.getElementById('rotationSlider');
+            const rotationValue = document.getElementById('rotationValue');
+            rotationSlider.addEventListener('input', (e) => {
+                autoRotationSpeed = parseFloat(e.target.value);
+                rotationValue.textContent = autoRotationSpeed.toFixed(3);
+            });
+            
+            const sizeSlider = document.getElementById('sizeSlider');
+            const sizeValue = document.getElementById('sizeValue');
+            sizeSlider.addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                if (particleMaterial) {
+                    particleMaterial.size = size;
+                }
+                sizeValue.textContent = size.toFixed(1);
+            });
+            
+            const countSlider = document.getElementById('countSlider');
+            const countValue = document.getElementById('countValue');
+            countSlider.addEventListener('input', (e) => {
+                const count = parseInt(e.target.value);
+                createParticleSystem(count);
+                countValue.textContent = count;
+            });
+            
+            const playPauseBtn = document.getElementById('playPauseBtn');
+            playPauseBtn.addEventListener('click', () => {
+                if (audio) {
+                    if (isPlaying) {
+                        audio.pause();
+                        playPauseBtn.textContent = '🎵 再生';
+                        isPlaying = false;
+                    } else {
+                        audio.play().catch(e => console.warn('Audio play failed:', e));
+                        playPauseBtn.textContent = '⏸️ 一時停止';
+                        isPlaying = true;
+                    }
+                }
+            });
+            
+            const stopBtn = document.getElementById('stopBtn');
+            stopBtn.addEventListener('click', () => {
+                if (audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    playPauseBtn.textContent = '🎵 再生';
+                    isPlaying = false;
+                }
+            });
+            
+            const volumeSlider = document.getElementById('volumeSlider');
+            volumeSlider.addEventListener('input', (e) => {
+                if (audio) {
+                    audio.volume = e.target.value / 100;
+                }
+            });
+        }
+        
+        function onMouseDown(event) {
+            isDragging = true;
+            isAutoRotating = false;
+            previousMouse.x = event.clientX;
+            previousMouse.y = event.clientY;
+            document.body.classList.add('grabbing');
+        }
+        
+        function onMouseMove(event) {
+            if (!isDragging) return;
+            
+            const deltaX = event.clientX - previousMouse.x;
+            const deltaY = event.clientY - previousMouse.y;
+            
+            cameraRotation.y += deltaX * 0.005;
+            cameraRotation.x += deltaY * 0.005;
+            
+            cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+            
+            updateCameraRotation();
+            
+            previousMouse.x = event.clientX;
+            previousMouse.y = event.clientY;
+        }
+        
+        function onMouseUp() {
+            isDragging = false;
+            document.body.classList.remove('grabbing');
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(100, fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        function onDoubleClick() {
+            isAutoRotating = !isAutoRotating;
+        }
+        
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                isDragging = true;
+                isAutoRotating = false;
+                previousMouse.x = event.touches[0].clientX;
+                previousMouse.y = event.touches[0].clientY;
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (!isDragging || event.touches.length !== 1) return;
+            
+            const deltaX = event.touches[0].clientX - previousMouse.x;
+            const deltaY = event.touches[0].clientY - previousMouse.y;
+            
+            cameraRotation.y += deltaX * 0.005;
+            cameraRotation.x += deltaY * 0.005;
+            
+            cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+            
+            updateCameraRotation();
+            
+            previousMouse.x = event.touches[0].clientX;
+            previousMouse.y = event.touches[0].clientY;
+        }
+        
+        function onTouchEnd() {
+            isDragging = false;
+        }
+        
+        function updateCameraRotation() {
+            camera.rotation.x = cameraRotation.x;
+            camera.rotation.y = cameraRotation.y;
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (isAutoRotating) {
+                cameraRotation.y += autoRotationSpeed;
+                updateCameraRotation();
+            }
+            
+            if (particleSystem) {
+                particleSystem.rotation.y += 0.002;
+                particleSystem.rotation.x += 0.001;
+                
+                if (isAutoRotating) {
+                    particleSystem.rotation.y += autoRotationSpeed * 0.5;
+                    particleSystem.rotation.x += autoRotationSpeed * 0.3;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        window.addEventListener('resize', onWindowResize);
+        
+        init();
+    </script>
+</body>
+</html>
