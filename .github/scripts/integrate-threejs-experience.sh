@@ -73,7 +73,6 @@ echo "📝 Prompt length: ${#PROMPT}"
 npx @anthropic-ai/claude-code \
   --allowedTools "Bash" \
   --max-turns 60 \
-  --timeout 600000 \
   --verbose \
   --permission-mode "acceptEdits" \
   -p "$PROMPT"
