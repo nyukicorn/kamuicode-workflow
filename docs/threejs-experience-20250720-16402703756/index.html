@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修正版音楽付きパーティクル - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .ui-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .music-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .play-button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .play-button:active {
+            transform: translateY(0);
+        }
+
+        .play-button.playing {
+            background: linear-gradient(45deg, #4ecdc4, #45b7aa);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+        }
+
+        .info-text {
+            font-size: 12px;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .instructions h3 {
+            margin-bottom: 10px;
+            color: #4ecdc4;
+        }
+
+        .instructions ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .instructions li:before {
+            content: "•";
+            color: #ff6b6b;
+            position: absolute;
+            left: 0;
+        }
+
+        @media (max-width: 768px) {
+            .ui-overlay {
+                top: 10px;
+                left: 10px;
+                padding: 15px;
+            }
+
+            .instructions {
+                bottom: 10px;
+                right: 10px;
+                padding: 10px;
+                font-size: 10px;
+            }
+
+            .play-button {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="ui-overlay">
+        <div class="music-controls">
+            <button id="playButton" class="play-button">▶ 音楽を再生</button>
+            <div class="info-text">
+                クリックして音楽を開始
+            </div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h3>操作方法</h3>
+        <ul>
+            <li>マウスドラッグ: 視点回転</li>
+            <li>マウスホイール: ズーム</li>
+            <li>ダブルクリック: 自動回転 ON/OFF</li>
+        </ul>
+    </div>
+
+    <audio id="backgroundMusic" loop muted preload="auto">
+        <source src="../music/generated-music.wav" type="audio/wav">
+        音楽ファイルが読み込めませんでした。
+    </audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, particles;
+        let mouseX = 0, mouseY = 0;
+        let isMouseDown = false;
+        let autoRotate = false;
+        let cameraDistance = 50;
+        let targetCameraDistance = 50;
+        
+        // Audio elements
+        const audio = document.getElementById('backgroundMusic');
+        const playButton = document.getElementById('playButton');
+        let isPlaying = false;
+
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = cameraDistance;
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Create gradient background
+            createGradientBackground();
+
+            // Create particle system
+            createParticleSystem();
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Start render loop
+            animate();
+        }
+
+        function createGradientBackground() {
+            // Create a large sphere for the background gradient
+            const geometry = new THREE.SphereGeometry(500, 32, 32);
+            
+            // Vertex shader
+            const vertexShader = `
+                varying vec3 vPosition;
+                void main() {
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            // Fragment shader for gradient
+            const fragmentShader = `
+                varying vec3 vPosition;
+                void main() {
+                    float height = normalize(vPosition).y;
+                    vec3 color1 = vec3(0.1, 0.05, 0.2); // Deep purple
+                    vec3 color2 = vec3(0.2, 0.1, 0.4); // Purple
+                    vec3 color3 = vec3(0.0, 0.1, 0.3); // Dark blue
+                    
+                    vec3 color = mix(color1, color2, height * 0.5 + 0.5);
+                    color = mix(color, color3, abs(height) * 0.3);
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            const material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                side: THREE.BackSide
+            });
+
+            const backgroundSphere = new THREE.Mesh(geometry, material);
+            scene.add(backgroundSphere);
+        }
+
+        function createParticleSystem() {
+            const particleCount = 1000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const sizes = new Float32Array(particleCount);
+
+            // Generate random positions and colors
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Random positions in a sphere
+                const radius = Math.random() * 40 + 10;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i3 + 2] = radius * Math.cos(phi);
+
+                // Random colors (purple/blue/pink palette)
+                const colorType = Math.random();
+                if (colorType < 0.33) {
+                    colors[i3] = 1.0; // Red
+                    colors[i3 + 1] = 0.4; // Green
+                    colors[i3 + 2] = 0.8; // Blue (Pink)
+                } else if (colorType < 0.66) {
+                    colors[i3] = 0.3; // Red
+                    colors[i3 + 1] = 0.8; // Green
+                    colors[i3 + 2] = 1.0; // Blue (Cyan)
+                } else {
+                    colors[i3] = 0.8; // Red
+                    colors[i3 + 1] = 0.3; // Green
+                    colors[i3 + 2] = 1.0; // Blue (Purple)
+                }
+
+                sizes[i] = Math.random() * 2 + 1;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            // Particle material
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0.0 }
+                },
+                vertexShader: `
+                    attribute float size;
+                    varying vec3 vColor;
+                    uniform float time;
+                    
+                    void main() {
+                        vColor = color;
+                        
+                        vec3 pos = position;
+                        pos.x += sin(time * 0.5 + position.y * 0.01) * 2.0;
+                        pos.y += cos(time * 0.3 + position.x * 0.01) * 2.0;
+                        pos.z += sin(time * 0.7 + position.x * 0.005) * 1.0;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vColor;
+                    
+                    void main() {
+                        float distance = length(gl_PointCoord - vec2(0.5));
+                        if (distance > 0.5) discard;
+                        
+                        float alpha = 1.0 - distance * 2.0;
+                        gl_FragColor = vec4(vColor, alpha * 0.8);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        function setupEventListeners() {
+            // Mouse events
+            const canvas = renderer.domElement;
+            
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Music controls
+            playButton.addEventListener('click', toggleMusic);
+        }
+
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (isMouseDown) {
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                scene.rotation.y += deltaX * 0.01;
+                scene.rotation.x += deltaY * 0.01;
+                
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            }
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onWheel(event) {
+            targetCameraDistance += event.deltaY * 0.1;
+            targetCameraDistance = Math.max(20, Math.min(100, targetCameraDistance));
+        }
+
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                isMouseDown = true;
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+        }
+
+        function onTouchMove(event) {
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouseX;
+                const deltaY = event.touches[0].clientY - mouseY;
+                
+                scene.rotation.y += deltaX * 0.01;
+                scene.rotation.x += deltaY * 0.01;
+                
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+        }
+
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function toggleMusic() {
+            if (isPlaying) {
+                audio.pause();
+                playButton.textContent = '▶ 音楽を再生';
+                playButton.classList.remove('playing');
+                isPlaying = false;
+            } else {
+                audio.muted = false;
+                audio.play().then(() => {
+                    playButton.textContent = '⏸ 音楽を停止';
+                    playButton.classList.add('playing');
+                    isPlaying = true;
+                }).catch(error => {
+                    console.error('音楽の再生に失敗しました:', error);
+                    alert('音楽ファイルが見つからないか、再生に失敗しました。');
+                });
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update time for particle animation
+            if (particles && particles.material.uniforms) {
+                particles.material.uniforms.time.value += 0.01;
+            }
+
+            // Auto rotation
+            if (autoRotate) {
+                scene.rotation.y += 0.005;
+            }
+
+            // Smooth camera zoom
+            cameraDistance += (targetCameraDistance - cameraDistance) * 0.1;
+            camera.position.z = cameraDistance;
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
