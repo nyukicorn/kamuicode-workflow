@@ -29,32 +29,11 @@ on:
         required: false
         type: boolean
         default: true
-      particle_count:
-        description: 'パーティクル数 (100-5000)'
+      particle_config:
+        description: 'パーティクル設定 (count:size:shape:corner_radius)'
         required: false
         type: string
-        default: '1000'
-      particle_size:
-        description: 'パーティクルサイズ (0.1-2.0)'
-        required: false
-        type: string
-        default: '0.5'
-      particle_shape:
-        description: 'パーティクル形状 (circle/square/triangle/star/heart)'
-        required: false
-        type: choice
-        options:
-          - circle
-          - square
-          - triangle
-          - star
-          - heart
-        default: 'circle'
-      particle_corner_radius:
-        description: 'パーティクル角の丸み (0.0-1.0, squareのみ有効)'
-        required: false
-        type: string
-        default: '0.0'
+        default: '1000:0.5:circle:0.0'
       background_type:
         description: '背景タイプ'
         required: false
@@ -157,10 +136,7 @@ jobs:
           include-music: ${{ inputs.include_music }}
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
           particle-enabled: ${{ inputs.particle_enabled }}
-          particle-count: ${{ inputs.particle_count }}
-          particle-size: ${{ inputs.particle_size }}
-          particle-shape: ${{ inputs.particle_shape }}
-          particle-corner-radius: ${{ inputs.particle_corner_radius }}
+          particle-config: ${{ inputs.particle_config }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

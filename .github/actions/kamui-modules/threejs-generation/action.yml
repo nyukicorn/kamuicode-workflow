@@ -35,22 +35,10 @@ inputs:
     description: 'Whether to enable particle effects'
     required: false
     default: 'true'
-  particle-count:
-    description: 'Number of particles (100-5000)'
+  particle-config:
+    description: 'Particle configuration (count:size:shape:corner_radius)'
     required: false
-    default: '1000'
-  particle-size:
-    description: 'Particle size (0.1-2.0)'
-    required: false
-    default: '0.5'
-  particle-shape:
-    description: 'Particle shape (circle/square/triangle/star/heart)'
-    required: false
-    default: 'circle'
-  particle-corner-radius:
-    description: 'Particle corner radius (0.0-1.0, for square only)'
-    required: false
-    default: '0.0'
+    default: '1000:0.5:circle:0.0'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -105,10 +93,10 @@ runs:
         INCLUDE_MUSIC="${{ inputs.include-music }}"
         MUSIC_URL="${{ inputs.music-url }}"
         PARTICLE_ENABLED="${{ inputs.particle-enabled }}"
-        PARTICLE_COUNT="${{ inputs.particle-count }}"
-        PARTICLE_SIZE="${{ inputs.particle-size }}"
-        PARTICLE_SHAPE="${{ inputs.particle-shape }}"
-        PARTICLE_CORNER_RADIUS="${{ inputs.particle-corner-radius }}"
+        PARTICLE_CONFIG="${{ inputs.particle-config }}"
+        
+        # パーティクル設定をパース (count:size:shape:corner_radius)
+        IFS=':' read -r PARTICLE_COUNT PARTICLE_SIZE PARTICLE_SHAPE PARTICLE_CORNER_RADIUS <<< "$PARTICLE_CONFIG"
         PARTICLE_COLOR_MODE="gradient"
         PARTICLE_BASE_COLOR="#FFFFFF"
         FOLDER_NAME="${{ inputs.folder-name }}"
@@ -123,8 +111,11 @@ runs:
         echo "Panorama URL: $PANORAMA_URL"
         echo "Include music: $INCLUDE_MUSIC"
         echo "Particle enabled: $PARTICLE_ENABLED"
-        echo "Particle count: $PARTICLE_COUNT"
-        echo "Particle size: $PARTICLE_SIZE"
+        echo "Particle config: $PARTICLE_CONFIG"
+        echo "  - Particle count: $PARTICLE_COUNT"
+        echo "  - Particle size: $PARTICLE_SIZE"
+        echo "  - Particle shape: $PARTICLE_SHAPE"
+        echo "  - Particle corner radius: $PARTICLE_CORNER_RADIUS"
         echo "Target folders: $SRC_DIR, $ASSETS_DIR"
         
         # ディレクトリを事前に作成
