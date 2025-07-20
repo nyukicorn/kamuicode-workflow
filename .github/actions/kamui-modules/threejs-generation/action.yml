@@ -36,14 +36,6 @@ inputs:
     description: 'Particle corner radius (0.0-1.0, for square only)'
     required: false
     default: '0.0'
-  particle-color-mode:
-    description: 'Particle color mode (single/gradient/rainbow)'
-    required: false
-    default: 'single'
-  particle-base-color:
-    description: 'Base particle color (HEX format: #FF0000)'
-    required: false
-    default: '#FFFFFF'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -98,8 +90,8 @@ runs:
         PARTICLE_SIZE="${{ inputs.particle-size }}"
         PARTICLE_SHAPE="${{ inputs.particle-shape }}"
         PARTICLE_CORNER_RADIUS="${{ inputs.particle-corner-radius }}"
-        PARTICLE_COLOR_MODE="${{ inputs.particle-color-mode }}"
-        PARTICLE_BASE_COLOR="${{ inputs.particle-base-color }}"
+        PARTICLE_COLOR_MODE="gradient"
+        PARTICLE_BASE_COLOR="#FFFFFF"
         FOLDER_NAME="${{ inputs.folder-name }}"
         SRC_DIR="$FOLDER_NAME/src"
         ASSETS_DIR="$FOLDER_NAME/assets"

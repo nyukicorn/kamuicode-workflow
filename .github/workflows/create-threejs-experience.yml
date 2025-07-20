@@ -7,6 +7,18 @@ on:
         description: '3D体験のコンセプト（例：桜舞う京都庭園のVR散歩）'
         required: true
         type: string
+      image_model:
+        description: '画像生成モデル'
+        required: false
+        type: choice
+        options:
+          - auto
+          - imagen4-ultra
+          - imagen4-fast
+          - imagen3
+          - flux-schnell
+          - photo-flux
+        default: 'auto'
       include_music:
         description: 'BGM付きにするか'
         required: false
@@ -43,32 +55,6 @@ on:
         required: false
         type: string
         default: '0.0'
-      particle_color_mode:
-        description: 'パーティクル色モード (single/gradient/rainbow)'
-        required: false
-        type: choice
-        options:
-          - single
-          - gradient
-          - rainbow
-        default: 'single'
-      particle_base_color:
-        description: 'ベース色 (HEX形式: #FF0000など)'
-        required: false
-        type: string
-        default: '#FFFFFF'
-      image_model:
-        description: '画像生成モデル'
-        required: false
-        type: choice
-        options:
-          - auto
-          - imagen4-ultra
-          - imagen4-fast
-          - imagen3
-          - flux-schnell
-          - photo-flux
-        default: 'auto'
 
 jobs:
   create-threejs-experience:
@@ -132,8 +118,6 @@ jobs:
           particle-size: ${{ inputs.particle_size }}
           particle-shape: ${{ inputs.particle_shape }}
           particle-corner-radius: ${{ inputs.particle_corner_radius }}
-          particle-color-mode: ${{ inputs.particle_color_mode }}
-          particle-base-color: ${{ inputs.particle_base_color }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
