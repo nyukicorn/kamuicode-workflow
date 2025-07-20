@@ -84,272 +84,33 @@ runs:
         echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
         
         # 設定
-        EXPERIENCE_CONCEPT="${{ inputs.experience-concept }}"
-        PANORAMA_URL="${{ inputs.panorama-image-url }}"
-        BACKGROUND_TYPE="${{ inputs.background-type }}"
-        ART_MODE="${{ inputs.art-mode }}"
-        ART_OBJECT_TYPE="${{ inputs.art-object-type }}"
-        COMPLEXITY_LEVEL="${{ inputs.complexity-level }}"
-        INCLUDE_MUSIC="${{ inputs.include-music }}"
-        MUSIC_URL="${{ inputs.music-url }}"
-        PARTICLE_ENABLED="${{ inputs.particle-enabled }}"
-        PARTICLE_CONFIG="${{ inputs.particle-config }}"
-        
-        # パーティクル設定をパース (count:size:shape:corner_radius)
-        IFS=':' read -r PARTICLE_COUNT PARTICLE_SIZE PARTICLE_SHAPE PARTICLE_CORNER_RADIUS <<< "$PARTICLE_CONFIG"
-        PARTICLE_COLOR_MODE="gradient"
-        PARTICLE_BASE_COLOR="#FFFFFF"
         FOLDER_NAME="${{ inputs.folder-name }}"
         SRC_DIR="$FOLDER_NAME/src"
-        ASSETS_DIR="$FOLDER_NAME/assets"
         
-        echo "Experience concept: $EXPERIENCE_CONCEPT"
-        echo "Background type: $BACKGROUND_TYPE"
-        echo "Art mode: $ART_MODE"
-        echo "Art object type: $ART_OBJECT_TYPE"
-        echo "Complexity level: $COMPLEXITY_LEVEL"
-        echo "Panorama URL: $PANORAMA_URL"
-        echo "Include music: $INCLUDE_MUSIC"
-        echo "Particle enabled: $PARTICLE_ENABLED"
-        echo "Particle config: $PARTICLE_CONFIG"
-        echo "  - Particle count: $PARTICLE_COUNT"
-        echo "  - Particle size: $PARTICLE_SIZE"
-        echo "  - Particle shape: $PARTICLE_SHAPE"
-        echo "  - Particle corner radius: $PARTICLE_CORNER_RADIUS"
-        echo "Target folders: $SRC_DIR, $ASSETS_DIR"
+        echo "Target folders: $SRC_DIR"
         
         # ディレクトリを事前に作成
-        mkdir -p "$SRC_DIR/js"
-        mkdir -p "$SRC_DIR/css"
-        mkdir -p "$SRC_DIR/libs"
-        mkdir -p "$ASSETS_DIR"
+        mkdir -p "$SRC_DIR"
         echo "📁 Created directory structure"
         
-        # Three.js MCP設定の確認
-        MCP_CONFIG_PATH=".claude/mcp-threejs.json"
-        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
-        
-        echo "📋 Three.js MCP Configuration Check:"
-        echo "Working directory: $(pwd)"
-        echo "MCP config path: $MCP_CONFIG_PATH"
-        echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
-        
-        # Three.js MCP設定ファイルが存在しない場合は作成
-        if [ ! -f "$MCP_CONFIG_ABS_PATH" ]; then
-          echo "Creating Three.js MCP configuration..."
-          mkdir -p .claude
-          cat > "$MCP_CONFIG_ABS_PATH" << 'EOF'
-        {
-          "mcpServers": {
-            "threejs": {
-              "type": "http",
-              "url": "https://www.pulsemcp.com/servers/locchung-three-js",
-              "description": "Three.js MCP Server by Loc Chung for 3D scene manipulation"
-            }
-          }
-        }
-        EOF
-          echo "✅ Three.js MCP config file created"
-        else
-          echo "✅ Three.js MCP config file already exists"
-        fi
-        
-        # 背景設定の構築
-        BACKGROUND_INTEGRATION=""
-        if [ "$BACKGROUND_TYPE" == "panorama" ]; then
-          BACKGROUND_INTEGRATION="
-        **背景設定（パノラマ）**:
-        - パノラマ画像URL: $PANORAMA_URL
-        - パノラマ画像を$ASSETS_DIR/panorama.jpgにダウンロード保存
-        - パノラマ画像を$SRC_DIR/panorama.jpgにもコピー（相対パス問題解決）
-        - 球体ジオメトリにマッピング"
-        elif [ "$BACKGROUND_TYPE" == "solid_black" ]; then
-          BACKGROUND_INTEGRATION="
-        **背景設定（黒背景）**:
-        - 純粋な黒背景（#000000）
-        - パノラマ画像処理をスキップ
-        - 3Dオブジェクト・アート作品に最適化"
-        elif [ "$BACKGROUND_TYPE" == "solid_white" ]; then
-          BACKGROUND_INTEGRATION="
-        **背景設定（白背景）**:
-        - 純粋な白背景（#FFFFFF）
-        - パノラマ画像処理をスキップ
-        - 展示・プレゼンテーション用"
-        elif [ "$BACKGROUND_TYPE" == "transparent" ]; then
-          BACKGROUND_INTEGRATION="
-        **背景設定（透明背景）**:
-        - 透明背景（alpha=0）
-        - パノラマ画像処理をスキップ
-        - オブジェクト単体表示用"
-        elif [ "$BACKGROUND_TYPE" == "gradient" ]; then
-          BACKGROUND_INTEGRATION="
-        **背景設定（グラデーション）**:
-        - 美しいグラデーション背景
-        - コンセプトに基づいた色調選択
-        - アート作品に適した配色"
-        fi
-        
-        # 3Dアート設定の構築
-        ART_INTEGRATION=""
-        if [ "$ART_MODE" != "none" ] && [ -n "$ART_OBJECT_TYPE" ]; then
-          ART_INTEGRATION="
-        **3Dアート作品生成**:
-        - アートモード: $ART_MODE
-        - オブジェクトタイプ: $ART_OBJECT_TYPE
-        - 複雑さレベル: $COMPLEXITY_LEVEL
-        - プロシージャル3Dジオメトリ生成
-        - 高度な材質・ライティング効果
-        - コンセプトに基づいた芸術的表現"
-        fi
-        
-        # プロンプトの構築
-        MUSIC_INTEGRATION=""
-        if [ "$INCLUDE_MUSIC" == "true" ] && [ -n "$MUSIC_URL" ]; then
-          MUSIC_INTEGRATION="
-        **音楽統合**:
-        - BGM URL: $MUSIC_URL
-        - HTML5 Audioでの音楽オン/オフボタンを実装
-        - ループ再生とボリューム制御機能
-        - 音楽ファイルを$SRC_DIR/generated-music.wavにコピー"
-        fi
-        
-        # パーティクル設定の構築
-        PARTICLE_INTEGRATION=""
-        if [ "$PARTICLE_ENABLED" == "true" ]; then
-          PARTICLE_INTEGRATION="
-        **パーティクル設定**:
-        - パーティクル数: $PARTICLE_COUNT個
-        - パーティクルサイズ: $PARTICLE_SIZE
-        - 形状: $PARTICLE_SHAPE（固定、初期設定のみ）
-        - 角の丸み: $PARTICLE_CORNER_RADIUS（squareの場合のみ適用）
-        - 色モード: $PARTICLE_COLOR_MODE（single/gradient/rainbow）
-        - ベース色: $PARTICLE_BASE_COLOR
-        - 材質: PointsMaterial（色変更対応）
-        - アニメーション: 自動回転時に高速化
-        - 色実装: 改善版美しい色変更UI（右端縦型、マウスオーバー表示、美しい同系色/多彩色グラデーション）
-        - テーマ連動: experience_concept内容に基づいて美しいパーティクルの色調や動きを自動調整"
-        else
-          PARTICLE_INTEGRATION="
-        **パーティクル設定**:
-        - パーティクル効果: 無効
-        - パーティクルシステムをスキップ"
-        fi
-        
-        PROMPT="高度なThree.js 3Dアート体験シーンを生成してください。
+        PROMPT="Please generate a single, self-contained HTML file named 'index.html' in the '$SRC_DIR' directory.
 
-        **体験コンセプト**: 美しい$EXPERIENCE_CONCEPT
-        **背景タイプ**: $BACKGROUND_TYPE
-        **アートモード**: $ART_MODE
-        
-        **テーマ連動実装**:
-        - コンセプト内容を解析して美しい3D空間を構築
-        - アートモードに応じた高度な3Dオブジェクト生成
-        - 背景タイプに最適化された視覚効果
-        - 例: 「桜」→美しいピンク系色調、「海」→美しい青系色調、「夜」→美しい暗めトーン
-        
-        $BACKGROUND_INTEGRATION
-        
-        $ART_INTEGRATION
-        
-        **必須実行手順**:
-        1. **ファイル配置（重要）**:
-           - 背景がパノラマの場合のみ画像ダウンロード・配置
-           - 音楽ファイルがあれば$SRC_DIR/generated-music.wavにもコピー
-        
-        2. **単一HTMLファイル作成（$SRC_DIR/index.html）**:
-           - Three.js CDN使用: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
-           - OrbitControls使用禁止（カスタム実装必須）
-           - 完全なHTML5 Audio実装
-           - カスタムマウス/タッチ制御
-           - 自動回転機能（ダブルクリック）
-           - パーティクルシステム
-        
-        **必須実装機能**:
-        - **マウス制御**: ドラッグで視点移動、ホイールでズーム
-        - **タッチ制御**: モバイル対応のタッチ操作
-        - **自動回転**: ダブルクリックで時計回り自動回転モード
-        - **パーティクル**: 形状選択可能（$PARTICLE_SHAPE）、カスタマイズ可能
-          - circle: CircleGeometry使用
-          - square: PlaneGeometry + 角丸み実装（corner_radius=$PARTICLE_CORNER_RADIUS）
-          - triangle: カスタム三角形ジオメトリ（頂点3つで構成）
-          - star: カスタム星形ジオメトリ（5つの尖った頂点）
-          - heart: カスタムハート形ジオメトリ（数学的ハート曲線）
-        - **UI表示**: 操作説明（マウスドラッグ・ホイール・ダブルクリック）
-        - **パーティクル色変更UI**: リアルタイム色変更コントロール（改善版）
-          - 画面右端に縦型色変更コントロール（マウスオーバー時表示、通常時半透明）
-          - 単色モード: カラーピッカーで任意の色選択
-          - グラデーションモード: 同系色グラデーション（ベース色から明度変化でパーティクルごとにランダム配色）
-          - レインボーモード: 多彩色グラデーション（HSVカラースペースで様々な色をパーティクルごとに配置）
-          - UIデザイン: マウス離脱時opacity:0.3、ホバー時opacity:1.0でアニメーション
-          - リアルタイム色更新機能（個別パーティクル色制御対応）
-        - **リアルタイム調整コントロール**: 体験中の動的調整機能
-          - 回転速度スライダー（0.001 - 0.05、現在値表示付き）
-          - パーティクルサイズスライダー（0.1 - 3.0、リアルタイム反映）
-          - パーティクル数スライダー（100 - 5000、動的再生成）
-          - 各スライダーは右端UIパネル内に配置、ラベル表示付き
-        
-        **技術要件**:
-        - 背景: panoramaの場合のみ'./panorama.jpg'使用、その他は背景タイプに応じた実装
-        - WebGL対応チェックとエラー表示
-        - レスポンシブデザイン
-        - すべて単一HTMLファイルに統合
-        - 背景タイプ別実装:
-          - panorama: 球体ジオメトリ + テクスチャマッピング
-          - solid_black: scene.background = new THREE.Color(0x000000)
-          - solid_white: scene.background = new THREE.Color(0xFFFFFF)
-          - transparent: renderer.setClearColor(0x000000, 0)
-          - gradient: シェーダーマテリアルでグラデーション背景
-        
-        **3Dアートオブジェクト生成要件**:
-        - **sculptural**: 複数プリミティブ形状の芸術的組み合わせ
-        - **organic**: 自然形状（花、木、葉など）のプロシージャル生成
-        - **geometric**: フラクタル、結晶、幾何学パターン
-        - **abstract**: 流体シミュレーション風、抽象的形状
-        - 複雑さレベルに応じたポリゴン数・詳細度調整
-        - コンセプトに基づいた色調・材質の自動選択
-        
-        **重要な修正事項**:
-        - **マウスドラッグ**: 必ずcanvas要素に正しくイベントリスナーを登録し、視覚的フィードバックを追加
-        - **背景システム**: 背景タイプに応じた適切な実装（パノラマ読み込みは条件付き）
-        - **カメラ制御**: マウス操作でカメラの向きが確実に変わるよう実装
-        - **エラーハンドリング**: ファイル読み込みエラーの詳細をユーザーに表示
-        - **パーティクル色動的変更**: 必ずリアルタイムで色変更が機能するよう実装（個別パーティクル色制御対応）
-        - **色変更UI実装**: 右端縦型レイアウト、マウスオーバー表示機能、半透明アニメーション必須実装
-        - **リアルタイム調整実装**: 必ずスライダー操作でリアルタイム変更が機能するよう実装
-        - **3Dアートオブジェクト**: アートモードに応じた高度な3D形状生成
-        
-        **禁止事項**:
-        - OrbitControls.jsの使用（読み込みエラーの原因）
-        - Web Audio APIの使用（デコードエラーの原因）
-        - 複数JSファイルへの分割
-        - 相対パス '../assets/' の使用（panorama以外では不要）
-        
-        **実装参考コード構造**:
-        - カスタムマウス制御変数とイベントリスナー
-        - ダブルクリック自動回転（時計回り）
-        - スムーズなカメラアニメーション
-        - パーティクルシステムとの連動
-        
-        $MUSIC_INTEGRATION
-        
-        $PARTICLE_INTEGRATION
-        
-        **最終ファイル**: $SRC_DIR/index.html（完全動作する単一ファイル）"
+This file should create a simple Three.js scene with the following requirements:
+- Use the Three.js CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+- The scene should have a black background.
+- Create a single BoxGeometry mesh (a cube).
+- The cube should have a basic material (MeshBasicMaterial) with a visible color (e.g., 0x00ff00).
+- Animate the cube to rotate on its Y-axis.
+- No user controls, no particles, no UI, and no other complex features are needed.
+- Ensure the final output is only one file: '$SRC_DIR/index.html'."
         
         echo "🚀 Starting Three.js Scene Generation Agent..."
-        echo "📝 Prompt length: ${#PROMPT}"
+        echo "📝 Prompt: $PROMPT"
         
-        # Claude Code CLIの実行（ワーキングディレクトリを明示的に指定）
-        echo "🔧 Working directory: $(pwd)"
-        echo "🔧 Target directories: $SRC_DIR, $ASSETS_DIR"
-        
-        # ワーキングディレクトリを確実に設定
-        cd "$(pwd)"
-        
+        # Claude Code CLIの実行
         npx @anthropic-ai/claude-code \
-          --mcp-config="$MCP_CONFIG_ABS_PATH" \
           --allowedTools "Bash" \
-          --max-turns 30 \
+          --max-turns 10 \
           --verbose \
           --permission-mode "acceptEdits" \
           -p "$PROMPT" || {
@@ -360,81 +121,17 @@ runs:
         # 生成されたファイルの確認
         echo ""
         echo "📸 Checking generated Three.js files..."
-        echo "🔧 Current working directory: $(pwd)"
-        echo "🔧 Directory listing:"
-        ls -la
-        echo "🔧 Target folder contents:"
-        if [ -d "$FOLDER_NAME" ]; then
-          ls -la "$FOLDER_NAME"
-          if [ -d "$SRC_DIR" ]; then
-            echo "🔧 SRC directory contents:"
-            ls -la "$SRC_DIR"
-          else
-            echo "🔧 SRC directory does not exist: $SRC_DIR"
-          fi
-        else
-          echo "🔧 Target folder does not exist: $FOLDER_NAME"
-        fi
-        
-        # メインHTMLファイルの確認（絶対パスで）
-        ABS_SRC_DIR="$(pwd)/$SRC_DIR"
-        echo "🔧 Absolute SRC path: $ABS_SRC_DIR"
-        
         if [ -f "$SRC_DIR/index.html" ]; then
           echo "✅ Main HTML file created: $SRC_DIR/index.html"
           HTML_SIZE=$(wc -c < "$SRC_DIR/index.html")
           echo "  HTML file size: $HTML_SIZE bytes"
-        elif [ -f "$ABS_SRC_DIR/index.html" ]; then
-          echo "✅ Main HTML file found at absolute path: $ABS_SRC_DIR/index.html"
-          HTML_SIZE=$(wc -c < "$ABS_SRC_DIR/index.html")
-          echo "  HTML file size: $HTML_SIZE bytes"
         else
-          echo "::error::❌ Main HTML file not found at either:"
-          echo "  - Relative: $SRC_DIR/index.html"
-          echo "  - Absolute: $ABS_SRC_DIR/index.html"
+          echo "::error::❌ Main HTML file not found at $SRC_DIR/index.html"
           exit 1
         fi
         
-        # パノラマ画像の確認（パノラマ背景の場合のみ）
-        if [ "$BACKGROUND_TYPE" == "panorama" ]; then
-          if [ -f "$ASSETS_DIR/panorama.jpg" ]; then
-            echo "✅ Panorama image in assets: $ASSETS_DIR/panorama.jpg"
-          else
-            echo "::warning::⚠️ Panorama image not found in assets"
-          fi
-          
-          if [ -f "$SRC_DIR/panorama.jpg" ]; then
-            echo "✅ Panorama image in src: $SRC_DIR/panorama.jpg"
-          else
-            echo "::warning::⚠️ Panorama image not found in src (may cause loading issues)"
-          fi
-        else
-          echo "✅ Background type: $BACKGROUND_TYPE (panorama image not required)"
-        fi
-        
-        # 音楽ファイルの確認（音楽が有効な場合）
-        if [ "$INCLUDE_MUSIC" == "true" ]; then
-          if [ -f "$SRC_DIR/generated-music.wav" ]; then
-            echo "✅ Music file in src: $SRC_DIR/generated-music.wav"
-            MUSIC_SIZE=$(wc -c < "$SRC_DIR/generated-music.wav")
-            echo "  Music file size: $MUSIC_SIZE bytes"
-          else
-            echo "::warning::⚠️ Music file not found in src (music controls may not work)"
-          fi
-        fi
-        
-        # 総ファイル数をカウント
         TOTAL_FILES=$(find "$SRC_DIR" -type f | wc -l)
         echo "scene-files-created=$TOTAL_FILES" >> $GITHUB_OUTPUT
-        
-        echo ""
-        echo "🎉 Three.js scene generation completed with enhanced features:"
-        echo "  - Custom mouse/touch controls (no OrbitControls dependency)"
-        echo "  - HTML5 Audio music system (no Web Audio API issues)"
-        echo "  - Auto-rotation with double-click"
-        echo "  - Particle system with rotation sync"
-        echo "  - Single HTML file approach"
-        
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "::endgroup::"
     
