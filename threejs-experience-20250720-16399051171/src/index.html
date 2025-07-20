@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美しいシンプルな幾何学クリスタル - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 100;
+            line-height: 1.6;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #error {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+        }
+
+        #controls-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 100;
+            min-width: 280px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            opacity: 0.3;
+            transition: opacity 0.3s ease;
+        }
+
+        #controls-panel:hover {
+            opacity: 1.0;
+        }
+
+        #controls-panel h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #ffffff;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #cccccc;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .value-display {
+            min-width: 50px;
+            font-size: 11px;
+            text-align: right;
+            color: #ffffff;
+        }
+
+        .color-mode-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .color-mode-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.3s ease;
+        }
+
+        .color-mode-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .color-mode-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        canvas {
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        @media (max-width: 768px) {
+            #controls-panel {
+                right: 10px;
+                top: 10px;
+                min-width: 240px;
+                padding: 15px;
+            }
+
+            #info {
+                left: 10px;
+                top: 10px;
+                font-size: 12px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="info">
+        <strong>🔮 美しいシンプルな幾何学クリスタル</strong><br>
+        <span style="color: #aaa;">Geometric Crystal Art Experience</span><br><br>
+        <strong>操作方法:</strong><br>
+        • マウスドラッグ: 視点移動<br>
+        • ホイール: ズーム<br>
+        • ダブルクリック: 自動回転
+    </div>
+
+    <div id="controls-panel">
+        <h3>✨ コントロール</h3>
+        
+        <div class="control-group">
+            <label>回転速度</label>
+            <div class="slider-container">
+                <input type="range" id="rotationSpeed" class="slider" min="0.001" max="0.05" step="0.001" value="0.01">
+                <span id="rotationSpeedValue" class="value-display">0.01</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>クリスタルサイズ</label>
+            <div class="slider-container">
+                <input type="range" id="crystalSize" class="slider" min="0.5" max="3.0" step="0.1" value="1.5">
+                <span id="crystalSizeValue" class="value-display">1.5</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>クリスタル数</label>
+            <div class="slider-container">
+                <input type="range" id="crystalCount" class="slider" min="3" max="12" step="1" value="6">
+                <span id="crystalCountValue" class="value-display">6</span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>カラーモード</label>
+            <div class="color-mode-buttons">
+                <button class="color-mode-btn active" data-mode="single">単色</button>
+                <button class="color-mode-btn" data-mode="gradient">グラデーション</button>
+                <button class="color-mode-btn" data-mode="rainbow">レインボー</button>
+            </div>
+        </div>
+
+        <div class="control-group" id="color-picker-group">
+            <label>ベース色</label>
+            <input type="color" id="baseColor" class="color-picker" value="#00ffff">
+        </div>
+    </div>
+
+    <div id="error">
+        <h3>エラーが発生しました</h3>
+        <p id="error-message"></p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // グローバル変数
+        let scene, camera, renderer, crystals = [];
+        let isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        let autoRotate = false;
+        let autoRotationSpeed = 0.01;
+        let crystalSize = 1.5;
+        let crystalCount = 6;
+        let colorMode = 'single';
+        let baseColor = '#00ffff';
+
+        // WebGL対応チェック
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                return !!gl;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // エラー表示
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // クリスタルジオメトリ生成
+        function createCrystalGeometry() {
+            const geometry = new THREE.ConeGeometry(0.5, 2, 6);
+            
+            // 上部にピラミッド追加
+            const topGeometry = new THREE.ConeGeometry(0.5, 1, 6);
+            topGeometry.translate(0, 1.5, 0);
+            topGeometry.rotateX(Math.PI);
+            
+            const crystalGeometry = new THREE.BufferGeometry();
+            const positions = [];
+            const indices = [];
+            
+            // 基本コーンの頂点とインデックス
+            const basePositions = geometry.attributes.position.array;
+            const baseIndices = geometry.index.array;
+            
+            for (let i = 0; i < basePositions.length; i++) {
+                positions.push(basePositions[i]);
+            }
+            
+            for (let i = 0; i < baseIndices.length; i++) {
+                indices.push(baseIndices[i]);
+            }
+            
+            // 上部ピラミッドの頂点とインデックス
+            const topPositions = topGeometry.attributes.position.array;
+            const topIndices = topGeometry.index.array;
+            const vertexOffset = positions.length / 3;
+            
+            for (let i = 0; i < topPositions.length; i++) {
+                positions.push(topPositions[i]);
+            }
+            
+            for (let i = 0; i < topIndices.length; i++) {
+                indices.push(topIndices[i] + vertexOffset);
+            }
+            
+            crystalGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            crystalGeometry.setIndex(indices);
+            crystalGeometry.computeVertexNormals();
+            
+            return crystalGeometry;
+        }
+
+        // HSVからRGBに変換
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            const i = Math.floor(h * 6);
+            const f = h * 6 - i;
+            const p = v * (1 - s);
+            const q = v * (1 - f * s);
+            const t = v * (1 - (1 - f) * s);
+
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
+            }
+
+            return new THREE.Color(r, g, b);
+        }
+
+        // カラーを生成
+        function generateColor(index, total) {
+            const baseColorObj = new THREE.Color(baseColor);
+            
+            switch (colorMode) {
+                case 'single':
+                    return baseColorObj;
+                    
+                case 'gradient':
+                    // 同系色グラデーション
+                    const lightness = 0.5 + (Math.sin(index / total * Math.PI * 2) * 0.4);
+                    return baseColorObj.clone().multiplyScalar(lightness);
+                    
+                case 'rainbow':
+                    // レインボーグラデーション
+                    const hue = (index / total) % 1;
+                    return hsvToRgb(hue, 0.8, 1.0);
+                    
+                default:
+                    return baseColorObj;
+            }
+        }
+
+        // クリスタル作成
+        function createCrystal(index, total) {
+            const geometry = createCrystalGeometry();
+            const color = generateColor(index, total);
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8,
+                shininess: 100,
+                specular: new THREE.Color(0xffffff)
+            });
+
+            const crystal = new THREE.Mesh(geometry, material);
+            
+            // 配置
+            const angle = (index / total) * Math.PI * 2;
+            const radius = 3;
+            crystal.position.x = Math.cos(angle) * radius;
+            crystal.position.z = Math.sin(angle) * radius;
+            crystal.position.y = Math.sin(angle * 2) * 0.5;
+            
+            // 回転
+            crystal.rotation.x = Math.random() * Math.PI * 2;
+            crystal.rotation.y = angle;
+            crystal.rotation.z = Math.random() * Math.PI * 0.2;
+            
+            // スケール
+            crystal.scale.setScalar(crystalSize);
+            
+            return crystal;
+        }
+
+        // シーン初期化
+        function initScene() {
+            // シーン作成
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+
+            // カメラ作成
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 8);
+            camera.lookAt(0, 0, 0);
+
+            // レンダラー作成
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // ライティング
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 20);
+            pointLight1.position.set(-5, 5, 5);
+            scene.add(pointLight1);
+
+            const pointLight2 = new THREE.PointLight(0xff00ff, 0.5, 20);
+            pointLight2.position.set(5, 5, -5);
+            scene.add(pointLight2);
+
+            // クリスタル生成
+            generateCrystals();
+
+            // イベントリスナー
+            setupEventListeners();
+
+            // アニメーション開始
+            animate();
+        }
+
+        // クリスタル群生成
+        function generateCrystals() {
+            // 既存のクリスタルを削除
+            crystals.forEach(crystal => {
+                scene.remove(crystal);
+            });
+            crystals = [];
+
+            // 新しいクリスタルを生成
+            for (let i = 0; i < crystalCount; i++) {
+                const crystal = createCrystal(i, crystalCount);
+                crystals.push(crystal);
+                scene.add(crystal);
+            }
+        }
+
+        // クリスタルの色を更新
+        function updateCrystalColors() {
+            crystals.forEach((crystal, index) => {
+                const color = generateColor(index, crystals.length);
+                crystal.material.color = color;
+            });
+        }
+
+        // イベントリスナー設定
+        function setupEventListeners() {
+            const canvas = renderer.domElement;
+
+            // マウスイベント
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+
+            // タッチイベント
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+
+            // ウィンドウリサイズ
+            window.addEventListener('resize', onWindowResize);
+
+            // コントロールパネル
+            document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+                autoRotationSpeed = parseFloat(e.target.value);
+                document.getElementById('rotationSpeedValue').textContent = autoRotationSpeed.toFixed(3);
+            });
+
+            document.getElementById('crystalSize').addEventListener('input', (e) => {
+                crystalSize = parseFloat(e.target.value);
+                document.getElementById('crystalSizeValue').textContent = crystalSize.toFixed(1);
+                crystals.forEach(crystal => {
+                    crystal.scale.setScalar(crystalSize);
+                });
+            });
+
+            document.getElementById('crystalCount').addEventListener('input', (e) => {
+                crystalCount = parseInt(e.target.value);
+                document.getElementById('crystalCountValue').textContent = crystalCount;
+                generateCrystals();
+            });
+
+            document.getElementById('baseColor').addEventListener('input', (e) => {
+                baseColor = e.target.value;
+                updateCrystalColors();
+            });
+
+            // カラーモードボタン
+            document.querySelectorAll('.color-mode-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.color-mode-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    colorMode = e.target.dataset.mode;
+                    updateCrystalColors();
+                });
+            });
+        }
+
+        // マウスイベント
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            camera.position.multiplyScalar(1 + event.deltaY * 0.001);
+            const distance = camera.position.length();
+            if (distance < 2) camera.position.setLength(2);
+            if (distance > 20) camera.position.setLength(20);
+        }
+
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+        }
+
+        // タッチイベント
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+                isMouseDown = true;
+            }
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouseX;
+                const deltaY = event.touches[0].clientY - mouseY;
+
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+
+                targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+        }
+
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+
+        // ウィンドウリサイズ
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // アニメーション
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // カメラ回転の補間
+            currentRotationX += (targetRotationX - currentRotationX) * 0.1;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.1;
+
+            // 自動回転
+            if (autoRotate) {
+                targetRotationY += autoRotationSpeed;
+            }
+
+            // カメラ位置の更新
+            const distance = camera.position.length();
+            camera.position.x = distance * Math.sin(currentRotationY) * Math.cos(currentRotationX);
+            camera.position.y = distance * Math.sin(currentRotationX);
+            camera.position.z = distance * Math.cos(currentRotationY) * Math.cos(currentRotationX);
+            camera.lookAt(0, 0, 0);
+
+            // クリスタルの回転
+            crystals.forEach((crystal, index) => {
+                crystal.rotation.x += 0.005 + index * 0.001;
+                crystal.rotation.y += 0.003 + index * 0.0005;
+                crystal.position.y = Math.sin(Date.now() * 0.001 + index) * 0.3;
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // 初期化
+        function init() {
+            if (!checkWebGLSupport()) {
+                showError('WebGLがサポートされていません。モダンなブラウザをご使用ください。');
+                return;
+            }
+
+            try {
+                initScene();
+            } catch (error) {
+                showError('3Dシーンの初期化に失敗しました: ' + error.message);
+            }
+        }
+
+        // ページ読み込み完了時に初期化
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
