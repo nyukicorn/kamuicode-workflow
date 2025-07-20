@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音楽付きパーティクル花園 - Three.js Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        #canvas:active {
+            cursor: grabbing;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            font-size: 14px;
+        }
+        
+        #controls {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        .title {
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .instructions {
+            font-size: 11px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            #ui {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+            
+            #controls {
+                padding: 10px;
+            }
+            
+            .title {
+                font-size: 14px;
+            }
+            
+            .instructions {
+                font-size: 10px;
+            }
+            
+            button {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        <div id="ui">
+            <div id="controls">
+                <div class="title">🌸 パーティクル花園 🌸</div>
+                <div class="control-group">
+                    <button id="playPauseBtn">▶️ Play Music</button>
+                </div>
+                <div class="instructions">
+                    🖱️ Drag: Rotate view<br>
+                    🖱️ Wheel: Zoom<br>
+                    🖱️ Double-click: Auto-rotate
+                </div>
+            </div>
+        </div>
+        <audio id="bgMusic" loop>
+            <source src="../music/generated-music.wav" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, particles;
+        let mouse = { x: 0, y: 0 };
+        let mouseDown = false;
+        let autoRotate = false;
+        let cameraRadius = 50;
+        let cameraTheta = 0;
+        let cameraPhi = Math.PI / 2;
+        
+        const bgMusic = document.getElementById('bgMusic');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('canvas'),
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            
+            // Create gradient background
+            createGradientBackground();
+            
+            // Create particle system
+            createParticleSystem();
+            
+            // Setup controls
+            setupControls();
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function createGradientBackground() {
+            const vertexShader = `
+                void main() {
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+            
+            const fragmentShader = `
+                uniform vec2 resolution;
+                uniform float time;
+                
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / resolution.xy;
+                    
+                    // Create flowing gradient
+                    float wave1 = sin(uv.x * 3.0 + time * 0.5) * 0.5 + 0.5;
+                    float wave2 = cos(uv.y * 2.0 + time * 0.3) * 0.5 + 0.5;
+                    
+                    vec3 color1 = vec3(0.1, 0.05, 0.2); // Deep purple
+                    vec3 color2 = vec3(0.2, 0.1, 0.4);  // Purple
+                    vec3 color3 = vec3(0.4, 0.2, 0.6);  // Light purple
+                    vec3 color4 = vec3(0.6, 0.4, 0.8);  // Pink purple
+                    
+                    vec3 gradient = mix(
+                        mix(color1, color2, wave1),
+                        mix(color3, color4, wave2),
+                        uv.y + sin(time * 0.2) * 0.1
+                    );
+                    
+                    gl_FragColor = vec4(gradient, 1.0);
+                }
+            `;
+            
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                    time: { value: 0 }
+                },
+                vertexShader,
+                fragmentShader
+            });
+            
+            const backgroundMesh = new THREE.Mesh(geometry, material);
+            backgroundMesh.position.z = -100;
+            scene.add(backgroundMesh);
+            
+            // Store reference for animation
+            scene.userData.backgroundMaterial = material;
+        }
+        
+        function createParticleSystem() {
+            const particleCount = 1000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const sizes = new Float32Array(particleCount);
+            const velocities = new Float32Array(particleCount * 3);
+            
+            const colorPalette = [
+                [1.0, 0.7, 0.8], // Pink
+                [0.8, 0.9, 1.0], // Light blue
+                [0.9, 0.8, 1.0], // Light purple
+                [1.0, 0.9, 0.7], // Light yellow
+                [0.7, 1.0, 0.8], // Light green
+                [1.0, 0.8, 0.9]  // Rose
+            ];
+            
+            for (let i = 0; i < particleCount; i++) {
+                // Random positions in a sphere
+                const radius = Math.random() * 30 + 10;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = radius * Math.cos(phi);
+                
+                // Random colors from palette
+                const colorIndex = Math.floor(Math.random() * colorPalette.length);
+                const color = colorPalette[colorIndex];
+                colors[i * 3] = color[0];
+                colors[i * 3 + 1] = color[1];
+                colors[i * 3 + 2] = color[2];
+                
+                // Random sizes
+                sizes[i] = Math.random() * 3 + 1;
+                
+                // Random velocities for floating animation
+                velocities[i * 3] = (Math.random() - 0.5) * 0.02;
+                velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.02;
+                velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.02;
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            
+            const material = new THREE.PointsMaterial({
+                size: 2,
+                sizeAttenuation: true,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            particles = new THREE.Points(geometry, material);
+            particles.userData.velocities = velocities;
+            scene.add(particles);
+        }
+        
+        function setupControls() {
+            const canvas = document.getElementById('canvas');
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onMouseWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+            
+            // Touch events for mobile
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+            
+            // Music controls
+            playPauseBtn.addEventListener('click', toggleMusic);
+            
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function onMouseDown(event) {
+            mouseDown = true;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+        
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouse.x;
+            const deltaY = event.clientY - mouse.y;
+            
+            cameraTheta -= deltaX * 0.01;
+            cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.01));
+            
+            updateCameraPosition();
+            
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+        
+        function onMouseUp() {
+            mouseDown = false;
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            cameraRadius = Math.max(20, Math.min(100, cameraRadius + event.deltaY * 0.1));
+            updateCameraPosition();
+        }
+        
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+        }
+        
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+                mouseDown = true;
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1 && mouseDown) {
+                const deltaX = event.touches[0].clientX - mouse.x;
+                const deltaY = event.touches[0].clientY - mouse.y;
+                
+                cameraTheta -= deltaX * 0.01;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.01));
+                
+                updateCameraPosition();
+                
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+            }
+        }
+        
+        function onTouchEnd() {
+            mouseDown = false;
+        }
+        
+        function updateCameraPosition() {
+            camera.position.x = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+            camera.position.y = cameraRadius * Math.cos(cameraPhi);
+            camera.position.z = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        function toggleMusic() {
+            if (bgMusic.paused) {
+                bgMusic.play().then(() => {
+                    playPauseBtn.textContent = '⏸️ Pause Music';
+                }).catch(error => {
+                    console.log('Error playing music:', error);
+                    playPauseBtn.textContent = '❌ Music Error';
+                });
+            } else {
+                bgMusic.pause();
+                playPauseBtn.textContent = '▶️ Play Music';
+            }
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            if (scene.userData.backgroundMaterial) {
+                scene.userData.backgroundMaterial.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+            }
+        }
+        
+        function animate(time = 0) {
+            requestAnimationFrame(animate);
+            
+            // Auto rotation
+            if (autoRotate) {
+                cameraTheta += 0.005;
+                updateCameraPosition();
+            }
+            
+            // Animate particles
+            if (particles) {
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i];
+                    positions[i + 1] += velocities[i + 1];
+                    positions[i + 2] += velocities[i + 2];
+                    
+                    // Floating motion
+                    positions[i] += Math.sin(time * 0.001 + i) * 0.01;
+                    positions[i + 1] += Math.cos(time * 0.001 + i) * 0.01;
+                    positions[i + 2] += Math.sin(time * 0.001 + i + 1) * 0.01;
+                    
+                    // Boundary check - wrap around
+                    if (Math.abs(positions[i]) > 50) velocities[i] *= -1;
+                    if (Math.abs(positions[i + 1]) > 50) velocities[i + 1] *= -1;
+                    if (Math.abs(positions[i + 2]) > 50) velocities[i + 2] *= -1;
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Rotate particle system slowly
+                particles.rotation.y += 0.002;
+            }
+            
+            // Animate background
+            if (scene.userData.backgroundMaterial) {
+                scene.userData.backgroundMaterial.uniforms.time.value = time * 0.001;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>
