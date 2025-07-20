@@ -80,6 +80,16 @@ runs:
       env:
         CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
         FOLDER_NAME: ${{ inputs.folder-name }}
+        EXPERIENCE_CONCEPT: ${{ inputs.experience-concept }}
+        PANORAMA_IMAGE_URL: ${{ inputs.panorama-image-url }}
+        BACKGROUND_TYPE: ${{ inputs.background-type }}
+        ART_MODE: ${{ inputs.art-mode }}
+        ART_OBJECT_TYPE: ${{ inputs.art-object-type }}
+        COMPLEXITY_LEVEL: ${{ inputs.complexity-level }}
+        INCLUDE_MUSIC: ${{ inputs.include-music }}
+        MUSIC_URL: ${{ inputs.music-url }}
+        PARTICLE_ENABLED: ${{ inputs.particle-enabled }}
+        PARTICLE_CONFIG: ${{ inputs.particle-config }}
       run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     
     - name: Upload Three.js files as artifact

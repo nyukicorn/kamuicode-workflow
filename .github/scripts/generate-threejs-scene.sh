@@ -6,27 +6,70 @@ echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
 
 # 環境変数から設定を読み込み
 SRC_DIR="$FOLDER_NAME/src"
+ASSETS_DIR="$FOLDER_NAME/assets"
 
-echo "Target folders: $SRC_DIR"
+echo "Configuration:"
+echo "  Experience concept: $EXPERIENCE_CONCEPT"
+echo "  Background type: $BACKGROUND_TYPE"
+echo "  Particle enabled: $PARTICLE_ENABLED"
+echo "  Target folders: $SRC_DIR"
 
 # ディレクトリを事前に作成
 mkdir -p "$SRC_DIR"
+mkdir -p "$ASSETS_DIR"
 echo "📁 Created directory structure"
 
-PROMPT="Create a simple Three.js HTML file at $SRC_DIR/index.html with:
-- Three.js CDN import
-- Black background
-- Green rotating cube
-- Basic animation loop
-Just one HTML file with inline JavaScript."
+# 基本的なプロンプト構築
+PROMPT="Create a Three.js experience HTML file at $SRC_DIR/index.html.
+
+Concept: $EXPERIENCE_CONCEPT
+
+Requirements:
+- Use Three.js CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js
+- Single HTML file with inline JavaScript
+- No OrbitControls dependency"
+
+# 背景タイプによる設定
+if [ "$BACKGROUND_TYPE" = "solid_black" ]; then
+  PROMPT="$PROMPT
+- Black background (0x000000)"
+elif [ "$BACKGROUND_TYPE" = "solid_white" ]; then
+  PROMPT="$PROMPT
+- White background (0xFFFFFF)"
+elif [ "$BACKGROUND_TYPE" = "gradient" ]; then
+  PROMPT="$PROMPT
+- Gradient background using shaders"
+elif [ "$BACKGROUND_TYPE" = "transparent" ]; then
+  PROMPT="$PROMPT
+- Transparent background (alpha: 0)"
+else
+  PROMPT="$PROMPT
+- Default background"
+fi
+
+# パーティクル設定
+if [ "$PARTICLE_ENABLED" = "true" ]; then
+  PROMPT="$PROMPT
+- Add particle system with:
+  - Floating particles
+  - Random positions
+  - Simple animation"
+fi
+
+# 基本機能
+PROMPT="$PROMPT
+- Mouse drag to rotate view
+- Mouse wheel to zoom
+- Double-click for auto-rotation
+- Responsive design"
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
-echo "📝 Prompt: $PROMPT"
+echo "📝 Prompt length: ${#PROMPT} characters"
 
 # Claude Code CLIの実行
 npx @anthropic-ai/claude-code \
   --allowedTools "Bash,Write" \
-  --max-turns 10 \
+  --max-turns 15 \
   --verbose \
   --permission-mode "acceptEdits" \
   -p "$PROMPT"
