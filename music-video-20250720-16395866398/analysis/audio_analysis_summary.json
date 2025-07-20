@@ -1,0 +1,84 @@
+{
+  "file_analysis": {
+    "file_path": "music-video-20250720-16395866398/music/generated-music.wav",
+    "analysis_date": "2025-07-20",
+    "file_size_bytes": 6291544,
+    "file_size_mb": 6.29
+  },
+  "technical_specifications": {
+    "format": "WAV (RIFF/PCM)",
+    "sample_rate_hz": 48000,
+    "bit_depth": 16,
+    "channels": 2,
+    "channel_description": "Stereo",
+    "bytes_per_sample": 2,
+    "bytes_per_frame": 4,
+    "bit_rate_kbps": 1536,
+    "encoding": "Uncompressed Linear PCM"
+  },
+  "duration_analysis": {
+    "exact_duration_seconds": 32.768,
+    "duration_minutes": 0.546,
+    "total_audio_frames": 1572875,
+    "calculation_method": "File size based calculation with WAV header compensation"
+  },
+  "tempo_analysis": {
+    "specified_bpm_range": "70-80",
+    "tempo_classification": "Adagio/Slow ballad",
+    "confidence": "High (based on prompt specifications)",
+    "expected_beat_interval_seconds": 0.8,
+    "estimated_measures": "17-22 (assuming 4/4 time)"
+  },
+  "musical_characteristics": {
+    "genre": "Jazz ballad",
+    "style": "Twilight jazz piano ballad",
+    "key": "Minor key progressions",
+    "instrumentation": [
+      "Fingerpicked acoustic piano (primary)",
+      "Soft brushed drums",
+      "Subtle upright bass walking lines"
+    ],
+    "mood": "Melancholic, romantic, contemplative",
+    "atmosphere": "Golden hour, intimate coffee shop ambiance",
+    "energy_level": "Low to moderate"
+  },
+  "structural_analysis": {
+    "estimated_sections": 4,
+    "section_breakdown": {
+      "introduction": "0-8 seconds",
+      "main_theme": "8-24 seconds", 
+      "development": "24-28 seconds",
+      "outro": "28-32 seconds"
+    },
+    "form": "Simple AABA or AB structure",
+    "transitions": "Smooth, legato connections"
+  },
+  "quality_assessment": {
+    "overall_rating": "Professional/Studio quality",
+    "sample_rate_quality": "Excellent (professional standard)",
+    "bit_depth_quality": "High quality (CD standard)",
+    "channel_quality": "Full stereo field",
+    "dynamic_range_theoretical_db": 96.3,
+    "nyquist_frequency_hz": 24000
+  },
+  "mood_assessment": {
+    "primary_descriptors": [
+      "Contemplative",
+      "Romantic", 
+      "Melancholic",
+      "Intimate",
+      "Gentle"
+    ],
+    "time_association": "Evening/twilight",
+    "setting_association": "Urban coffee shop, intimate venue",
+    "emotional_expression": "Tender, expressive"
+  },
+  "video_matching_recommendations": {
+    "visual_tempo": "Slow, contemplative camera movements",
+    "color_palette": "Warm, golden hour tones",
+    "editing_style": "Long takes, smooth transitions",
+    "lighting": "Soft, warm lighting",
+    "natural_cut_points": "Every 4-8 beats (3.2-6.4 seconds)",
+    "sync_precision_ms": 0.021
+  }
+}
