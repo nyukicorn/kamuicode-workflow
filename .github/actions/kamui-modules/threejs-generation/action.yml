@@ -89,7 +89,7 @@ runs:
         INCLUDE_MUSIC: ${{ inputs.include-music }}
         MUSIC_URL: ${{ inputs.music-url }}
         PARTICLE_ENABLED: ${{ inputs.particle-enabled }}
-        PARTICLE_CONFIG: ${{ inputs.particle-config }}
+        PARTICLE_COUNT: ${{ inputs.particle-count }}
       run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     
     - name: Upload Three.js files as artifact

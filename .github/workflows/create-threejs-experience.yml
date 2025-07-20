@@ -4,11 +4,42 @@ on:
   workflow_dispatch:
     inputs:
       experience_concept:
-        description: '3D体験のコンセプト（例：桜舞う京都庭園のVR散歩）'
+        description: '3D体験のコンセプト（例：美しいパーティクルの世界）'
         required: true
         type: string
+      background_type:
+        description: '背景タイプ'
+        required: false
+        type: choice
+        options:
+          - solid_black
+          - solid_white
+          - transparent
+          - gradient
+          - panorama
+        default: 'gradient'
+      particle_enabled:
+        description: 'パーティクル効果を有効にするか'
+        required: false
+        type: boolean
+        default: true
+      particle_count:
+        description: 'パーティクル数'
+        required: false
+        type: choice
+        options:
+          - '500'
+          - '1000'
+          - '2000'
+          - '5000'
+        default: '1000'
+      include_music:
+        description: 'BGM付きにするか（テスト機能）'
+        required: false
+        type: boolean
+        default: false
       image_model:
-        description: '画像生成モデル'
+        description: '画像生成モデル（パノラマ背景時のみ）'
         required: false
         type: choice
         options:
@@ -19,58 +50,6 @@ on:
           - flux-schnell
           - photo-flux
         default: 'auto'
-      include_music:
-        description: 'BGM付きにするか'
-        required: false
-        type: boolean
-        default: false
-      particle_enabled:
-        description: 'パーティクル効果を有効にするか'
-        required: false
-        type: boolean
-        default: true
-      particle_config:
-        description: 'パーティクル設定 (count:size:shape:corner_radius)'
-        required: false
-        type: string
-        default: '1000:0.5:circle:0.0'
-      background_type:
-        description: '背景タイプ'
-        required: false
-        type: choice
-        options:
-          - panorama
-          - solid_black
-          - solid_white
-          - transparent
-          - gradient
-        default: 'panorama'
-      art_mode:
-        description: 'アート作品創作モード'
-        required: false
-        type: choice
-        options:
-          - none
-          - sculptural
-          - organic
-          - geometric
-          - abstract
-        default: 'none'
-      art_object_type:
-        description: '立体アート種類 (flower/tree/crystal/spiral/mandala等)'
-        required: false
-        type: string
-        default: ''
-      complexity_level:
-        description: '複雑さレベル'
-        required: false
-        type: choice
-        options:
-          - simple
-          - medium
-          - complex
-          - masterpiece
-        default: 'medium'
 
 jobs:
   create-threejs-experience:

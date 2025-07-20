@@ -51,6 +51,7 @@ fi
 if [ "$PARTICLE_ENABLED" = "true" ]; then
   PROMPT="$PROMPT
 - Add particle system with:
+  - Particle count: ${PARTICLE_COUNT:-1000}
   - Floating particles
   - Random positions
   - Simple animation"

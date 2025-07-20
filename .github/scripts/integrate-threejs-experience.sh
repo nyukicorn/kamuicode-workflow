@@ -52,56 +52,19 @@ else
   MUSIC_INFO="- 音楽なし（パノラマ+パーティクルのみ）"
 fi
 
-PROMPT="Three.js体験の最終統合とパッケージングを実行してください。
+PROMPT="Create final package for Three.js experience.
 
-**体験コンセプト**: $EXPERIENCE_CONCEPT
-**音楽統合**: $INCLUDE_MUSIC
-$MUSIC_INFO
+Tasks:
+1. Create README.md in $FOLDER_NAME/ with:
+   - Experience concept: $EXPERIENCE_CONCEPT
+   - Controls: mouse drag, wheel zoom, double-click auto-rotate
+   - Tech: Three.js, WebGL required
+   
+2. Create zip package:
+   - Use bash: cd $FOLDER_NAME/.. && zip -r $FINAL_DIR/threejs-experience.zip $(basename $FOLDER_NAME)/
+   - File must exist: $FINAL_DIR/threejs-experience.zip
 
-**実行手順**:
-1. 生成されたファイルの品質チェック:
-   - $SRC_DIR/index.htmlの構文確認
-   - JavaScriptファイルの基本的な構文チェック
-   - CSSファイルの妥当性確認
-   - パノラマ画像のファイルサイズ確認
-
-2. READMEファイル作成($FOLDER_NAME/README.md):
-   - 体験コンセプトの説明
-   - 操作方法（マウス/タッチ操作）
-   - 技術仕様（Three.js, WebGL要件）
-   - ローカル実行方法
-   - 対応ブラウザ情報
-   - トラブルシューティング
-
-3. パフォーマンス最適化:
-   - 画像ファイルサイズの確認
-   - 不要なファイルの削除
-   - HTMLのminification確認
-
-4. 最終パッケージ作成（必須）:
-   - **重要**: Bashツールを使用してzipパッケージを必ず作成
-   - コマンド: cd $FOLDER_NAME/.. && zip -r $FINAL_DIR/threejs-experience.zip $(basename $FOLDER_NAME)/
-   - 作成確認: $FINAL_DIR/threejs-experience.zip が存在することを確認
-   - ファイルサイズの記録
-
-**品質チェック項目**:
-- WebGL対応チェックの実装確認
-- レスポンシブデザインの実装確認
-- エラーハンドリングの実装確認
-- パフォーマンス最適化の実装確認
-- ブラウザ互換性の確認
-
-**最終成果物**:
-- 完全動作するThree.js体験
-- 詳細なREADME文書
-- 配布用zipパッケージ
-- 品質チェックレポート
-
-**重要な注意点**:
-- すべてのファイルパスが相対パスで正しく設定されているか確認
-- 外部依存関係の確認（CDNリンクなど）
-- モバイルデバイスでの動作確認要件の記載
-- セキュリティベストプラクティスの確認"
+Simple tasks only. Focus on README and zip creation."
 
 echo "🚀 Starting Integration & Packaging Agent..."
 echo "📝 Prompt length: ${#PROMPT}"
@@ -109,7 +72,8 @@ echo "📝 Prompt length: ${#PROMPT}"
 # Claude Code CLIの実行
 npx @anthropic-ai/claude-code \
   --allowedTools "Bash" \
-  --max-turns 25 \
+  --max-turns 60 \
+  --timeout 600000 \
   --verbose \
   --permission-mode "acceptEdits" \
   -p "$PROMPT"
