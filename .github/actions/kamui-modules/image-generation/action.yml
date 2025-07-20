@@ -30,6 +30,9 @@ outputs:
   google-image-url:
     description: 'Google URL of the generated image'
     value: ${{ steps.image.outputs.google-image-url }}
+  used-model:
+    description: 'The image generation model that was actually used'
+    value: ${{ steps.image.outputs.used-model }}
 
 runs:
   using: 'composite'
@@ -236,6 +239,7 @@ runs:
         fi
         
         echo "completed=true" >> $GITHUB_OUTPUT
+        echo "used-model=$MODEL_NAME" >> $GITHUB_OUTPUT
         echo "::endgroup::"
     
     - name: Commit and push image
