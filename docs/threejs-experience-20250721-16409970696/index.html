@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美しいバラの花束 - Beautiful Rose Bouquet</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #ffb3ba 0%, #ffdfba 25%, #ffffba 50%, #baffc9 75%, #bae1ff 100%);
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 5px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b9d;
+            cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b9d;
+            cursor: pointer;
+            border: none;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 10px;
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="rotationSpeed">回転速度 / Rotation Speed</label>
+            <input type="range" id="rotationSpeed" class="slider" min="0" max="2" step="0.1" value="0.5">
+        </div>
+        <div class="control-group">
+            <label for="particleCount">パーティクル数 / Particle Count</label>
+            <input type="range" id="particleCount" class="slider" min="100" max="2000" step="50" value="800">
+        </div>
+        <div class="control-group">
+            <label for="bloomIntensity">光の強度 / Light Intensity</label>
+            <input type="range" id="bloomIntensity" class="slider" min="0.1" max="3" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label for="windStrength">風の強さ / Wind Strength</label>
+            <input type="range" id="windStrength" class="slider" min="0" max="5" step="0.2" value="1">
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        let scene, camera, renderer, roses = [], particles, particleSystem;
+        let mouse = new THREE.Vector2();
+        let isDragging = false;
+        let previousMouse = new THREE.Vector2();
+        let cameraRotation = { x: 0, y: 0 };
+        let animationSettings = {
+            rotationSpeed: 0.5,
+            particleCount: 800,
+            bloomIntensity: 1.5,
+            windStrength: 1
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 15);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            
+            createLighting();
+            createRoseBouquet();
+            createParticles();
+            setupControls();
+            setupEventListeners();
+            
+            animate();
+        }
+
+        function createLighting() {
+            const ambientLight = new THREE.AmbientLight(0xffd1dc, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            
+            const pointLight1 = new THREE.PointLight(0xff69b4, 0.8, 50);
+            pointLight1.position.set(-5, 8, 3);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0xff1493, 0.6, 30);
+            pointLight2.position.set(5, 6, -3);
+            scene.add(pointLight2);
+        }
+
+        function createRose(x, y, z, color, scale = 1) {
+            const roseGroup = new THREE.Group();
+            
+            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.1, 3);
+            const stemMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+            stem.position.y = -1.5;
+            stem.castShadow = true;
+            roseGroup.add(stem);
+            
+            const petalColors = [0xff69b4, 0xff1493, 0xdc143c, 0xb22222, 0xff6347, 0xff4500];
+            const selectedColor = color || petalColors[Math.floor(Math.random() * petalColors.length)];
+            
+            for (let i = 0; i < 12; i++) {
+                const petalGeometry = new THREE.SphereGeometry(0.3, 8, 6);
+                const petalMaterial = new THREE.MeshPhongMaterial({ 
+                    color: selectedColor,
+                    shininess: 100,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+                
+                const angle = (i / 12) * Math.PI * 2;
+                const radius = 0.5 + (i % 3) * 0.2;
+                petal.position.x = Math.cos(angle) * radius;
+                petal.position.z = Math.sin(angle) * radius;
+                petal.position.y = Math.sin(i * 0.5) * 0.2;
+                
+                petal.scale.set(
+                    0.8 + Math.random() * 0.4,
+                    1.2 + Math.random() * 0.6,
+                    0.6 + Math.random() * 0.3
+                );
+                
+                petal.rotation.set(
+                    Math.random() * 0.5,
+                    angle + Math.random() * 0.3,
+                    Math.random() * 0.3
+                );
+                
+                petal.castShadow = true;
+                petal.receiveShadow = true;
+                roseGroup.add(petal);
+            }
+            
+            const centerGeometry = new THREE.SphereGeometry(0.2, 12, 8);
+            const centerMaterial = new THREE.MeshPhongMaterial({ 
+                color: new THREE.Color(selectedColor).multiplyScalar(0.7),
+                shininess: 150
+            });
+            const center = new THREE.Mesh(centerGeometry, centerMaterial);
+            center.position.y = 0.1;
+            center.castShadow = true;
+            roseGroup.add(center);
+            
+            for (let i = 0; i < 5; i++) {
+                const leafGeometry = new THREE.PlaneGeometry(0.4, 0.8);
+                const leafMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x228B22,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                
+                const angle = (i / 5) * Math.PI * 2;
+                leaf.position.x = Math.cos(angle) * 0.8;
+                leaf.position.z = Math.sin(angle) * 0.8;
+                leaf.position.y = -0.5 - Math.random() * 0.5;
+                leaf.rotation.z = angle;
+                leaf.rotation.x = Math.PI * 0.3;
+                
+                roseGroup.add(leaf);
+            }
+            
+            roseGroup.position.set(x, y, z);
+            roseGroup.scale.setScalar(scale);
+            roseGroup.rotation.y = Math.random() * Math.PI * 2;
+            
+            return roseGroup;
+        }
+
+        function createRoseBouquet() {
+            roses = [];
+            
+            const positions = [
+                { x: 0, y: 0, z: 0, color: 0xff69b4, scale: 1.2 },
+                { x: -1.5, y: 0.5, z: 1, color: 0xff1493, scale: 1.0 },
+                { x: 1.5, y: -0.3, z: 0.8, color: 0xdc143c, scale: 1.1 },
+                { x: -2, y: -0.8, z: -1, color: 0xff69b4, scale: 0.9 },
+                { x: 2, y: 0.8, z: -0.5, color: 0xb22222, scale: 1.0 },
+                { x: 0, y: 1.5, z: -1.5, color: 0xff6347, scale: 0.8 },
+                { x: -0.8, y: -1.2, z: 1.8, color: 0xff4500, scale: 1.0 },
+                { x: 1.2, y: 1.8, z: 1.2, color: 0xff1493, scale: 0.9 },
+                { x: -1.8, y: 1.0, z: -0.8, color: 0xdc143c, scale: 1.1 },
+                { x: 0.5, y: -1.5, z: -1.8, color: 0xff69b4, scale: 0.85 }
+            ];
+            
+            positions.forEach(pos => {
+                const rose = createRose(pos.x, pos.y, pos.z, pos.color, pos.scale);
+                roses.push(rose);
+                scene.add(rose);
+            });
+        }
+
+        function createCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext('2d');
+            
+            context.clearRect(0, 0, 32, 32);
+            
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255, 182, 193, 1)');
+            gradient.addColorStop(0.5, 'rgba(255, 105, 180, 0.8)');
+            gradient.addColorStop(1, 'rgba(255, 105, 180, 0)');
+            
+            context.fillStyle = gradient;
+            context.beginPath();
+            context.arc(16, 16, 16, 0, Math.PI * 2);
+            context.fill();
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createParticles() {
+            const particleGeometry = new THREE.BufferGeometry();
+            const particlePositions = new Float32Array(animationSettings.particleCount * 3);
+            const particleVelocities = new Float32Array(animationSettings.particleCount * 3);
+            const particleSizes = new Float32Array(animationSettings.particleCount);
+            
+            for (let i = 0; i < animationSettings.particleCount; i++) {
+                const i3 = i * 3;
+                particlePositions[i3] = (Math.random() - 0.5) * 20;
+                particlePositions[i3 + 1] = Math.random() * 10;
+                particlePositions[i3 + 2] = (Math.random() - 0.5) * 20;
+                
+                particleVelocities[i3] = (Math.random() - 0.5) * 0.02;
+                particleVelocities[i3 + 1] = Math.random() * 0.01;
+                particleVelocities[i3 + 2] = (Math.random() - 0.5) * 0.02;
+                
+                particleSizes[i] = Math.random() * 0.5 + 0.2;
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+            particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(particleSizes, 1));
+            
+            const particleMaterial = new THREE.PointsMaterial({
+                map: createCircleTexture(),
+                transparent: true,
+                alphaTest: 0.1,
+                size: 0.8,
+                sizeAttenuation: true,
+                vertexColors: false,
+                color: 0xffb6c1
+            });
+            
+            particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+            particleSystem.userData = { velocities: particleVelocities };
+            scene.add(particleSystem);
+        }
+
+        function updateParticles() {
+            if (!particleSystem) return;
+            
+            const positions = particleSystem.geometry.attributes.position.array;
+            const velocities = particleSystem.userData.velocities;
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                positions[i] += velocities[i] * animationSettings.windStrength;
+                positions[i + 1] += velocities[i + 1];
+                positions[i + 2] += velocities[i + 2] * animationSettings.windStrength;
+                
+                if (positions[i + 1] > 15) {
+                    positions[i] = (Math.random() - 0.5) * 20;
+                    positions[i + 1] = -5;
+                    positions[i + 2] = (Math.random() - 0.5) * 20;
+                }
+                
+                if (Math.abs(positions[i]) > 15) {
+                    positions[i] = (Math.random() - 0.5) * 20;
+                }
+                if (Math.abs(positions[i + 2]) > 15) {
+                    positions[i + 2] = (Math.random() - 0.5) * 20;
+                }
+            }
+            
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+        }
+
+        function setupControls() {
+            const controls = ['rotationSpeed', 'particleCount', 'bloomIntensity', 'windStrength'];
+            
+            controls.forEach(controlId => {
+                const control = document.getElementById(controlId);
+                control.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    animationSettings[controlId] = value;
+                    
+                    if (controlId === 'particleCount') {
+                        scene.remove(particleSystem);
+                        createParticles();
+                    }
+                });
+            });
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize);
+            
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+            
+            renderer.domElement.addEventListener('touchstart', onTouchStart);
+            renderer.domElement.addEventListener('touchmove', onTouchMove);
+            renderer.domElement.addEventListener('touchend', onTouchEnd);
+        }
+
+        function onMouseDown(event) {
+            isDragging = true;
+            previousMouse.x = event.clientX;
+            previousMouse.y = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (isDragging) {
+                const deltaX = event.clientX - previousMouse.x;
+                const deltaY = event.clientY - previousMouse.y;
+                
+                cameraRotation.y += deltaX * 0.01;
+                cameraRotation.x += deltaY * 0.01;
+                
+                cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+                
+                previousMouse.x = event.clientX;
+                previousMouse.y = event.clientY;
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+        }
+
+        function onMouseWheel(event) {
+            const zoomSpeed = 0.1;
+            camera.position.multiplyScalar(1 + event.deltaY * 0.001 * zoomSpeed);
+            camera.position.clampLength(5, 50);
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                isDragging = true;
+                previousMouse.x = event.touches[0].clientX;
+                previousMouse.y = event.touches[0].clientY;
+            }
+        }
+
+        function onTouchMove(event) {
+            if (isDragging && event.touches.length === 1) {
+                const deltaX = event.touches[0].clientX - previousMouse.x;
+                const deltaY = event.touches[0].clientY - previousMouse.y;
+                
+                cameraRotation.y += deltaX * 0.01;
+                cameraRotation.x += deltaY * 0.01;
+                
+                cameraRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotation.x));
+                
+                previousMouse.x = event.touches[0].clientX;
+                previousMouse.y = event.touches[0].clientY;
+            }
+            event.preventDefault();
+        }
+
+        function onTouchEnd() {
+            isDragging = false;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            roses.forEach((rose, index) => {
+                rose.rotation.y += animationSettings.rotationSpeed * 0.01;
+                rose.position.y += Math.sin(time + index) * 0.002;
+                
+                rose.children.forEach((child, childIndex) => {
+                    if (childIndex > 0 && child.material && child.material.color) {
+                        child.rotation.z += 0.005;
+                    }
+                });
+            });
+            
+            updateParticles();
+            
+            const radius = 15;
+            camera.position.x = radius * Math.sin(cameraRotation.y) * Math.cos(cameraRotation.x);
+            camera.position.y = radius * Math.sin(cameraRotation.x) + 5;
+            camera.position.z = radius * Math.cos(cameraRotation.y) * Math.cos(cameraRotation.x);
+            
+            camera.lookAt(scene.position);
+            
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
+</body>
+</html>
