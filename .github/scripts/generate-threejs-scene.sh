@@ -43,7 +43,15 @@ Music: './generated-music.wav', user-click play, loop"
 
 PROMPT="$PROMPT
 Controls: mouse drag/zoom, interactive sliders, responsive
-WebGL: NO 'as' syntax, unique uniform names (avoid size conflicts)"
+
+MANDATORY WebGL Shader Requirements:
+- Use BasicMaterial or PointsMaterial instead of custom ShaderMaterial
+- If custom shaders needed, use these exact patterns:
+  * uniform float uTime (NOT time)
+  * uniform float uSize (NOT size)  
+  * attribute float aScale (NOT size or particleSize)
+- NEVER define 'attribute vec3 color' (THREE.js provides it)
+- NEVER use 'as' keyword in shader code"
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"
