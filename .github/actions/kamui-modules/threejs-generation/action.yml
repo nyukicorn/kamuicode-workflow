@@ -44,6 +44,10 @@ inputs:
     description: 'Particle shape (circle/heart/star/diamond/square/soft_circle)'
     required: false
     default: 'circle'
+  particle-color:
+    description: 'Particle color setting (auto/red/pink/blue/green/yellow/purple/white/random/gradient/rainbow)'
+    required: false
+    default: 'auto'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -96,6 +100,7 @@ runs:
         MUSIC_URL: ${{ inputs.music-url }}
         OBJECT_DETAILS: ${{ inputs.object-details }}
         PARTICLE_SHAPE: ${{ inputs.particle-shape }}
+        PARTICLE_COLOR: ${{ inputs.particle-color }}
       run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     
     - name: Upload Three.js files as artifact

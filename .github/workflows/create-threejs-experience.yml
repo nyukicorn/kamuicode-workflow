@@ -85,17 +85,22 @@ on:
           - square
           - soft_circle
         default: 'circle'
-      image_model:
-        description: '画像生成モデル（パノラマ背景時のみ）'
+      particle_color:
+        description: 'パーティクル色設定'
         required: false
         type: choice
         options:
           - auto
-          - imagen4-ultra
-          - imagen4-fast
-          - imagen3
-          - flux-schnell
-          - photo-flux
+          - red
+          - pink
+          - blue
+          - green
+          - yellow
+          - purple
+          - white
+          - random
+          - gradient
+          - rainbow
         default: 'auto'
 
 jobs:
@@ -131,7 +136,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-generation
         with:
           image-prompt: ${{ steps.translation.outputs.english-prompt }}
-          image-model: ${{ inputs.image_model }}
+          image-model: auto
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -164,6 +169,7 @@ jobs:
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
           object-details: ${{ inputs.object_details }}
           particle-shape: ${{ inputs.particle_shape }}
+          particle-color: ${{ inputs.particle_color }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

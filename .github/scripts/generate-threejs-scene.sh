@@ -15,6 +15,7 @@ echo "  Art style: $ART_STYLE"
 echo "  Object details: $OBJECT_DETAILS"
 echo "  Arrangement: $ARRANGEMENT"
 echo "  Color scheme: $COLOR_SCHEME"
+echo "  Particle color: $PARTICLE_COLOR"
 echo "  Target folders: $SRC_DIR"
 
 # ディレクトリを事前に作成
@@ -42,9 +43,10 @@ Object: $OBJECT_DETAILS"
 [ "$COLOR_SCHEME" != "auto" ] && PROMPT="$PROMPT, $COLOR_SCHEME colors"
 [ "$EFFECTS" != "none" ] && PROMPT="$PROMPT, $EFFECTS effects"
 
-# パーティクル形状
+# パーティクル形状・色
 PROMPT="$PROMPT
-Particle Shape: $PARTICLE_SHAPE shaped particles"
+Particle Shape: $PARTICLE_SHAPE shaped particles
+Particle Color: $PARTICLE_COLOR color scheme"
 
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
