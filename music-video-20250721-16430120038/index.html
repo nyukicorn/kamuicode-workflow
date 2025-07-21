@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星空のワルツ - Music Video Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0f2e 25%, #2d1b4e 50%, #1a0f2e 75%, #0a0a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated starfield background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: twinkle 2s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 0;
+        }
+
+        .title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 300;
+            background: linear-gradient(45deg, #ffffff, #c8a2ff, #87ceeb);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 20px;
+            text-shadow: 0 0 30px rgba(200, 162, 255, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #b8b8d9;
+            margin-bottom: 10px;
+        }
+
+        .timestamp {
+            font-size: 0.9rem;
+            color: #8a8ab8;
+            opacity: 0.8;
+        }
+
+        .player-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-player {
+            position: relative;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+
+        .video-player video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .audio-player {
+            margin-bottom: 30px;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .play-button {
+            width: 60px;
+            height: 60px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #c8a2ff, #87ceeb);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(200, 162, 255, 0.4);
+        }
+
+        .play-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(200, 162, 255, 0.6);
+        }
+
+        .audio-info {
+            flex: 1;
+        }
+
+        .audio-title {
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+            color: #ffffff;
+        }
+
+        .audio-duration {
+            font-size: 0.9rem;
+            color: #b8b8d9;
+        }
+
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .image-item {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .image-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .info-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .info-card h3 {
+            color: #c8a2ff;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .info-card p {
+            line-height: 1.6;
+            color: #d8d8f0;
+            margin-bottom: 10px;
+        }
+
+        .download-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .download-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(45deg, rgba(200, 162, 255, 0.2), rgba(135, 206, 235, 0.2));
+            color: #ffffff;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .download-btn:hover {
+            background: linear-gradient(45deg, rgba(200, 162, 255, 0.4), rgba(135, 206, 235, 0.4));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(200, 162, 255, 0.3);
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer p {
+            color: #8a8ab8;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .player-section {
+                padding: 20px;
+            }
+
+            .audio-controls {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .download-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .info-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #c8a2ff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated stars background -->
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <header class="header">
+            <h1 class="title">星空のワルツ</h1>
+            <p class="subtitle">GitHub Pages自動デプロイテスト：星空のワルツ</p>
+            <p class="timestamp">Generated: <span id="timestamp">2025-01-21T16:43:01.200Z</span></p>
+        </header>
+
+        <!-- Video Player Section -->
+        <section class="player-section">
+            <h2 style="margin-bottom: 20px; color: #c8a2ff;">🎬 Music Video</h2>
+            <div class="video-player">
+                <video id="videoPlayer" controls poster="images/generated-image.png">
+                    <source src="videos/segment-1.mp4" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </section>
+
+        <!-- Audio Player Section -->
+        <section class="player-section">
+            <h2 style="margin-bottom: 20px; color: #c8a2ff;">🎵 Music Player</h2>
+            <div class="audio-player">
+                <div class="audio-controls">
+                    <button class="play-button" id="playButton">
+                        <span id="playIcon">▶</span>
+                    </button>
+                    <div class="audio-info">
+                        <div class="audio-title">Generated Music</div>
+                        <div class="audio-duration" id="audioDuration">Loading...</div>
+                    </div>
+                    <audio id="audioPlayer" preload="metadata">
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            </div>
+        </section>
+
+        <!-- Image Gallery -->
+        <section class="player-section">
+            <h2 style="margin-bottom: 20px; color: #c8a2ff;">🖼️ Generated Images</h2>
+            <div class="image-gallery">
+                <div class="image-item">
+                    <img src="images/generated-image.png" alt="Generated Image" loading="lazy">
+                </div>
+            </div>
+        </section>
+
+        <!-- Information Cards -->
+        <section class="info-section">
+            <div class="info-card">
+                <h3>🎼 Project Information</h3>
+                <p><strong>Concept:</strong> 星空のワルツ (Starry Waltz)</p>
+                <p><strong>Generated:</strong> 2025-01-21</p>
+                <p><strong>Folder:</strong> music-video-20250721-16430120038</p>
+                <p><strong>Branch:</strong> music-video/20250721-16430120038</p>
+            </div>
+
+            <div class="info-card">
+                <h3>🎨 Creative Details</h3>
+                <p><strong>Genre:</strong> Classical Waltz, Ambient Orchestra</p>
+                <p><strong>Tempo:</strong> 120 BPM (3/4 Waltz Rhythm)</p>
+                <p><strong>Theme:</strong> Elegant, Mystical, Romantic, Ethereal</p>
+                <p><strong>Visual:</strong> Sparkling constellations, galactic rotation, lunar phases</p>
+            </div>
+
+            <div class="info-card">
+                <h3>🛠️ Technical Specs</h3>
+                <p><strong>Duration:</strong> 35-40 seconds</p>
+                <p><strong>Video Format:</strong> MP4</p>
+                <p><strong>Audio Format:</strong> WAV</p>
+                <p><strong>Resolution:</strong> HD Quality</p>
+            </div>
+        </section>
+
+        <!-- Download Section -->
+        <section class="download-section">
+            <h2 style="color: #c8a2ff; margin-bottom: 20px;">💾 Download Assets</h2>
+            <div class="download-buttons">
+                <a href="videos/segment-1.mp4" download class="download-btn">
+                    📹 Download Video
+                </a>
+                <a href="music/generated-music.wav" download class="download-btn">
+                    🎵 Download Music
+                </a>
+                <a href="images/generated-image.png" download class="download-btn">
+                    🖼️ Download Image
+                </a>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>🌟 Generated with AI Music & Video Creation Pipeline</p>
+            <p>Automated deployment via GitHub Pages</p>
+        </footer>
+    </div>
+
+    <script>
+        // Generate animated stars background
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const numberOfStars = 150;
+
+            for (let i = 0; i < numberOfStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                
+                const size = Math.random() * 3 + 1;
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const duration = Math.random() * 3 + 1;
+                const delay = Math.random() * 2;
+                
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.left = left + '%';
+                star.style.top = top + '%';
+                star.style.animationDuration = duration + 's';
+                star.style.animationDelay = delay + 's';
+                
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // Audio player functionality
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playButton = document.getElementById('playButton');
+        const playIcon = document.getElementById('playIcon');
+        const audioDuration = document.getElementById('audioDuration');
+
+        function togglePlay() {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playIcon.textContent = '⏸';
+            } else {
+                audioPlayer.pause();
+                playIcon.textContent = '▶';
+            }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        playButton.addEventListener('click', togglePlay);
+
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            audioDuration.textContent = formatTime(audioPlayer.duration);
+        });
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const current = formatTime(audioPlayer.currentTime);
+            const total = formatTime(audioPlayer.duration);
+            audioDuration.textContent = `${current} / ${total}`;
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            playIcon.textContent = '▶';
+        });
+
+        // Initialize timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            document.getElementById('timestamp').textContent = now.toISOString();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            createStars();
+            updateTimestamp();
+            
+            // Lazy loading for images
+            const images = document.querySelectorAll('img[loading="lazy"]');
+            images.forEach(img => {
+                img.addEventListener('load', () => {
+                    img.style.opacity = '1';
+                });
+            });
+        });
+
+        // Handle video errors gracefully
+        document.getElementById('videoPlayer').addEventListener('error', (e) => {
+            console.log('Video loading error:', e);
+            // Could add fallback image or error message here
+        });
+
+        // Handle audio errors gracefully
+        audioPlayer.addEventListener('error', (e) => {
+            console.log('Audio loading error:', e);
+            audioDuration.textContent = 'Audio unavailable';
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.target === document.body) {
+                e.preventDefault();
+                togglePlay();
+            }
+        });
+
+        // Progressive enhancement for older browsers
+        if (!CSS.supports('backdrop-filter', 'blur(10px)')) {
+            const sections = document.querySelectorAll('.player-section, .info-card');
+            sections.forEach(section => {
+                section.style.background = 'rgba(26, 15, 46, 0.8)';
+            });
+        }
+    </script>
+</body>
+</html>
