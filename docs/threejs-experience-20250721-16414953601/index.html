@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Particle Test v2 - 音楽修正版バラの花園</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas {
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            max-width: 250px;
+        }
+        #controls h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+        #controls label {
+            display: block;
+            margin: 8px 0 4px 0;
+            font-size: 12px;
+        }
+        #controls input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        #controls button {
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: #ff69b4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+        #controls button:hover {
+            background: #ff1493;
+        }
+        #musicStatus {
+            font-size: 11px;
+            color: #ccc;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        <div id="controls">
+            <h3>Rose Garden Controls</h3>
+            <label>Particle Count: <span id="particleCountValue">4000</span></label>
+            <input type="range" id="particleCount" min="1000" max="8000" value="4000">
+            
+            <label>Animation Speed: <span id="animSpeedValue">1.0</span></label>
+            <input type="range" id="animSpeed" min="0.1" max="3.0" value="1.0" step="0.1">
+            
+            <label>Flower Size: <span id="flowerSizeValue">1.0</span></label>
+            <input type="range" id="flowerSize" min="0.5" max="2.0" value="1.0" step="0.1">
+            
+            <button id="playMusic">🎵 Play Music</button>
+            <button id="resetView">🔄 Reset View</button>
+            
+            <div id="musicStatus">Click Play Music to start</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Enhanced Particle System (Lightweight Version)
+        class EnhancedParticleSystem {
+            constructor(scene, config = {}) {
+                this.scene = scene;
+                this.artStyle = config.artStyle || 'flower:rose';
+                this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
+                this.time = 0;
+                this.systems = [];
+                this.init();
+            }
+
+            init() {
+                const [category, type] = this.artStyle.split(':');
+                if (category === 'flower') this.createFlower(type);
+                this.createAmbientParticles();
+                this.createFloatingParticles();
+            }
+
+            createFlower(type) {
+                const configs = {
+                    rose: { layers: 5, particlesPerLayer: 800, colors: [0xff69b4, 0xff1493, 0xdc143c] },
+                    sakura: { layers: 4, particlesPerLayer: 1000, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4] },
+                    lily: { layers: 5, particlesPerLayer: 800, colors: [0xffffff, 0xfffacd, 0xf0e68c] }
+                };
+                
+                const config = configs[type] || configs.rose;
+                
+                for (let i = 0; i < 5; i++) {
+                    const flower = this.createSingleFlower(config, i);
+                    this.systems.push(flower);
+                    this.scene.add(flower);
+                }
+            }
+
+            createSingleFlower(config, index) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                const colors = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                
+                const center = new THREE.Vector3((Math.random()-0.5)*100, Math.random()*30-15, (Math.random()-0.5)*100);
+                
+                let particleIndex = 0;
+                for (let layer = 0; layer < config.layers; layer++) {
+                    for (let i = 0; i < config.particlesPerLayer; i++) {
+                        const angle = (i / config.particlesPerLayer) * Math.PI * 2;
+                        const radius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                        
+                        positions[particleIndex * 3] = center.x + radius * Math.cos(angle);
+                        positions[particleIndex * 3 + 1] = center.y + layer * 0.1;
+                        positions[particleIndex * 3 + 2] = center.z + radius * Math.sin(angle);
+                        
+                        const color = new THREE.Color(config.colors[Math.floor(Math.random() * config.colors.length)]);
+                        colors[particleIndex * 3] = color.r;
+                        colors[particleIndex * 3 + 1] = color.g;
+                        colors[particleIndex * 3 + 2] = color.b;
+                        
+                        particleIndex++;
+                    }
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.5, 
+                    vertexColors: true, 
+                    transparent: true, 
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending, 
+                    depthWrite: false
+                });
+                
+                return new THREE.Points(geometry, material);
+            }
+
+            createAmbientParticles() {
+                const particleCount = 1200;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = Math.random() * 40 - 20;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2, 
+                    vertexColors: true, 
+                    transparent: true, 
+                    opacity: 0.4,
+                    blending: THREE.AdditiveBlending, 
+                    depthWrite: false
+                });
+
+                const ambient = new THREE.Points(geometry, material);
+                this.systems.push(ambient);
+                this.scene.add(ambient);
+            }
+
+            createFloatingParticles() {
+                const particleCount = 400;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 80;
+                    positions[i * 3 + 1] = Math.random() * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                    
+                    const color = new THREE.Color(0xff69b4);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.8, 
+                    vertexColors: true, 
+                    transparent: true, 
+                    opacity: 0.6,
+                    blending: THREE.NormalBlending, 
+                    depthWrite: false
+                });
+
+                const floating = new THREE.Points(geometry, material);
+                floating.userData = { type: 'floating' };
+                this.systems.push(floating);
+                this.scene.add(floating);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime;
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'floating') {
+                        const positions = system.geometry.attributes.position.array;
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i + 1] += Math.sin(this.time * 2 + i) * 0.01;
+                        }
+                        system.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
+            }
+        }
+
+        // Main Application
+        let scene, camera, renderer, particleSystem;
+        let audio, audioLoaded = false;
+        let animationSpeed = 1.0;
+        let clock = new THREE.Clock();
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 50);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('canvas'),
+                antialias: true,
+                alpha: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000011, 1);
+            
+            // Create panorama background
+            createPanoramaBackground();
+            
+            // Initialize particle system
+            particleSystem = new EnhancedParticleSystem(scene, { artStyle: 'flower:rose' });
+            
+            // Setup lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(10, 10, 10);
+            scene.add(directionalLight);
+            
+            // Setup controls
+            setupControls();
+            setupMouseControls();
+            
+            // Setup audio
+            setupAudio();
+            
+            // Start animation
+            animate();
+        }
+
+        function createPanoramaBackground() {
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+            
+            const loader = new THREE.TextureLoader();
+            const texture = loader.load('../assets/panorama.jpg', 
+                () => console.log('Panorama loaded'),
+                undefined,
+                () => {
+                    console.log('Panorama not found, using gradient background');
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 512;
+                    canvas.height = 256;
+                    const ctx = canvas.getContext('2d');
+                    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+                    gradient.addColorStop(0, '#001122');
+                    gradient.addColorStop(0.5, '#003344');
+                    gradient.addColorStop(1, '#001122');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, 512, 256);
+                    const gradientTexture = new THREE.CanvasTexture(canvas);
+                    material.map = gradientTexture;
+                }
+            );
+            
+            const material = new THREE.MeshBasicMaterial({ map: texture });
+            const panorama = new THREE.Mesh(geometry, material);
+            scene.add(panorama);
+        }
+
+        function setupAudio() {
+            audio = new Audio('generated-music.wav');
+            audio.loop = true;
+            audio.addEventListener('loadeddata', () => {
+                audioLoaded = true;
+                document.getElementById('musicStatus').textContent = 'Music ready - click to play';
+            });
+            audio.addEventListener('error', () => {
+                document.getElementById('musicStatus').textContent = 'Music file not found';
+            });
+        }
+
+        function setupControls() {
+            // Particle count control
+            const particleCountSlider = document.getElementById('particleCount');
+            const particleCountValue = document.getElementById('particleCountValue');
+            particleCountSlider.addEventListener('input', (e) => {
+                particleCountValue.textContent = e.target.value;
+                particleSystem.particleCount.main = parseInt(e.target.value);
+            });
+
+            // Animation speed control
+            const animSpeedSlider = document.getElementById('animSpeed');
+            const animSpeedValue = document.getElementById('animSpeedValue');
+            animSpeedSlider.addEventListener('input', (e) => {
+                animSpeed = parseFloat(e.target.value);
+                animSpeedValue.textContent = animSpeed.toFixed(1);
+            });
+
+            // Flower size control
+            const flowerSizeSlider = document.getElementById('flowerSize');
+            const flowerSizeValue = document.getElementById('flowerSizeValue');
+            flowerSizeSlider.addEventListener('input', (e) => {
+                const size = parseFloat(e.target.value);
+                flowerSizeValue.textContent = size.toFixed(1);
+                particleSystem.systems.forEach(system => {
+                    if (system.material && system.material.size !== undefined) {
+                        system.material.size = 0.5 * size;
+                    }
+                });
+            });
+
+            // Music control
+            document.getElementById('playMusic').addEventListener('click', () => {
+                if (audioLoaded && audio.paused) {
+                    audio.play().then(() => {
+                        document.getElementById('musicStatus').textContent = 'Music playing...';
+                        document.getElementById('playMusic').textContent = '⏸️ Pause Music';
+                    }).catch(() => {
+                        document.getElementById('musicStatus').textContent = 'Failed to play music';
+                    });
+                } else if (audioLoaded && !audio.paused) {
+                    audio.pause();
+                    document.getElementById('musicStatus').textContent = 'Music paused';
+                    document.getElementById('playMusic').textContent = '🎵 Play Music';
+                }
+            });
+
+            // Reset view control
+            document.getElementById('resetView').addEventListener('click', () => {
+                camera.position.set(0, 0, 50);
+                camera.lookAt(0, 0, 0);
+            });
+        }
+
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let rotationX = 0, rotationY = 0;
+
+        function setupMouseControls() {
+            const canvas = document.getElementById('canvas');
+
+            canvas.addEventListener('mousedown', (e) => {
+                mouseDown = true;
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                mouseDown = false;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (mouseDown) {
+                    const deltaX = e.clientX - mouseX;
+                    const deltaY = e.clientY - mouseY;
+                    
+                    targetRotationY += deltaX * 0.01;
+                    targetRotationX += deltaY * 0.01;
+                    targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+                    
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                }
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoom = e.deltaY > 0 ? 1.1 : 0.9;
+                camera.position.multiplyScalar(zoom);
+                camera.position.clampLength(10, 200);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = clock.getDelta() * animationSpeed;
+            
+            // Update particle system
+            particleSystem.update(deltaTime);
+            
+            // Smooth camera rotation
+            rotationX += (targetRotationX - rotationX) * 0.05;
+            rotationY += (targetRotationY - rotationY) * 0.05;
+            
+            const radius = camera.position.length();
+            camera.position.x = radius * Math.sin(rotationY) * Math.cos(rotationX);
+            camera.position.y = radius * Math.sin(rotationX);
+            camera.position.z = radius * Math.cos(rotationY) * Math.cos(rotationX);
+            camera.lookAt(0, 0, 0);
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
