@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色とりどりの花が咲き乱れる花園 - Colorful Flower Garden</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 25%, #fecfef 50%, #fad0c4 75%, #ffd1ff 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+            margin-right: 10px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b9d, #c44569);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+        }
+        
+        #audio-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                top: 10px;
+                left: 10px;
+                padding: 10px;
+                font-size: 11px;
+            }
+            
+            input[type="range"] {
+                width: 100px;
+            }
+            
+            button {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <div id="controls">
+            <div class="control-group">
+                <label>Particle Count: <span id="count-value">1000</span></label>
+                <input type="range" id="particle-count" min="500" max="3000" value="1000">
+            </div>
+            <div class="control-group">
+                <label>Animation Speed: <span id="speed-value">1.0</span></label>
+                <input type="range" id="animation-speed" min="0.1" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>Particle Size: <span id="size-value">2.0</span></label>
+                <input type="range" id="particle-size" min="0.5" max="5.0" step="0.1" value="2.0">
+            </div>
+            <div class="control-group">
+                <label>Bloom Intensity: <span id="bloom-value">1.0</span></label>
+                <input type="range" id="bloom-intensity" min="0.0" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <button id="play-audio">🎵 Play Music</button>
+                <button id="reset-camera">📷 Reset View</button>
+            </div>
+        </div>
+        
+        <div id="audio-info">
+            <div>🌸 Click and drag to rotate view</div>
+            <div>🌸 Scroll to zoom in/out</div>
+            <div>🌸 Use sliders to customize</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, particles;
+        let particleSystem, heartTexture;
+        let mouse = new THREE.Vector2();
+        let mousePressed = false;
+        let cameraDistance = 50;
+        let cameraAngle = { x: 0, y: 0 };
+        let audio, audioContext;
+        let animationSpeed = 1.0;
+        let particleCount = 1000;
+        let particleSize = 2.0;
+        let bloomIntensity = 1.0;
+        
+        // Sakura colors - beautiful pink and white variations
+        const sakuraColors = [
+            new THREE.Color(0xffb7c5), // Light pink
+            new THREE.Color(0xffc0cb), // Pink
+            new THREE.Color(0xff69b4), // Hot pink
+            new THREE.Color(0xffd1dc), // Pale pink
+            new THREE.Color(0xffe4e1), // Misty rose
+            new THREE.Color(0xffffff), // White
+            new THREE.Color(0xf8f8ff), // Ghost white
+            new THREE.Color(0xffe4b5), // Moccasin
+            new THREE.Color(0xffefd5), // Papaya whip
+            new THREE.Color(0xdda0dd)  // Plum
+        ];
+
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, cameraDistance);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0); // Transparent background
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create heart-shaped particle texture
+            createHeartTexture();
+            
+            // Create particle system
+            createParticleSystem();
+            
+            // Setup lighting
+            setupLighting();
+            
+            // Setup audio
+            setupAudio();
+            
+            // Setup controls
+            setupControls();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Start animation
+            animate();
+        }
+        
+        // Create heart-shaped texture for particles
+        function createHeartTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas with transparent background
+            ctx.clearRect(0, 0, 64, 64);
+            ctx.globalCompositeOperation = 'source-over';
+            
+            // Create heart shape
+            ctx.fillStyle = '#ff69b4';
+            ctx.beginPath();
+            
+            // Heart shape using bezier curves
+            const centerX = 32;
+            const centerY = 32;
+            const size = 20;
+            
+            ctx.moveTo(centerX, centerY + size * 0.3);
+            ctx.bezierCurveTo(centerX - size * 0.5, centerY - size * 0.3, 
+                             centerX - size, centerY + size * 0.1, 
+                             centerX, centerY + size * 0.7);
+            ctx.bezierCurveTo(centerX + size, centerY + size * 0.1, 
+                             centerX + size * 0.5, centerY - size * 0.3, 
+                             centerX, centerY + size * 0.3);
+            ctx.fill();
+            
+            // Add soft glow
+            ctx.shadowColor = '#ff69b4';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            
+            heartTexture = new THREE.CanvasTexture(canvas);
+        }
+        
+        // Create particle system
+        function createParticleSystem() {
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const scales = [];
+            const velocities = [];
+            
+            // Create particles in a garden-like layout
+            for (let i = 0; i < particleCount; i++) {
+                // Floating garden layout - spread particles in layers
+                const radius = Math.random() * 40 + 10;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                
+                positions.push(
+                    radius * Math.sin(phi) * Math.cos(theta),
+                    (Math.random() - 0.5) * 60, // Vertical spread
+                    radius * Math.sin(phi) * Math.sin(theta)
+                );
+                
+                // Random sakura colors
+                const color = sakuraColors[Math.floor(Math.random() * sakuraColors.length)];
+                colors.push(color.r, color.g, color.b);
+                
+                // Random scales for variety
+                scales.push(Math.random() * 0.5 + 0.5);
+                
+                // Gentle floating motion
+                velocities.push(
+                    (Math.random() - 0.5) * 0.02,
+                    Math.random() * 0.01 + 0.005,
+                    (Math.random() - 0.5) * 0.02
+                );
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+            
+            // Store velocities for animation
+            geometry.userData.velocities = velocities;
+            
+            // Create material
+            const material = new THREE.PointsMaterial({
+                size: particleSize,
+                map: heartTexture,
+                transparent: true,
+                alphaTest: 0.1,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            // Create particle system
+            particleSystem = new THREE.Points(geometry, material);
+            scene.add(particleSystem);
+        }
+        
+        // Setup lighting
+        function setupLighting() {
+            // Ambient light for soft illumination
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            // Directional light for depth
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+        }
+        
+        // Setup audio
+        function setupAudio() {
+            audio = new Audio('./generated-music.wav');
+            audio.loop = true;
+            audio.volume = 0.7;
+        }
+        
+        // Setup interactive controls
+        function setupControls() {
+            const particleCountSlider = document.getElementById('particle-count');
+            const speedSlider = document.getElementById('animation-speed');
+            const sizeSlider = document.getElementById('particle-size');
+            const bloomSlider = document.getElementById('bloom-intensity');
+            
+            particleCountSlider.addEventListener('input', (e) => {
+                particleCount = parseInt(e.target.value);
+                document.getElementById('count-value').textContent = particleCount;
+                recreateParticleSystem();
+            });
+            
+            speedSlider.addEventListener('input', (e) => {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = animationSpeed.toFixed(1);
+            });
+            
+            sizeSlider.addEventListener('input', (e) => {
+                particleSize = parseFloat(e.target.value);
+                document.getElementById('size-value').textContent = particleSize.toFixed(1);
+                if (particleSystem) {
+                    particleSystem.material.size = particleSize;
+                }
+            });
+            
+            bloomSlider.addEventListener('input', (e) => {
+                bloomIntensity = parseFloat(e.target.value);
+                document.getElementById('bloom-value').textContent = bloomIntensity.toFixed(1);
+            });
+            
+            document.getElementById('play-audio').addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play();
+                    document.getElementById('play-audio').textContent = '⏸️ Pause Music';
+                } else {
+                    audio.pause();
+                    document.getElementById('play-audio').textContent = '🎵 Play Music';
+                }
+            });
+            
+            document.getElementById('reset-camera').addEventListener('click', () => {
+                cameraDistance = 50;
+                cameraAngle.x = 0;
+                cameraAngle.y = 0;
+                updateCameraPosition();
+            });
+        }
+        
+        // Recreate particle system with new count
+        function recreateParticleSystem() {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+                particleSystem.geometry.dispose();
+                particleSystem.material.dispose();
+            }
+            createParticleSystem();
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Mouse controls
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+            
+            // Touch controls for mobile
+            renderer.domElement.addEventListener('touchstart', onTouchStart);
+            renderer.domElement.addEventListener('touchmove', onTouchMove);
+            renderer.domElement.addEventListener('touchend', onTouchEnd);
+            
+            // Window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Mouse event handlers
+        function onMouseDown(event) {
+            mousePressed = true;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+        
+        function onMouseMove(event) {
+            if (mousePressed) {
+                const deltaX = event.clientX - mouse.x;
+                const deltaY = event.clientY - mouse.y;
+                
+                cameraAngle.y += deltaX * 0.01;
+                cameraAngle.x += deltaY * 0.01;
+                
+                cameraAngle.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraAngle.x));
+                
+                updateCameraPosition();
+                
+                mouse.x = event.clientX;
+                mouse.y = event.clientY;
+            }
+        }
+        
+        function onMouseUp() {
+            mousePressed = false;
+        }
+        
+        function onMouseWheel(event) {
+            cameraDistance += event.deltaY * 0.1;
+            cameraDistance = Math.max(10, Math.min(100, cameraDistance));
+            updateCameraPosition();
+        }
+        
+        // Touch event handlers
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                mousePressed = true;
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+            }
+        }
+        
+        function onTouchMove(event) {
+            if (event.touches.length === 1 && mousePressed) {
+                const deltaX = event.touches[0].clientX - mouse.x;
+                const deltaY = event.touches[0].clientY - mouse.y;
+                
+                cameraAngle.y += deltaX * 0.01;
+                cameraAngle.x += deltaY * 0.01;
+                
+                cameraAngle.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraAngle.x));
+                
+                updateCameraPosition();
+                
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+            }
+            event.preventDefault();
+        }
+        
+        function onTouchEnd() {
+            mousePressed = false;
+        }
+        
+        // Update camera position
+        function updateCameraPosition() {
+            camera.position.x = cameraDistance * Math.sin(cameraAngle.y) * Math.cos(cameraAngle.x);
+            camera.position.y = cameraDistance * Math.sin(cameraAngle.x);
+            camera.position.z = cameraDistance * Math.cos(cameraAngle.y) * Math.cos(cameraAngle.x);
+            camera.lookAt(0, 0, 0);
+        }
+        
+        // Window resize handler
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (particleSystem) {
+                const positions = particleSystem.geometry.attributes.position.array;
+                const velocities = particleSystem.geometry.userData.velocities;
+                const time = Date.now() * 0.001 * animationSpeed;
+                
+                // Animate particles
+                for (let i = 0; i < positions.length; i += 3) {
+                    const index = i / 3;
+                    
+                    // Floating motion
+                    positions[i] += velocities[index * 3] * animationSpeed;
+                    positions[i + 1] += velocities[index * 3 + 1] * animationSpeed + Math.sin(time + index) * 0.01;
+                    positions[i + 2] += velocities[index * 3 + 2] * animationSpeed;
+                    
+                    // Boundary check - respawn particles that go too far
+                    if (positions[i + 1] > 40) {
+                        positions[i + 1] = -40;
+                        positions[i] = (Math.random() - 0.5) * 80;
+                        positions[i + 2] = (Math.random() - 0.5) * 80;
+                    }
+                }
+                
+                particleSystem.geometry.attributes.position.needsUpdate = true;
+                
+                // Rotate the entire particle system slowly
+                particleSystem.rotation.y += 0.001 * animationSpeed;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
