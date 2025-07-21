@@ -239,6 +239,9 @@ runs:
         # feature branchからdocs/フォルダをコピー
         git checkout $CURRENT_BRANCH -- docs/
         
+        # docs/フォルダをステージに追加
+        git add docs/
+        
         # docs/フォルダをコミット
         if git diff --cached --quiet; then
           echo "No web player files to commit"
