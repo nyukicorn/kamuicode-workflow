@@ -233,5 +233,5 @@ runs:
         else
           git commit -m "Add auto-generated web player: ${{ inputs.music-concept }} - Auto-generated web interface with GitHub Pages deployment"
           
-          git push origin main
+          git push origin ${{ inputs.branch-name }}
         fi
