@@ -344,7 +344,7 @@
                 uniforms: {
                     pointTexture: { value: texture },
                     time: { value: 0 },
-                    size: { value: particleSize },
+                    uSize: { value: particleSize },
                     color: { value: new THREE.Color(0xffb3d9) }
                 },
                 vertexShader: `
@@ -352,7 +352,7 @@
                     attribute vec3 color;
                     varying vec3 vColor;
                     uniform float time;
-                    uniform float size as uSize;
+                    uniform float uSize;
                     
                     void main() {
                         vColor = color;
@@ -470,7 +470,7 @@
 
             sizeSlider.addEventListener('input', (e) => {
                 particleSize = parseFloat(e.target.value);
-                particles.material.uniforms.size.value = particleSize;
+                particles.material.uniforms.uSize.value = particleSize;
                 document.getElementById('sizeValue').textContent = particleSize.toFixed(1);
             });
 
