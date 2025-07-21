@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages (Conditional)
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']  # docsフォルダ変更時のみ
+  workflow_dispatch:     # 手動実行も可能
+
+# Note: This workflow is for future use when switching to GitHub Actions Pages deployment
+# Currently, GitHub Pages is configured to use docs/ folder with legacy build system
+
+# 同時実行制限
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,17 @@
+name: Smart Pages Build Trigger
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['docs/**']  # docs以外の変更時のみ実行
+
+jobs:
+  check-pages-needed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pages Build Notice
+        run: |
+          echo "🔍 Changes detected outside docs/ folder"
+          echo "📄 GitHub Pages auto-build will be skipped for performance"
+          echo "💡 To manually trigger Pages build, commit a change to docs/ folder"
+          echo "🚀 Or use workflow_dispatch on the main Three.js workflow"
