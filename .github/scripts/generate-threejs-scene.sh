@@ -37,6 +37,10 @@ Art: $ART_STYLE, ${PARTICLE_COUNT:-1000} particles, $ARRANGEMENT layout"
 [ "$COLOR_SCHEME" != "auto" ] && PROMPT="$PROMPT, $COLOR_SCHEME colors"
 [ "$EFFECTS" != "none" ] && PROMPT="$PROMPT, $EFFECTS effects"
 
+# パーティクル形状
+PROMPT="$PROMPT
+Particle Shape: $PARTICLE_SHAPE shaped particles"
+
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
 Music: './generated-music.wav', user-click play, loop"
@@ -51,7 +55,13 @@ MANDATORY WebGL Shader Requirements:
   * uniform float uSize (NOT size)  
   * attribute float aScale (NOT size or particleSize)
 - NEVER define 'attribute vec3 color' (THREE.js provides it)
-- NEVER use 'as' keyword in shader code"
+- NEVER use 'as' keyword in shader code
+
+Particle Shape Implementation:
+- circle: Use PointsMaterial with transparent canvas texture, proper alpha blending
+- heart/star/diamond: Generate custom shape textures with transparent backgrounds
+- square: Simple square texture (for pixel art effect)
+- soft_circle: Gradient circle with soft edges"
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"
