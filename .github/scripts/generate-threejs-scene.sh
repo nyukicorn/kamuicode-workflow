@@ -11,9 +11,9 @@ ASSETS_DIR="$FOLDER_NAME/assets"
 echo "Configuration:"
 echo "  Experience concept: $EXPERIENCE_CONCEPT"
 echo "  Background type: $BACKGROUND_TYPE"
-echo "  Visual type: $VISUAL_TYPE"
-echo "  Category: $PARTICLE_ART_CATEGORY"
+echo "  Art style: $ART_STYLE"
 echo "  Arrangement: $ARRANGEMENT"
+echo "  Color scheme: $COLOR_SCHEME"
 echo "  Target folders: $SRC_DIR"
 
 # ディレクトリを事前に作成
@@ -49,80 +49,79 @@ else
 - Default background"
 fi
 
-# ビジュアルタイプとパーティクル設定
-if [ "$VISUAL_TYPE" = "particle_art" ]; then
-  case "$PARTICLE_ART_CATEGORY" in
-    "flower")
-      case "$FLOWER_TYPE" in
-        "sakura")
-          PROMPT="$PROMPT
+# アートスタイルパーシング
+case "$ART_STYLE" in
+  "flower:sakura")
+    PROMPT="$PROMPT
 - Create 3D sakura (cherry blossom) art using particles:
   - Pink and white sakura petals arranged in 3D space
   - ${PARTICLE_COUNT:-1000} particles forming sakura shapes
   - Floating petals with gentle movement
   - Beautiful sakura tree or branch structure"
-          ;;
-        "rose")
-          PROMPT="$PROMPT
+    ;;
+  "flower:rose")
+    PROMPT="$PROMPT
 - Create 3D rose art using particles:
   - Red and pink rose petals in 3D formation
   - ${PARTICLE_COUNT:-1000} particles forming rose shapes
   - Elegant rose structure with layered petals"
-          ;;
-        *)
-          PROMPT="$PROMPT
-- Create 3D flower art using particles:
-  - Beautiful flower formation using ${PARTICLE_COUNT:-1000} particles
-  - Colorful petals arranged in 3D space"
-          ;;
-      esac
-      ;;
-    "nature")
-      case "$NATURE_TYPE" in
-        "tree")
-          PROMPT="$PROMPT
+    ;;
+  "flower:lily")
+    PROMPT="$PROMPT
+- Create 3D lily art using particles:
+  - White and yellow lily petals in elegant formation
+  - ${PARTICLE_COUNT:-1000} particles forming lily shapes
+  - Graceful lily structure with long stems"
+    ;;
+  "nature:tree")
+    PROMPT="$PROMPT
 - Create 3D tree art using particles:
   - Tree structure with branches and leaves
   - ${PARTICLE_COUNT:-1000} particles forming natural tree shape
   - Green and brown color scheme"
-          ;;
-        *)
-          PROMPT="$PROMPT
-- Create 3D nature art using particles:
-  - Natural formation using ${PARTICLE_COUNT:-1000} particles"
-          ;;
-      esac
-      ;;
-    "geometric")
-      case "$GEOMETRIC_TYPE" in
-        "sphere")
-          PROMPT="$PROMPT
+    ;;
+  "nature:ocean")
+    PROMPT="$PROMPT
+- Create 3D ocean art using particles:
+  - Wave-like formations and water droplets
+  - ${PARTICLE_COUNT:-1000} particles forming ocean waves
+  - Blue gradient color scheme"
+    ;;
+  "geometric:sphere")
+    PROMPT="$PROMPT
 - Create 3D geometric sphere art using particles:
   - Perfect sphere formation with ${PARTICLE_COUNT:-1000} particles
   - Mathematical precision in particle placement
   - Clean geometric lines"
-          ;;
-        *)
-          PROMPT="$PROMPT
-- Create 3D geometric art using particles:
-  - Geometric formation using ${PARTICLE_COUNT:-1000} particles"
-          ;;
-      esac
-      ;;
-    *)
-      PROMPT="$PROMPT
-- Create 3D abstract art using particles:
-  - Abstract formation using ${PARTICLE_COUNT:-1000} particles
-  - Fluid and organic shapes"
-      ;;
-  esac
-else
-  PROMPT="$PROMPT
+    ;;
+  "geometric:cube")
+    PROMPT="$PROMPT
+- Create 3D geometric cube art using particles:
+  - Cubic formation with ${PARTICLE_COUNT:-1000} particles
+  - Sharp edges and perfect symmetry
+  - Modern geometric design"
+    ;;
+  "abstract:fluid")
+    PROMPT="$PROMPT
+- Create 3D abstract fluid art using particles:
+  - Flowing, organic formations
+  - ${PARTICLE_COUNT:-1000} particles in fluid motion
+  - Smooth, curved shapes"
+    ;;
+  "simple:particles")
+    PROMPT="$PROMPT
 - Add simple particle system:
   - ${PARTICLE_COUNT:-1000} floating particles
   - Random positions and simple animation
   - Basic particle effects"
-fi
+    ;;
+  *)
+    PROMPT="$PROMPT
+- Create artistic particle formation:
+  - ${PARTICLE_COUNT:-1000} particles in creative arrangement
+  - Beautiful visual composition"
+    ;;
+esac
 
 # 配置スタイル
 case "$ARRANGEMENT" in
@@ -149,7 +148,7 @@ fi
 # エフェクト
 if [ "$EFFECTS" != "none" ]; then
   PROMPT="$PROMPT
-- Add $EFFECTS effects with $EFFECT_PARTICLE_SHAPE shaped particles"
+- Add $EFFECTS effects to particles"
 fi
 
 # 音楽設定

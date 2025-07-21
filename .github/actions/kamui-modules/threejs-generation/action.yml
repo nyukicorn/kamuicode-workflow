@@ -13,46 +13,22 @@ inputs:
     description: 'Background type (panorama/solid_black/solid_white/transparent/gradient)'
     required: false
     default: 'panorama'
-  visual-type:
-    description: 'Visual type (particle_art/simple_particles)'
+  art-style:
+    description: 'Art style in category:type format (e.g., flower:sakura)'
     required: false
-    default: 'particle_art'
-  particle-art-category:
-    description: 'Particle art category (flower/nature/geometric/abstract)'
-    required: false
-    default: 'flower'
-  flower-type:
-    description: 'Type of flower (sakura/rose/lily/tulip/mixed)'
-    required: false
-    default: 'sakura'
-  nature-type:
-    description: 'Type of nature element (tree/ocean/mountain/forest/mixed)'
-    required: false
-    default: 'tree'
-  geometric-type:
-    description: 'Type of geometric shape (sphere/cube/pyramid/torus/mixed)'
-    required: false
-    default: 'sphere'
-  abstract-type:
-    description: 'Type of abstract form (fluid/crystalline/organic/fractal/mixed)'
-    required: false
-    default: 'fluid'
+    default: 'flower:sakura'
   arrangement:
     description: 'Arrangement style (floating/grounded/scene)'
     required: false
     default: 'floating'
   color-scheme:
-    description: 'Color scheme (auto/warm/cool/monochrome/vibrant/pastel)'
+    description: 'Color scheme (auto/warm/cool/vibrant/pastel)'
     required: false
     default: 'auto'
   effects:
-    description: 'Additional effects (none/sparkle/glow/trail/shimmer/multiple)'
+    description: 'Additional effects (none/sparkle/glow/trail)'
     required: false
     default: 'none'
-  effect-particle-shape:
-    description: 'Effect particle shape (circle/star/diamond/heart/custom)'
-    required: false
-    default: 'circle'
   include-music:
     description: 'Whether to include music controls'
     required: false
@@ -108,16 +84,10 @@ runs:
         EXPERIENCE_CONCEPT: ${{ inputs.experience-concept }}
         PANORAMA_IMAGE_URL: ${{ inputs.panorama-image-url }}
         BACKGROUND_TYPE: ${{ inputs.background-type }}
-        VISUAL_TYPE: ${{ inputs.visual-type }}
-        PARTICLE_ART_CATEGORY: ${{ inputs.particle-art-category }}
-        FLOWER_TYPE: ${{ inputs.flower-type }}
-        NATURE_TYPE: ${{ inputs.nature-type }}
-        GEOMETRIC_TYPE: ${{ inputs.geometric-type }}
-        ABSTRACT_TYPE: ${{ inputs.abstract-type }}
+        ART_STYLE: ${{ inputs.art-style }}
         ARRANGEMENT: ${{ inputs.arrangement }}
         COLOR_SCHEME: ${{ inputs.color-scheme }}
         EFFECTS: ${{ inputs.effects }}
-        EFFECT_PARTICLE_SHAPE: ${{ inputs.effect-particle-shape }}
         INCLUDE_MUSIC: ${{ inputs.include-music }}
         MUSIC_URL: ${{ inputs.music-url }}
         PARTICLE_COUNT: ${{ inputs.particle-count }}

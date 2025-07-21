@@ -18,68 +18,21 @@ on:
           - gradient
           - panorama
         default: 'gradient'
-      visual_type:
-        description: 'ビジュアルタイプ'
+      art_style:
+        description: 'アートスタイル（カテゴリ:タイプ形式）'
         required: false
         type: choice
         options:
-          - particle_art
-          - simple_particles
-        default: 'particle_art'
-      particle_art_category:
-        description: 'パーティクルアートカテゴリ（particle_art選択時）'
-        required: false
-        type: choice
-        options:
-          - flower
-          - nature
-          - geometric
-          - abstract
-        default: 'flower'
-      flower_type:
-        description: '花の種類（flower選択時）'
-        required: false
-        type: choice
-        options:
-          - sakura
-          - rose
-          - lily
-          - tulip
-          - mixed
-        default: 'sakura'
-      nature_type:
-        description: '自然要素（nature選択時）'
-        required: false
-        type: choice
-        options:
-          - tree
-          - ocean
-          - mountain
-          - forest
-          - mixed
-        default: 'tree'
-      geometric_type:
-        description: '幾何学形状（geometric選択時）'
-        required: false
-        type: choice
-        options:
-          - sphere
-          - cube
-          - pyramid
-          - torus
-          - mixed
-        default: 'sphere'
-      abstract_type:
-        description: '抽象形状（abstract選択時）'
-        required: false
-        type: choice
-        options:
-          - fluid
-          - crystalline
-          - organic
-          - fractal
-          - mixed
-        default: 'fluid'
+          - flower:sakura
+          - flower:rose
+          - flower:lily
+          - nature:tree
+          - nature:ocean
+          - geometric:sphere
+          - geometric:cube
+          - abstract:fluid
+          - simple:particles
+        default: 'flower:sakura'
       arrangement:
         description: '配置スタイル'
         required: false
@@ -97,7 +50,6 @@ on:
           - auto
           - warm
           - cool
-          - monochrome
           - vibrant
           - pastel
         default: 'auto'
@@ -110,20 +62,7 @@ on:
           - sparkle
           - glow
           - trail
-          - shimmer
-          - multiple
         default: 'none'
-      effect_particle_shape:
-        description: 'エフェクト粒子形状（エフェクト有効時）'
-        required: false
-        type: choice
-        options:
-          - circle
-          - star
-          - diamond
-          - heart
-          - custom
-        default: 'circle'
       particle_count:
         description: 'パーティクル数'
         required: false
@@ -210,16 +149,10 @@ jobs:
           experience-concept: ${{ inputs.experience_concept }}
           panorama-image-url: ${{ inputs.background_type == 'panorama' && steps.image.outputs.google-image-url || '' }}
           background-type: ${{ inputs.background_type }}
-          visual-type: ${{ inputs.visual_type }}
-          particle-art-category: ${{ inputs.particle_art_category }}
-          flower-type: ${{ inputs.flower_type }}
-          nature-type: ${{ inputs.nature_type }}
-          geometric-type: ${{ inputs.geometric_type }}
-          abstract-type: ${{ inputs.abstract_type }}
+          art-style: ${{ inputs.art_style }}
           arrangement: ${{ inputs.arrangement }}
           color-scheme: ${{ inputs.color_scheme }}
           effects: ${{ inputs.effects }}
-          effect-particle-shape: ${{ inputs.effect_particle_shape }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
           particle-count: ${{ inputs.particle_count }}
@@ -254,9 +187,9 @@ jobs:
           echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
           echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
           echo "🎨 Background Type: ${{ inputs.background_type }}"
-          echo "🎨 Visual Type: ${{ inputs.visual_type }}"
-          echo "🌸 Category: ${{ inputs.particle_art_category }}"
+          echo "🎨 Art Style: ${{ inputs.art_style }}"
           echo "🎯 Arrangement: ${{ inputs.arrangement }}"
+          echo "🌈 Color Scheme: ${{ inputs.color_scheme }}"
           echo ""
           if [ "${{ inputs.background_type }}" == "panorama" ]; then
             echo "🖼️ Used Image Model: ${{ steps.image.outputs.used-model }}"
