@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Particle Test - 美しいバラの花園</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+        
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+        
+        .music-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+        }
+        
+        button {
+            background: #ff69b4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #ff1493;
+        }
+        
+        .stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="controls">
+        <h3>美しいバラの花園 Controls</h3>
+        <div class="control-group">
+            <label>Particle Size</label>
+            <input type="range" id="particleSize" min="0.1" max="2.0" step="0.1" value="0.5">
+        </div>
+        <div class="control-group">
+            <label>Animation Speed</label>
+            <input type="range" id="animationSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label>Rose Opacity</label>
+            <input type="range" id="roseOpacity" min="0.1" max="1.0" step="0.1" value="0.8">
+        </div>
+        <div class="control-group">
+            <label>Ambient Particles</label>
+            <input type="range" id="ambientOpacity" min="0.0" max="1.0" step="0.1" value="0.4">
+        </div>
+    </div>
+    
+    <div class="music-controls">
+        <button id="playMusic">🎵 Play Music</button>
+        <button id="stopMusic">⏹ Stop</button>
+    </div>
+    
+    <div class="stats">
+        <div>FPS: <span id="fps">60</span></div>
+        <div>Particles: <span id="particleCount">5600</span></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Enhanced Particle System (Lightweight Version)
+        class EnhancedParticleSystem {
+            constructor(scene, config = {}) {
+                this.scene = scene;
+                this.artStyle = config.artStyle || 'flower:rose';
+                this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
+                this.time = 0;
+                this.systems = [];
+                this.init();
+            }
+
+            init() {
+                const [category, type] = this.artStyle.split(':');
+                if (category === 'flower') this.createFlower(type);
+                this.createAmbientParticles();
+                this.createFloatingParticles();
+            }
+
+            createFlower(type) {
+                const configs = {
+                    rose: { layers: 5, particlesPerLayer: 800, colors: [0xff69b4, 0xff1493, 0xdc143c] },
+                    sakura: { layers: 4, particlesPerLayer: 1000, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4] },
+                    lily: { layers: 5, particlesPerLayer: 800, colors: [0xffffff, 0xfffacd, 0xf0e68c] }
+                };
+                
+                const config = configs[type] || configs.rose;
+                
+                for (let i = 0; i < 5; i++) {
+                    const flower = this.createSingleFlower(config, i);
+                    this.systems.push(flower);
+                    this.scene.add(flower);
+                }
+            }
+
+            createSingleFlower(config, index) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                const colors = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                
+                const center = new THREE.Vector3((Math.random()-0.5)*100, Math.random()*30-15, (Math.random()-0.5)*100);
+                
+                let particleIndex = 0;
+                for (let layer = 0; layer < config.layers; layer++) {
+                    for (let i = 0; i < config.particlesPerLayer; i++) {
+                        const angle = (i / config.particlesPerLayer) * Math.PI * 2;
+                        const radius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                        
+                        positions[particleIndex * 3] = center.x + radius * Math.cos(angle);
+                        positions[particleIndex * 3 + 1] = center.y + layer * 0.1;
+                        positions[particleIndex * 3 + 2] = center.z + radius * Math.sin(angle);
+                        
+                        const color = new THREE.Color(config.colors[Math.floor(Math.random() * config.colors.length)]);
+                        colors[particleIndex * 3] = color.r;
+                        colors[particleIndex * 3 + 1] = color.g;
+                        colors[particleIndex * 3 + 2] = color.b;
+                        
+                        particleIndex++;
+                    }
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.5,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                
+                const flower = new THREE.Points(geometry, material);
+                flower.userData = { type: 'flower', index: index };
+                return flower;
+            }
+
+            createAmbientParticles() {
+                const particleCount = 1200;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = Math.random() * 40 - 20;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.4,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                const ambient = new THREE.Points(geometry, material);
+                ambient.userData = { type: 'ambient' };
+                this.systems.push(ambient);
+                this.scene.add(ambient);
+            }
+
+            createFloatingParticles() {
+                const particleCount = 400;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 80;
+                    positions[i * 3 + 1] = Math.random() * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                    
+                    velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+                    velocities[i * 3 + 1] = Math.random() * 0.05;
+                    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                    
+                    const color = new THREE.Color(0xff69b4);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.8,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.NormalBlending,
+                    depthWrite: false
+                });
+
+                const floating = new THREE.Points(geometry, material);
+                floating.userData = { type: 'floating', velocities: velocities };
+                this.systems.push(floating);
+                this.scene.add(floating);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime;
+                
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'floating') {
+                        const positions = system.geometry.attributes.position.array;
+                        const velocities = system.userData.velocities;
+                        
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i] += velocities[i] * deltaTime * 60;
+                            positions[i + 1] += velocities[i + 1] * deltaTime * 60;
+                            positions[i + 2] += velocities[i + 2] * deltaTime * 60;
+                            
+                            if (positions[i + 1] > 40) {
+                                positions[i + 1] = -20;
+                                positions[i] = (Math.random() - 0.5) * 80;
+                                positions[i + 2] = (Math.random() - 0.5) * 80;
+                            }
+                        }
+                        system.geometry.attributes.position.needsUpdate = true;
+                    } else if (system.userData && system.userData.type === 'flower') {
+                        system.rotation.y = this.time * 0.1 * (system.userData.index * 0.5 + 1);
+                        system.position.y = Math.sin(this.time + system.userData.index) * 2;
+                    }
+                });
+            }
+
+            updateControls(controls) {
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'flower') {
+                        system.material.size = controls.particleSize;
+                        system.material.opacity = controls.roseOpacity;
+                    } else if (system.userData && system.userData.type === 'ambient') {
+                        system.material.opacity = controls.ambientOpacity;
+                    }
+                });
+            }
+        }
+
+        // Main Application
+        class RoseGardenApp {
+            constructor() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.clock = new THREE.Clock();
+                this.mouse = new THREE.Vector2();
+                this.isDragging = false;
+                this.previousMouse = new THREE.Vector2();
+                this.cameraRotation = { x: 0, y: 0 };
+                this.cameraDistance = 30;
+                this.frameCount = 0;
+                this.lastTime = 0;
+                
+                this.audio = null;
+                this.isPlaying = false;
+                
+                this.init();
+                this.setupControls();
+                this.setupAudio();
+                this.animate();
+            }
+
+            init() {
+                // Setup renderer
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setClearColor(0x001122);
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+
+                // Setup camera
+                this.camera.position.set(0, 10, 30);
+                this.camera.lookAt(0, 0, 0);
+
+                // Create panorama background
+                const loader = new THREE.TextureLoader();
+                const geometry = new THREE.SphereGeometry(500, 32, 32);
+                const material = new THREE.MeshBasicMaterial({
+                    map: loader.load('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8ZGVmcz4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iZ3JhZGllbnQiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDA0NDg4IiBzdG9wLW9wYWNpdHk9IjEiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiMwMDIyNDQiIHN0b3Atb3BhY2l0eT0iMSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDExMjIiIHN0b3Atb3BhY2l0eT0iMSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNncmFkaWVudCkiLz4KICA8IS0tIEFkZCBzdGFycyAtLT4KICA8Y2lyY2xlIGN4PSIyMCIgY3k9IjMwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44Ii8+CiAgPGNpcmNsZSBjeD0iNzAiIGN5PSIyMCIgcj0iMS41IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC42Ii8+CiAgPGNpcmNsZSBjeD0iNTAiIGN5PSI2MCIgcj0iMC44IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC43Ii8+CiAgPGNpcmNsZSBjeD0iODAiIGN5PSI3MCIgcj0iMSIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuNSIvPgo8L3N2Zz4='),
+                    side: THREE.BackSide
+                });
+                const panorama = new THREE.Mesh(geometry, material);
+                this.scene.add(panorama);
+
+                // Initialize particle system
+                this.particleSystem = new EnhancedParticleSystem(this.scene, { artStyle: 'flower:rose' });
+
+                // Setup lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xff69b4, 0.5);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(directionalLight);
+
+                // Mouse controls
+                this.setupMouseControls();
+                
+                // Resize handler
+                window.addEventListener('resize', this.onWindowResize.bind(this));
+            }
+
+            setupMouseControls() {
+                const canvas = this.renderer.domElement;
+                
+                canvas.addEventListener('mousedown', (event) => {
+                    this.isDragging = true;
+                    this.previousMouse.set(event.clientX, event.clientY);
+                });
+
+                canvas.addEventListener('mousemove', (event) => {
+                    this.mouse.set(event.clientX, event.clientY);
+                    
+                    if (this.isDragging) {
+                        const deltaX = event.clientX - this.previousMouse.x;
+                        const deltaY = event.clientY - this.previousMouse.y;
+                        
+                        this.cameraRotation.y += deltaX * 0.005;
+                        this.cameraRotation.x += deltaY * 0.005;
+                        
+                        this.cameraRotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotation.x));
+                        
+                        this.updateCameraPosition();
+                        this.previousMouse.set(event.clientX, event.clientY);
+                    }
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    this.isDragging = false;
+                });
+
+                canvas.addEventListener('wheel', (event) => {
+                    event.preventDefault();
+                    this.cameraDistance += event.deltaY * 0.01;
+                    this.cameraDistance = Math.max(10, Math.min(100, this.cameraDistance));
+                    this.updateCameraPosition();
+                });
+            }
+
+            updateCameraPosition() {
+                const x = Math.cos(this.cameraRotation.x) * Math.cos(this.cameraRotation.y) * this.cameraDistance;
+                const y = Math.sin(this.cameraRotation.x) * this.cameraDistance;
+                const z = Math.cos(this.cameraRotation.x) * Math.sin(this.cameraRotation.y) * this.cameraDistance;
+                
+                this.camera.position.set(x, y, z);
+                this.camera.lookAt(0, 0, 0);
+            }
+
+            setupControls() {
+                const particleSizeSlider = document.getElementById('particleSize');
+                const animationSpeedSlider = document.getElementById('animationSpeed');
+                const roseOpacitySlider = document.getElementById('roseOpacity');
+                const ambientOpacitySlider = document.getElementById('ambientOpacity');
+
+                const updateControls = () => {
+                    this.particleSystem.updateControls({
+                        particleSize: parseFloat(particleSizeSlider.value),
+                        animationSpeed: parseFloat(animationSpeedSlider.value),
+                        roseOpacity: parseFloat(roseOpacitySlider.value),
+                        ambientOpacity: parseFloat(ambientOpacitySlider.value)
+                    });
+                };
+
+                particleSizeSlider.addEventListener('input', updateControls);
+                animationSpeedSlider.addEventListener('input', updateControls);
+                roseOpacitySlider.addEventListener('input', updateControls);
+                ambientOpacitySlider.addEventListener('input', updateControls);
+            }
+
+            setupAudio() {
+                const playBtn = document.getElementById('playMusic');
+                const stopBtn = document.getElementById('stopMusic');
+
+                playBtn.addEventListener('click', () => {
+                    if (!this.audio) {
+                        this.audio = new Audio('../music/generated-music.wav');
+                        this.audio.loop = true;
+                    }
+                    
+                    if (!this.isPlaying) {
+                        this.audio.play().catch(e => console.log('Audio play failed:', e));
+                        this.isPlaying = true;
+                        playBtn.textContent = '⏸ Pause Music';
+                    } else {
+                        this.audio.pause();
+                        this.isPlaying = false;
+                        playBtn.textContent = '🎵 Play Music';
+                    }
+                });
+
+                stopBtn.addEventListener('click', () => {
+                    if (this.audio) {
+                        this.audio.pause();
+                        this.audio.currentTime = 0;
+                        this.isPlaying = false;
+                        playBtn.textContent = '🎵 Play Music';
+                    }
+                });
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            updateStats(currentTime) {
+                this.frameCount++;
+                if (currentTime - this.lastTime >= 1000) {
+                    document.getElementById('fps').textContent = this.frameCount;
+                    document.getElementById('particleCount').textContent = '5600';
+                    this.frameCount = 0;
+                    this.lastTime = currentTime;
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                
+                const deltaTime = this.clock.getDelta();
+                const currentTime = performance.now();
+                
+                this.particleSystem.update(deltaTime);
+                this.updateStats(currentTime);
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Initialize application
+        window.addEventListener('DOMContentLoaded', () => {
+            new RoseGardenApp();
+        });
+    </script>
+</body>
+</html>
