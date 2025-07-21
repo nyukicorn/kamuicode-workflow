@@ -217,7 +217,7 @@ runs:
           exit 1
         fi
     
-    - name: Commit and push web player
+    - name: Commit and push web player to main branch
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -225,13 +225,27 @@ runs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
-        # docs フォルダのみ追加（Three.jsチームとの競合回避）
-        git add docs/
+        # 現在のブランチを保存
+        CURRENT_BRANCH=$(git branch --show-current)
+        echo "Current branch: $CURRENT_BRANCH"
         
+        # mainブランチの最新を取得
+        git fetch origin main
+        
+        # mainブランチにチェックアウト
+        git checkout main
+        git pull origin main
+        
+        # feature branchからdocs/フォルダをコピー
+        git checkout $CURRENT_BRANCH -- docs/
+        
+        # docs/フォルダをコミット
         if git diff --cached --quiet; then
           echo "No web player files to commit"
         else
-          git commit -m "Add auto-generated web player: ${{ inputs.music-concept }} - Auto-generated web interface with GitHub Pages deployment"
-          
-          git push origin ${{ inputs.branch-name }}
+          git commit -m "Update GitHub Pages content: ${{ inputs.music_concept }} [branch: $CURRENT_BRANCH, folder: ${{ inputs.folder-name }}]"
+          git push origin main
         fi
+        
+        # 元のブランチに戻る
+        git checkout $CURRENT_BRANCH
