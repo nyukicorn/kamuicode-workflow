@@ -278,9 +278,9 @@ IMPLEMENTATION DETAILS:
 - Add double-click event listener to canvas
 - Call particleSystem.toggleRotation() on double-click
 - Update controls to pass rotationSpeed to updateControls()
-- Display rotation status (rotating/stopped) in UI"
+- Display rotation status (rotating/stopped) in UI
 
-MANDATORY WebGL Shader Requirements:
+WebGL Shader Requirements:
 - Use BasicMaterial or PointsMaterial instead of custom ShaderMaterial
 - If custom shaders needed, use these exact patterns:
   * uniform float uTime (NOT time)
