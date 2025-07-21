@@ -48,12 +48,160 @@ PROMPT="$PROMPT
 Particle Shape: $PARTICLE_SHAPE shaped particles
 Particle Color: $PARTICLE_COLOR color scheme
 
-PARTICLE SPECIFICATIONS:
-- Use 5000-10000+ particles for detailed objects
-- Particle size: 0.02-0.05 (very small for fine detail)
-- High density particle clusters to form recognizable shapes
-- For flowers: each petal should use 100+ particles minimum
-- Arrange particles in 3D space to form actual object shapes"
+LIGHTWEIGHT ENHANCED PARTICLE SYSTEM - COPY THESE TEMPLATES:
+
+1. Include these JavaScript classes directly in HTML:
+
+// TEMPLATE 1: Enhanced Particle System (Lightweight Version)
+class EnhancedParticleSystem {
+    constructor(scene, config = {}) {
+        this.scene = scene;
+        this.artStyle = config.artStyle || '$ART_STYLE';
+        this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
+        this.time = 0;
+        this.systems = [];
+        this.init();
+    }
+
+    init() {
+        const [category, type] = this.artStyle.split(':');
+        if (category === 'flower') this.createFlower(type);
+        this.createAmbientParticles();
+        this.createFloatingParticles();
+    }
+
+    createFlower(type) {
+        const configs = {
+            rose: { layers: 5, particlesPerLayer: 800, colors: [0xff69b4, 0xff1493, 0xdc143c] },
+            sakura: { layers: 4, particlesPerLayer: 1000, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4] },
+            lily: { layers: 5, particlesPerLayer: 800, colors: [0xffffff, 0xfffacd, 0xf0e68c] }
+        };
+        
+        const config = configs[type] || configs.rose;
+        
+        for (let i = 0; i < 5; i++) {
+            const flower = this.createSingleFlower(config, i);
+            this.systems.push(flower);
+            this.scene.add(flower);
+        }
+    }
+
+    createSingleFlower(config, index) {
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(config.layers * config.particlesPerLayer * 3);
+        const colors = new Float32Array(config.layers * config.particlesPerLayer * 3);
+        
+        const center = new THREE.Vector3((Math.random()-0.5)*100, Math.random()*30-15, (Math.random()-0.5)*100);
+        
+        let particleIndex = 0;
+        for (let layer = 0; layer < config.layers; layer++) {
+            for (let i = 0; i < config.particlesPerLayer; i++) {
+                const angle = (i / config.particlesPerLayer) * Math.PI * 2;
+                const radius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                
+                positions[particleIndex * 3] = center.x + radius * Math.cos(angle);
+                positions[particleIndex * 3 + 1] = center.y + layer * 0.1;
+                positions[particleIndex * 3 + 2] = center.z + radius * Math.sin(angle);
+                
+                const color = new THREE.Color(config.colors[Math.floor(Math.random() * config.colors.length)]);
+                colors[particleIndex * 3] = color.r;
+                colors[particleIndex * 3 + 1] = color.g;
+                colors[particleIndex * 3 + 2] = color.b;
+                
+                particleIndex++;
+            }
+        }
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        
+        const material = new THREE.PointsMaterial({
+            size: 0.5, vertexColors: true, transparent: true, opacity: 0.8,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        
+        return new THREE.Points(geometry, material);
+    }
+
+    createAmbientParticles() {
+        const particleCount = 1200;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 100;
+            positions[i * 3 + 1] = Math.random() * 40 - 20;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+            
+            const color = new THREE.Color();
+            color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.2, vertexColors: true, transparent: true, opacity: 0.4,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        });
+
+        const ambient = new THREE.Points(geometry, material);
+        this.systems.push(ambient);
+        this.scene.add(ambient);
+    }
+
+    createFloatingParticles() {
+        const particleCount = 400;
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+        const colors = new Float32Array(particleCount * 3);
+        
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 80;
+            positions[i * 3 + 1] = Math.random() * 30;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+            
+            const color = new THREE.Color(0xff69b4);
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.8, vertexColors: true, transparent: true, opacity: 0.6,
+            blending: THREE.NormalBlending, depthWrite: false
+        });
+
+        const floating = new THREE.Points(geometry, material);
+        floating.userData = { type: 'floating' };
+        this.systems.push(floating);
+        this.scene.add(floating);
+    }
+
+    update(deltaTime) {
+        this.time += deltaTime;
+        this.systems.forEach(system => {
+            if (system.userData && system.userData.type === 'floating') {
+                // Update floating particles
+            }
+        });
+    }
+}
+
+IMPLEMENTATION REQUIREMENTS:
+- Use the EnhancedParticleSystem class above
+- Initialize with: new EnhancedParticleSystem(scene, { artStyle: '$ART_STYLE' })
+- Call update() in animation loop
+- High particle density for realistic flower shapes
+- Mathematical petal arrangements
+- Layer-based opacity and colors"
 
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
