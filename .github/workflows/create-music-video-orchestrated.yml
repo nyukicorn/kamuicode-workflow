@@ -81,10 +81,15 @@ jobs:
           mkdir -p .claude
           echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
           
-          # Setup Node.js and Claude Code SDK
-          sudo apt-get update
-          sudo apt-get install -y nodejs npm
+          # Setup Node.js and Claude Code SDK (optimized for minimal logs)
+          echo "🔧 Installing Node.js and npm..."
+          sudo apt-get update > /dev/null 2>&1
+          sudo apt-get install -y nodejs npm > /dev/null 2>&1
+          echo "✅ Node.js and npm installed successfully"
+          
+          echo "📦 Installing Claude Code SDK..."
           npm install @anthropic-ai/claude-code
+          echo "✅ Claude Code SDK ready"
           
           # Intent-to-Prompt: 音楽コンセプトと分析結果を総合的に考慮
           SMART_PROMPT="音楽ビデオの画像生成を実行してください。
@@ -119,13 +124,31 @@ jobs:
               exit 1
             }
           
-          # 結果確認
+          # 結果確認（複数パターンをチェック）
+          IMAGE_URL_FILE=""
           if [ -f "$FOLDER_NAME/google-image-url.txt" ]; then
-            GOOGLE_URL=$(cat "$FOLDER_NAME/google-image-url.txt")
+            IMAGE_URL_FILE="$FOLDER_NAME/google-image-url.txt"
+          elif [ -f "google-image-url.txt" ]; then
+            IMAGE_URL_FILE="google-image-url.txt"
+          elif [ -f "$IMAGES_DIR/../google-image-url.txt" ]; then
+            IMAGE_URL_FILE="$IMAGES_DIR/../google-image-url.txt"
+          fi
+          
+          if [ -n "$IMAGE_URL_FILE" ]; then
+            GOOGLE_URL=$(cat "$IMAGE_URL_FILE")
+            echo "✅ Found image URL file: $IMAGE_URL_FILE"
+            echo "Image URL: $GOOGLE_URL"
             echo "google-image-url=$GOOGLE_URL" >> $GITHUB_OUTPUT
             echo "image-completed=true" >> $GITHUB_OUTPUT
           else
-            echo "::error::❌ Image generation output not found"
+            echo "❌ Image generation output not found in expected locations:"
+            echo "  - $FOLDER_NAME/google-image-url.txt"
+            echo "  - google-image-url.txt"
+            echo "  - $IMAGES_DIR/../google-image-url.txt"
+            echo "Checking current directory contents:"
+            ls -la
+            echo "Checking folder contents:"
+            ls -la "$FOLDER_NAME" || echo "Folder not found"
             exit 1
           fi
           
