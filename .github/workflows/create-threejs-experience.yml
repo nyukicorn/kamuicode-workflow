@@ -72,7 +72,7 @@ on:
         description: 'BGM付きにするか'
         required: false
         type: boolean
-        default: true
+        default: false
       particle_shape:
         description: 'パーティクル形状'
         required: false
