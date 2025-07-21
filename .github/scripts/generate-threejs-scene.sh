@@ -60,6 +60,8 @@ class EnhancedParticleSystem {
         this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
         this.time = 0;
         this.animationSpeed = 1.0;
+        this.rotationSpeed = 1.0;
+        this.isRotating = false;
         this.systems = [];
         this.init();
     }
@@ -211,7 +213,13 @@ class EnhancedParticleSystem {
                 }
                 system.geometry.attributes.position.needsUpdate = true;
             } else if (system.userData && system.userData.type === 'flower') {
-                system.rotation.y = this.time * 0.1 * (system.userData.index * 0.5 + 1);
+                // Manual rotation from double-click
+                if (this.isRotating) {
+                    system.rotation.y += this.rotationSpeed * deltaTime;
+                } else {
+                    // Default subtle rotation
+                    system.rotation.y = this.time * 0.1 * (system.userData.index * 0.5 + 1);
+                }
                 system.position.y = Math.sin(this.time + system.userData.index) * 2;
             }
         });
@@ -219,6 +227,7 @@ class EnhancedParticleSystem {
 
     updateControls(controls) {
         this.animationSpeed = controls.animationSpeed;
+        this.rotationSpeed = controls.rotationSpeed || 1.0;
         this.systems.forEach(system => {
             if (system.userData && system.userData.type === 'flower') {
                 system.material.size = controls.particleSize;
@@ -227,6 +236,10 @@ class EnhancedParticleSystem {
                 system.material.opacity = controls.ambientOpacity;
             }
         });
+    }
+
+    toggleRotation() {
+        this.isRotating = !this.isRotating;
     }
 }
 
@@ -249,6 +262,23 @@ CRITICAL MUSIC PATH FIX:
 
 PROMPT="$PROMPT
 Controls: mouse drag/zoom, interactive sliders, responsive
+
+CRITICAL NEW FEATURES:
+1. Add Rotation Speed slider (0.1-5.0, default 1.0) for flower rotation speed
+2. Double-click canvas to start/stop flower rotation (toggle)
+3. Update existing controls to include:
+   - Particle Size (existing)
+   - Animation Speed (existing - for particle movement)
+   - Rotation Speed (NEW - for double-click rotation)
+   - Rose Opacity (existing)
+   - Ambient Opacity (existing)
+
+IMPLEMENTATION DETAILS:
+- Add rotation speed slider to HTML controls
+- Add double-click event listener to canvas
+- Call particleSystem.toggleRotation() on double-click
+- Update controls to pass rotationSpeed to updateControls()
+- Display rotation status (rotating/stopped) in UI"
 
 MANDATORY WebGL Shader Requirements:
 - Use BasicMaterial or PointsMaterial instead of custom ShaderMaterial
