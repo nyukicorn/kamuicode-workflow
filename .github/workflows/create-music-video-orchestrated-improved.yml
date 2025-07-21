@@ -1,0 +1,545 @@
+name: Create Music Video Orchestrated v2 (Improved)
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト（例：静かな夜のピアノ曲）'
+        required: true
+        type: string
+
+jobs:
+  create-music-video-orchestrated:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+      
+      - name: Music Planning (Intent-to-Prompt)
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Music Generation (Intent-to-Prompt)
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Music Analysis
+        id: analysis
+        uses: ./.github/actions/kamui-modules/music-analysis
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          original-image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          original-video-prompt: ${{ steps.planning.outputs.video-concept }}
+          music-url: ${{ steps.music.outputs.music-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Image Generation (Intent-to-Prompt)
+        id: image
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎨 Intent-to-Prompt Image Generation"
+          echo "Starting experimental image generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          IMAGES_DIR="$FOLDER_NAME/images"
+          OPTIMIZED_PROMPT="${{ steps.analysis.outputs.image-prompt-1 }}"
+          
+          echo "Music concept: $MUSIC_CONCEPT"
+          echo "Optimized prompt from analysis: $OPTIMIZED_PROMPT"
+          echo "Target folder: $IMAGES_DIR"
+          
+          # フォルダ作成
+          mkdir -p "$IMAGES_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
+          
+          # Setup Node.js and Claude Code SDK (optimized for minimal logs)
+          echo "🔧 Installing Node.js and npm..."
+          sudo apt-get update > /dev/null 2>&1
+          sudo apt-get install -y nodejs npm > /dev/null 2>&1
+          echo "✅ Node.js and npm installed successfully"
+          
+          echo "📦 Installing Claude Code SDK..."
+          npm install @anthropic-ai/claude-code
+          echo "✅ Claude Code SDK ready"
+          
+          # Intent-to-Prompt: 音楽コンセプトと分析結果を総合的に考慮
+          SMART_PROMPT="音楽ビデオの画像生成を実行してください。
+          
+          **音楽コンセプト**: $MUSIC_CONCEPT
+          **音楽分析による最適化済みプロンプト**: $OPTIMIZED_PROMPT
+          
+          **あなたの判断で行ってください**:
+          1. 音楽コンセプトと最適化済みプロンプトを総合的に分析
+          2. より魅力的で音楽に調和する画像プロンプトを自由に構築
+          3. 日本語の場合は英語に翻訳してからImagen4 Fastで実行
+          4. 技術的な詳細（ファイル保存、URL管理等）も最適な方法で実行
+          
+          **利用可能なツール**: Imagen4 Fast MCP, Bash
+          
+          **ファイル保存規約（必須遵守）**:
+          1. 画像ファイル: 必ず「$IMAGES_DIR/generated-image.png」に保存
+          2. URL記録: 必ず「$FOLDER_NAME/google-image-url.txt」に保存
+          3. 保存確認: 保存後、必ず「ls -la [filepath]」で確認
+          4. ログ出力: 「echo 'Saved: [filepath]'」で保存成功を記録
+          
+          **重要**: 
+          - 上記の保存場所は厳密に守ること（他の場所への保存禁止）
+          - あなたの創造性と判断力を最大限に活用して、音楽コンセプトに最も調和する美しい画像を生成してください。"
+          
+          echo "🚀 Starting Intent-to-Prompt Image Generation..."
+          
+          # Claude Code SDK実行（詳細エラーハンドリング付き）
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_PATH" \
+            --allowedTools "mcp__t2i-fal-imagen4-fast__imagen4_fast_submit,mcp__t2i-fal-imagen4-fast__imagen4_fast_status,mcp__t2i-fal-imagen4-fast__imagen4_fast_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$SMART_PROMPT" 2>&1 | tee image_execution.log || {
+              EXIT_CODE=$?
+              echo "::error::❌ Image generation failed with exit code: $EXIT_CODE"
+              echo "::group::Image Generation Error Details"
+              tail -50 image_execution.log || echo "No execution log available"
+              echo "::endgroup::"
+              
+              # エラータイプ別の対処
+              if grep -q "rate limit\|quota\|limit exceeded" image_execution.log; then
+                echo "::warning::🚫 Rate limit detected. Consider retry after delay."
+              elif grep -q "timeout\|timed out" image_execution.log; then
+                echo "::warning::⏰ Timeout detected. Consider increasing max-turns or reducing complexity."
+              elif grep -q "MCP\|mcp__" image_execution.log; then
+                echo "::error::🔌 MCP connection issue detected. Check MCP server status."
+              elif grep -q "authentication\|auth\|token" image_execution.log; then
+                echo "::error::🔑 Authentication issue detected. Check CLAUDE_CODE_OAUTH_TOKEN."
+              fi
+              
+              exit $EXIT_CODE
+            }
+          
+          # 結果確認（標準化された場所のみチェック）
+          IMAGE_URL_FILE="$FOLDER_NAME/google-image-url.txt"
+          IMAGE_FILE="$IMAGES_DIR/generated-image.png"
+          
+          # URLファイルの確認
+          if [ -f "$IMAGE_URL_FILE" ]; then
+            GOOGLE_URL=$(cat "$IMAGE_URL_FILE")
+            echo "✅ Found image URL file: $IMAGE_URL_FILE"
+            echo "Image URL: $GOOGLE_URL"
+            
+            # 画像ファイルの確認
+            if [ -f "$IMAGE_FILE" ]; then
+              IMAGE_SIZE=$(ls -lah "$IMAGE_FILE" | awk '{print $5}')
+              echo "✅ Found image file: $IMAGE_FILE (Size: $IMAGE_SIZE)"
+            else
+              echo "⚠️ Image file not found at expected location: $IMAGE_FILE"
+            fi
+            
+            echo "google-image-url=$GOOGLE_URL" >> $GITHUB_OUTPUT
+            echo "image-completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Image generation failed - URL file not found at standard location"
+            echo "Expected location: $IMAGE_URL_FILE"
+            echo ""
+            echo "Debugging information:"
+            echo "Current directory: $(pwd)"
+            echo "Folder contents:"
+            ls -la "$FOLDER_NAME" || echo "Folder not found"
+            echo "Images directory contents:"
+            ls -la "$IMAGES_DIR" || echo "Images directory not found"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Video Generation (Intent-to-Prompt)
+        id: video
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎬 Intent-to-Prompt Video Generation"
+          echo "Starting experimental video generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          GOOGLE_IMAGE_URL="${{ steps.image.outputs.google-image-url }}"
+          OPTIMIZED_VIDEO_PROMPT="${{ steps.analysis.outputs.video-prompt-1 }}"
+          VIDEOS_DIR="$FOLDER_NAME/videos"
+          
+          echo "Music concept: $MUSIC_CONCEPT"
+          echo "Image URL: $GOOGLE_IMAGE_URL"
+          echo "Optimized video prompt: $OPTIMIZED_VIDEO_PROMPT"
+          
+          # フォルダ作成
+          mkdir -p "$VIDEOS_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
+          
+          # Intent-to-Prompt: 音楽、画像、分析結果を総合考慮
+          SMART_PROMPT="音楽ビデオの動画生成を実行してください。
+          
+          **音楽コンセプト**: $MUSIC_CONCEPT
+          **生成済み画像URL**: $GOOGLE_IMAGE_URL
+          **音楽分析による最適化済み動画プロンプト**: $OPTIMIZED_VIDEO_PROMPT
+          
+          **厳密な実行手順（必ず順番通りに実行）**:
+          1. 音楽コンセプト、画像の内容、最適化済みプロンプトを総合的に分析
+          2. より魅力的で一貫性のある動画プロンプトを自由に構築
+          3. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit\`ツールで動画生成を開始
+          4. **プログレッシブ待機処理**: Bashツールで以下の待機戦略を実行
+             - 初回: 30秒待機（高速処理の場合）
+             - 2-3回目: 60秒待機（通常処理）
+             - 4-6回目: 90秒待機（処理遅延時）
+             - 7回目以降: 120秒待機（最大待機）
+          5. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_status\`でステータス確認
+          6. ステータスが「completed」でない場合、上記の待機戦略で再確認（最大10回まで）
+          7. \`mcp__i2v-fal-hailuo-02-pro__hailuo_02_result\`で結果取得
+          8. **重要**: 取得した動画URLを「$VIDEOS_DIR/segment-1.mp4」にダウンロード保存
+          9. **重要**: 実際にファイルが保存されたことを確認（ls コマンドで確認）
+          10. 生成完了の確認メッセージを表示
+          
+          **プログレッシブ待機戦略の詳細**:
+          - 待機時間配列: [30, 60, 60, 90, 90, 90, 120, 120, 120, 120] 秒
+          - 合計最大待機時間: 約13分30秒（従来比20%短縮）
+          - 高速処理での早期完了を優先、段階的に待機時間を延長
+          - 最大試行回数: 10回（従来と同じ）
+          - 各ステータス確認後、即座に次の処理または待機判定
+          
+          **必須のファイル名規則**:
+          - 動画ファイル名: 必ず「segment-1.mp4」とする（他の名前は使用禁止）
+          - 保存ディレクトリ: 必ず「$VIDEOS_DIR」とする
+          
+          **利用可能なツール**: Hailuo-02 Pro MCP, Bash
+          **保存先（厳密に従うこと）**: $VIDEOS_DIR/segment-1.mp4
+          
+          **重要**: 音楽の雰囲気と画像の美しさを最大限に活かし、
+          視聴者が感動する動画を創造してください。"
+          
+          echo "🚀 Starting Intent-to-Prompt Video Generation..."
+          
+          # Claude Code SDK実行（詳細エラーハンドリング付き）
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_PATH" \
+            --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
+            --max-turns 70 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$SMART_PROMPT" 2>&1 | tee video_execution.log || {
+              EXIT_CODE=$?
+              echo "::error::❌ Video generation failed with exit code: $EXIT_CODE"
+              echo "::group::Video Generation Error Details"
+              tail -50 video_execution.log || echo "No execution log available"
+              echo "::endgroup::"
+              
+              # エラータイプ別の対処（動画生成特有のエラーも含む）
+              if grep -q "rate limit\|quota\|limit exceeded" video_execution.log; then
+                echo "::warning::🚫 Rate limit detected. Video generation may need longer delays."
+              elif grep -q "timeout\|timed out" video_execution.log; then
+                echo "::warning::⏰ Timeout detected. Video processing takes 3-5 minutes typically."
+              elif grep -q "queue\|queued\|processing" video_execution.log; then
+                echo "::warning::🔄 Video still processing. May need additional wait time."
+              elif grep -q "MCP\|mcp__" video_execution.log; then
+                echo "::error::🔌 MCP connection issue detected. Check Hailuo-02 Pro server status."
+              elif grep -q "image.*not found\|invalid.*url" video_execution.log; then
+                echo "::error::🖼️ Image URL issue detected. Check image generation step."
+              elif grep -q "authentication\|auth\|token" video_execution.log; then
+                echo "::error::🔑 Authentication issue detected. Check CLAUDE_CODE_OAUTH_TOKEN."
+              fi
+              
+              exit $EXIT_CODE
+            }
+          
+          # 結果確認
+          if [ -f "$VIDEOS_DIR/segment-1.mp4" ]; then
+            echo "video-completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::❌ Video generation output not found"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Commit and push generated files (after video)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ steps.setup.outputs.folder-name }}/
+          if git diff --cached --quiet; then
+            echo "No files to commit"
+          else
+            git commit -m "Add generated files (orchestrated): images and videos"
+            git push origin ${{ steps.setup.outputs.branch-name }}
+          fi
+      
+      - name: Video Adjustment
+        id: adjustment
+        uses: ./.github/actions/kamui-modules/video-adjustment
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          video-prompt-1: ${{ steps.analysis.outputs.video-prompt-1 }}
+          video-prompt-2: ${{ steps.analysis.outputs.video-prompt-2 }}
+          video-prompt-3: ${{ steps.analysis.outputs.video-prompt-3 }}
+      
+      - name: Video Concatenation & Music Integration
+        id: concatenation
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎬 Video Concatenation & Music Integration Agent"
+          echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          VIDEOS_DIR="$FOLDER_NAME/videos"
+          MUSIC_DIR="$FOLDER_NAME/music"
+          OUTPUT_DIR="$FOLDER_NAME/final"
+          
+          echo "Folder name: $FOLDER_NAME"
+          echo "Videos directory: $VIDEOS_DIR"
+          echo "Music directory: $MUSIC_DIR"
+          echo "Output directory: $OUTPUT_DIR"
+          
+          # 最終出力フォルダを作成
+          if [ ! -d "$OUTPUT_DIR" ]; then
+            mkdir -p "$OUTPUT_DIR"
+            echo "📁 Created output folder: $OUTPUT_DIR"
+          fi
+          
+          # 動画と音楽ファイルの確認
+          echo "📁 Checking video segments..."
+          if [ -d "$VIDEOS_DIR" ]; then
+            ls -la "$VIDEOS_DIR"
+          else
+            echo "❌ Videos directory not found: $VIDEOS_DIR"
+            exit 1
+          fi
+          
+          echo "📁 Checking music files..."
+          if [ -d "$MUSIC_DIR" ]; then
+            ls -la "$MUSIC_DIR"
+          else
+            echo "❌ Music directory not found: $MUSIC_DIR"
+            exit 1
+          fi
+          
+          # 音楽ファイルの存在確認と形式特定
+          MUSIC_FILE=""
+          if [ -f "$MUSIC_DIR/generated-music.mp3" ]; then
+            MUSIC_FILE="$MUSIC_DIR/generated-music.mp3"
+            echo "✅ Found music file: $MUSIC_FILE"
+          elif [ -f "$MUSIC_DIR/generated-music.wav" ]; then
+            MUSIC_FILE="$MUSIC_DIR/generated-music.wav"
+            echo "✅ Found music file: $MUSIC_FILE"
+          else
+            echo "❌ Music file not found! Checking all audio files in $MUSIC_DIR..."
+            FOUND_MUSIC=$(find "$MUSIC_DIR" -name "*.mp3" -o -name "*.wav" -o -name "*.m4a" | head -1)
+            if [ -n "$FOUND_MUSIC" ]; then
+              MUSIC_FILE="$FOUND_MUSIC"
+              echo "✅ Found alternative music file: $MUSIC_FILE"
+            else
+              echo "❌ No audio files found in $MUSIC_DIR"
+              exit 1
+            fi
+          fi
+          
+          # 動画ファイルの確認
+          VIDEO_COUNT=$(find "$VIDEOS_DIR" -name "segment-*.mp4" | wc -l)
+          echo "📹 Found $VIDEO_COUNT video segments"
+          
+          if [ "$VIDEO_COUNT" -eq 0 ]; then
+            echo "❌ No video segments found"
+            exit 1
+          fi
+          
+          # プロンプトの構築
+          PROMPT="ffmpegで動画セグメントを連結し音楽と統合してミュージックビデオを作成してください。
+          **最重要**: 最終動画に音楽を必ず結合（音声なしは失敗）
+          
+          **現在の状況**:
+          - フォルダ: $FOLDER_NAME
+          - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
+          - 音楽ディレクトリ: $MUSIC_DIR
+          - 出力ディレクトリ: $OUTPUT_DIR
+          - 音楽ファイル: $MUSIC_FILE
+          
+          **実行手順**:
+          1. 利用可能な動画セグメントファイルを確認
+          2. 音楽ファイル（$MUSIC_FILE）の長さを確認
+          3. ffmpegで動画を音楽の長さに合わせて調整・延長
+          4. 複数セグメントがある場合は連結、1つの場合はループで延長
+          5. ffmpegで動画と音楽を統合
+          6. **必須**: '$OUTPUT_DIR/final-music-video.mp4'に保存
+          7. 最終動画の音声ストリーム確認
+          
+          **ffmpegコマンド例**:
+          - 動画延長: ffmpeg -i segment-1.mp4 -filter_complex 'loop=loop=7:size=150:start=0' segment-1-extended.mp4
+          - 複数セグメント連結: ffmpeg -i seg1.mp4 -i seg2.mp4 -i seg3.mp4 -filter_complex '[0:v][1:v][2:v]concat=n=3:v=1:a=0[outv]' -map '[outv]' video-concatenated.mp4
+          - 音楽統合: ffmpeg -i video-concatenated.mp4 -i \"$MUSIC_FILE\" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest '$OUTPUT_DIR/final-music-video.mp4'
+          - 音声確認: ffmpeg -i '$OUTPUT_DIR/final-music-video.mp4' -show_streams -select_streams a
+          
+          **重要事項**:
+          - 必ず音楽ファイル（$MUSIC_FILE）が存在することを確認
+          - 最終動画は音声ストリームを含む必要がある
+          - 動画の長さは音楽の長さに合わせる
+          - 最終ファイルは '$OUTPUT_DIR/final-music-video.mp4' に保存"
+          
+          echo "🚀 Starting Video Concatenation Agent Claude Code CLI..."
+          echo "📝 Prompt length: ${#PROMPT}"
+          
+          # Claude Code CLIの実行
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Bash" \
+            --max-turns 70 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$PROMPT" || {
+              echo "::error::❌ Claude Code CLI execution failed"
+              exit 1
+            }
+          
+          # 最終動画の確認
+          echo ""
+          echo "🎬 Checking final music video..."
+          FINAL_VIDEO="$OUTPUT_DIR/final-music-video.mp4"
+          
+          if [ -f "$FINAL_VIDEO" ]; then
+            echo "✅ Final music video created: $FINAL_VIDEO"
+            FILE_SIZE=$(ls -lah "$FINAL_VIDEO" | awk '{print $5}')
+            echo "File size: $FILE_SIZE"
+            
+            # 音声ストリームの確認
+            echo "🔊 Checking audio stream..."
+            if command -v ffmpeg &> /dev/null; then
+              AUDIO_STREAMS=$(ffmpeg -i "$FINAL_VIDEO" -hide_banner -f null - 2>&1 | grep "Stream.*Audio" | wc -l)
+              if [ "$AUDIO_STREAMS" -gt 0 ]; then
+                echo "✅ Audio stream detected in final video"
+              else
+                echo "⚠️ No audio stream detected in final video"
+              fi
+            fi
+            
+            echo "final-video-path=$FINAL_VIDEO" >> $GITHUB_OUTPUT
+            echo "concatenation-completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Final music video not created"
+            echo "Checking output directory contents:"
+            ls -la "$OUTPUT_DIR" || echo "Output directory is empty"
+            exit 1
+          fi
+          
+          echo "::endgroup::"
+      
+      - name: Commit and push final music video
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ steps.setup.outputs.folder-name }}/
+          if git diff --cached --quiet; then
+            echo "No final video to commit"
+          else
+            git commit -m "Add final music video with integrated audio"
+            git push origin ${{ steps.setup.outputs.branch-name }}
+          fi
+      
+      - name: Summary (Experimental Results)
+        run: |
+          echo "🎯 Music Video Creation Summary (ORCHESTRATED VERSION - EXPERIMENTAL):"
+          echo "================================================"
+          echo "📝 Concept: ${{ inputs.music_concept }}"
+          echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
+          echo ""
+          echo "🧪 EXPERIMENTAL FEATURES USED:"
+          echo "  - Intent-to-Prompt Image Generation"
+          echo "  - Intent-to-Prompt Video Generation"
+          echo "  - Claude Code SDK Autonomous Decision Making"
+          echo ""
+          echo "✅ Planning Status: ${{ steps.planning.outputs.planning-completed }}"
+          echo "🎵 Music Prompt: ${{ steps.planning.outputs.music-prompt }}"
+          echo "🖼️ Image Prompt: ${{ steps.planning.outputs.image-prompt }}"
+          echo ""
+          echo "✅ Music Generation: ${{ steps.music.outputs.music-completed }}"
+          echo "🎶 Music URL: ${{ steps.music.outputs.music-url }}"
+          echo ""
+          echo "✅ Music Analysis: ${{ steps.analysis.outputs.analysis-completed }}"
+          echo "🔍 Optimized Image Prompt: ${{ steps.analysis.outputs.image-prompt-1 }}"
+          echo "🎭 Optimized Video Prompt: ${{ steps.analysis.outputs.video-prompt-1 }}"
+          echo ""
+          echo "🧪 Intent-to-Prompt Image Generation: ${{ steps.image.outputs.image-completed }}"
+          echo "🖼️ Google Image URL: ${{ steps.image.outputs.google-image-url }}"
+          echo ""
+          echo "🧪 Intent-to-Prompt Video Generation: ${{ steps.video.outputs.video-completed }}"
+          echo ""
+          echo "✅ Video Adjustment: ${{ steps.adjustment.outputs.adjustment-completed }}"
+          echo "🎭 Adjusted Video Prompts: Generated for 3 segments"
+          echo ""
+          echo "✅ Video Concatenation & Music Integration: ${{ steps.concatenation.outputs.concatenation-completed }}"
+          echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
+          echo ""
+          echo "🎉 EXPERIMENTAL Music Video Pipeline Success!"
+          echo "📊 Generated: Music + Analysis + Intent-to-Prompt Image/Video + Final Integration"
+          echo "🧪 Claude Code SDK Autonomous Creativity: ACTIVATED"
+          echo "================================================"
+      
+      - name: Upload Generated Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-video-artifacts-${{ steps.setup.outputs.folder-name }}
+          path: |
+            ${{ steps.setup.outputs.folder-name }}/final/final-music-video.mp4
+            ${{ steps.setup.outputs.folder-name }}/music/generated-music.wav
+            ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
+            ${{ steps.setup.outputs.folder-name }}/videos/segment-*.mp4
+            ${{ steps.setup.outputs.folder-name }}/google-image-url.txt
+            ${{ steps.setup.outputs.folder-name }}/music-url.txt
+          retention-days: 30
+      
+      - name: Final Status
+        run: |
+          echo "✅ Experimental Orchestrated Workflow completed successfully!"
+          echo "Branch: ${{ steps.setup.outputs.branch-name }}"
+          echo "🧪 Compare results with standard modular workflow"
+          echo "Check the branch for generated files."
+          echo "📦 Artifacts uploaded for download"
