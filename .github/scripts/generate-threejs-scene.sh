@@ -59,9 +59,19 @@ MANDATORY WebGL Shader Requirements:
 
 Particle Shape Implementation:
 - circle: Use PointsMaterial with transparent canvas texture, proper alpha blending
-- heart/star/diamond: Generate custom shape textures with transparent backgrounds
+- heart/star/diamond: Generate custom shape textures with FULLY TRANSPARENT backgrounds
+  * CRITICAL: Use canvas clearRect() or fillStyle='transparent' for background
+  * Set canvas context.globalCompositeOperation = 'source-over'
+  * Ensure PointsMaterial has transparent: true, alphaTest: 0.1
+  * Background MUST be transparent (alpha=0), not white or any color
 - square: Simple square texture (for pixel art effect)
-- soft_circle: Gradient circle with soft edges"
+- soft_circle: Gradient circle with soft edges
+
+TRANSPARENCY REQUIREMENTS:
+- All custom particle shapes MUST have completely transparent backgrounds
+- Never use white, black, or any solid color as particle background
+- Canvas background should be fully transparent (rgba(0,0,0,0))
+- Use proper alpha blending: material.transparent = true, material.alphaTest = 0.1"
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"
