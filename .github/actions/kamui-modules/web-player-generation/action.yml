@@ -233,20 +233,9 @@ runs:
         else
           git commit -m "Add auto-generated web player: ${{ inputs.music-concept }}
 
-🌐 Auto-generated web interface:
-- Responsive HTML video player
-- Integrated music and image display
-- Download links for all assets
-- GitHub Pages deployment ready
+Auto-generated web interface with video player, music player, and GitHub Pages deployment ready.
 
-📊 Generation info:
-- Folder: ${{ inputs.folder-name }}
-- Branch: ${{ inputs.branch-name }}
-- Execution time: ${{ inputs.execution-time }}
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
-
-Co-Authored-By: Claude <noreply@anthropic.com>"
+Generated with Claude Code - Co-Authored-By: Claude <noreply@anthropic.com>"
           
           git push origin main
         fi
