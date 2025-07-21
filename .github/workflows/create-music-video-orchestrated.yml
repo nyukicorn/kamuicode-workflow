@@ -472,9 +472,23 @@ jobs:
           echo "🧪 Claude Code SDK Autonomous Creativity: ACTIVATED"
           echo "================================================"
       
+      - name: Upload Generated Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-video-artifacts-${{ steps.setup.outputs.folder-name }}
+          path: |
+            ${{ steps.setup.outputs.folder-name }}/final/final-music-video.mp4
+            ${{ steps.setup.outputs.folder-name }}/music/generated-music.wav
+            ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
+            ${{ steps.setup.outputs.folder-name }}/videos/segment-*.mp4
+            ${{ steps.setup.outputs.folder-name }}/google-image-url.txt
+            ${{ steps.setup.outputs.folder-name }}/music-url.txt
+          retention-days: 30
+      
       - name: Final Status
         run: |
           echo "✅ Experimental Orchestrated Workflow completed successfully!"
           echo "Branch: ${{ steps.setup.outputs.branch-name }}"
           echo "🧪 Compare results with standard modular workflow"
           echo "Check the branch for generated files."
+          echo "📦 Artifacts uploaded for download"
