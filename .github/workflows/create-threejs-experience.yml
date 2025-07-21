@@ -63,16 +63,11 @@ on:
           - glow
           - trail
         default: 'none'
-      particle_count:
-        description: 'パーティクル数'
+      object_details:
+        description: 'オブジェクト詳細仕様（例：色とりどりのバラ10本、ピンクと赤の花束）'
         required: false
-        type: choice
-        options:
-          - '500'
-          - '1000'
-          - '2000'
-          - '5000'
-        default: '1000'
+        type: string
+        default: ''
       include_music:
         description: 'BGM付きにするか'
         required: false
@@ -167,7 +162,7 @@ jobs:
           effects: ${{ inputs.effects }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
-          particle-count: ${{ inputs.particle_count }}
+          object-details: ${{ inputs.object_details }}
           particle-shape: ${{ inputs.particle_shape }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}

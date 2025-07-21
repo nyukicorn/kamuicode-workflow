@@ -36,10 +36,10 @@ inputs:
   music-url:
     description: 'Google URL of the background music (if applicable)'
     required: false
-  particle-count:
-    description: 'Number of particles (500/1000/2000/5000)'
+  object-details:
+    description: 'Object detail specifications (e.g., 10 colorful roses, pink and red bouquet)'
     required: false
-    default: '1000'
+    default: ''
   particle-shape:
     description: 'Particle shape (circle/heart/star/diamond/square/soft_circle)'
     required: false
@@ -94,7 +94,7 @@ runs:
         EFFECTS: ${{ inputs.effects }}
         INCLUDE_MUSIC: ${{ inputs.include-music }}
         MUSIC_URL: ${{ inputs.music-url }}
-        PARTICLE_COUNT: ${{ inputs.particle-count }}
+        OBJECT_DETAILS: ${{ inputs.object-details }}
         PARTICLE_SHAPE: ${{ inputs.particle-shape }}
       run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     

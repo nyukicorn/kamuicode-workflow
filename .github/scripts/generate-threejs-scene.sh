@@ -12,6 +12,7 @@ echo "Configuration:"
 echo "  Experience concept: $EXPERIENCE_CONCEPT"
 echo "  Background type: $BACKGROUND_TYPE"
 echo "  Art style: $ART_STYLE"
+echo "  Object details: $OBJECT_DETAILS"
 echo "  Arrangement: $ARRANGEMENT"
 echo "  Color scheme: $COLOR_SCHEME"
 echo "  Target folders: $SRC_DIR"
@@ -31,7 +32,11 @@ PROMPT="$PROMPT
 BG: $BACKGROUND_TYPE"
 
 PROMPT="$PROMPT
-Art: $ART_STYLE, ${PARTICLE_COUNT:-1000} particles, $ARRANGEMENT layout"
+Art: $ART_STYLE, $ARRANGEMENT layout"
+
+# オブジェクト詳細仕様があれば追加
+[ -n "$OBJECT_DETAILS" ] && PROMPT="$PROMPT
+Object: $OBJECT_DETAILS"
 
 # 設定追加
 [ "$COLOR_SCHEME" != "auto" ] && PROMPT="$PROMPT, $COLOR_SCHEME colors"
