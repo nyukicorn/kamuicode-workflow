@@ -43,10 +43,17 @@ Object: $OBJECT_DETAILS"
 [ "$COLOR_SCHEME" != "auto" ] && PROMPT="$PROMPT, $COLOR_SCHEME colors"
 [ "$EFFECTS" != "none" ] && PROMPT="$PROMPT, $EFFECTS effects"
 
-# パーティクル形状・色
+# パーティクル形状・色・密度
 PROMPT="$PROMPT
 Particle Shape: $PARTICLE_SHAPE shaped particles
-Particle Color: $PARTICLE_COLOR color scheme"
+Particle Color: $PARTICLE_COLOR color scheme
+
+PARTICLE SPECIFICATIONS:
+- Use 5000-10000+ particles for detailed objects
+- Particle size: 0.02-0.05 (very small for fine detail)
+- High density particle clusters to form recognizable shapes
+- For flowers: each petal should use 100+ particles minimum
+- Arrange particles in 3D space to form actual object shapes"
 
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
