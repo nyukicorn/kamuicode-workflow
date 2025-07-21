@@ -1,4 +1,4 @@
-name: Create Music Video Orchestrated v2 (Improved)
+name: Create Music Video Orchestrated v3 (Auto-Web)
 
 on:
   workflow_dispatch:
@@ -468,6 +468,16 @@ jobs:
           
           echo "::endgroup::"
       
+      - name: Auto-Generate Web Player & Deploy
+        id: web-player
+        uses: ./.github/actions/kamui-modules/web-player-generation
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          music-concept: ${{ inputs.music_concept }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          execution-time: "${{ github.event.created_at }} - $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
       - name: Commit and push final music video
         shell: bash
         env:
@@ -518,9 +528,14 @@ jobs:
           echo "✅ Video Concatenation & Music Integration: ${{ steps.concatenation.outputs.concatenation-completed }}"
           echo "🎬 Final Music Video: ${{ steps.concatenation.outputs.final-video-path }}"
           echo ""
-          echo "🎉 EXPERIMENTAL Music Video Pipeline Success!"
-          echo "📊 Generated: Music + Analysis + Intent-to-Prompt Image/Video + Final Integration"
+          echo "✅ Auto-Generated Web Player: ${{ steps.web-player.outputs.web-player-created }}"
+          echo "🌐 GitHub Pages URL: ${{ steps.web-player.outputs.web-player-url }}"
+          echo "📁 Docs Deployment: ${{ steps.web-player.outputs.docs-deployed }}"
+          echo ""
+          echo "🎉 FULL ORCHESTRATED PIPELINE SUCCESS!"
+          echo "📊 Generated: Music + Analysis + Intent-to-Prompt Image/Video + Final Integration + Web Player"
           echo "🧪 Claude Code SDK Autonomous Creativity: ACTIVATED"
+          echo "🌐 Auto-Deploy to GitHub Pages: COMPLETED"
           echo "================================================"
       
       - name: Upload Generated Artifacts

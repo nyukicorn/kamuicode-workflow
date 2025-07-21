@@ -59,6 +59,7 @@ class EnhancedParticleSystem {
         this.artStyle = config.artStyle || '$ART_STYLE';
         this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
         this.time = 0;
+        this.animationSpeed = 1.0;
         this.systems = [];
         this.init();
     }
@@ -159,11 +160,16 @@ class EnhancedParticleSystem {
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
+        const velocities = new Float32Array(particleCount * 3);
         
         for (let i = 0; i < particleCount; i++) {
             positions[i * 3] = (Math.random() - 0.5) * 80;
             positions[i * 3 + 1] = Math.random() * 30;
             positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+            
+            velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+            velocities[i * 3 + 1] = Math.random() * 0.05;
+            velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
             
             const color = new THREE.Color(0xff69b4);
             colors[i * 3] = color.r;
@@ -180,16 +186,45 @@ class EnhancedParticleSystem {
         });
 
         const floating = new THREE.Points(geometry, material);
-        floating.userData = { type: 'floating' };
+        floating.userData = { type: 'floating', velocities: velocities };
         this.systems.push(floating);
         this.scene.add(floating);
     }
 
     update(deltaTime) {
-        this.time += deltaTime;
+        this.time += deltaTime * this.animationSpeed;
         this.systems.forEach(system => {
             if (system.userData && system.userData.type === 'floating') {
-                // Update floating particles
+                const positions = system.geometry.attributes.position.array;
+                const velocities = system.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i] * deltaTime * 60 * this.animationSpeed;
+                    positions[i + 1] += velocities[i + 1] * deltaTime * 60 * this.animationSpeed;
+                    positions[i + 2] += velocities[i + 2] * deltaTime * 60 * this.animationSpeed;
+                    
+                    if (positions[i + 1] > 40) {
+                        positions[i + 1] = -20;
+                        positions[i] = (Math.random() - 0.5) * 80;
+                        positions[i + 2] = (Math.random() - 0.5) * 80;
+                    }
+                }
+                system.geometry.attributes.position.needsUpdate = true;
+            } else if (system.userData && system.userData.type === 'flower') {
+                system.rotation.y = this.time * 0.1 * (system.userData.index * 0.5 + 1);
+                system.position.y = Math.sin(this.time + system.userData.index) * 2;
+            }
+        });
+    }
+
+    updateControls(controls) {
+        this.animationSpeed = controls.animationSpeed;
+        this.systems.forEach(system => {
+            if (system.userData && system.userData.type === 'flower') {
+                system.material.size = controls.particleSize;
+                system.material.opacity = controls.roseOpacity;
+            } else if (system.userData && system.userData.type === 'ambient') {
+                system.material.opacity = controls.ambientOpacity;
             }
         });
     }
@@ -206,8 +241,9 @@ IMPLEMENTATION REQUIREMENTS:
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
 Music: 'generated-music.wav', user-click play, loop
-IMPORTANT: 
-- Music file path must be 'generated-music.wav' (same directory)
+CRITICAL MUSIC PATH FIX: 
+- Music file path must be EXACTLY 'generated-music.wav' (same directory as index.html)
+- DO NOT use '../music/generated-music.wav' or any other path
 - Panorama image path must be 'assets/panorama.jpg' (in assets subdirectory)
 - Ensure assets folder exists and panorama is copied during integration"
 

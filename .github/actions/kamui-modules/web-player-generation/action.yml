@@ -1,0 +1,252 @@
+name: 'Web Player Generation & GitHub Pages Deploy'
+description: 'Generate web player for music video and deploy to GitHub Pages'
+author: 'KamuiCode Workflow'
+
+inputs:
+  folder-name:
+    description: 'The folder name containing generated assets'
+    required: true
+  music-concept:
+    description: 'The original music concept'
+    required: true
+  branch-name:
+    description: 'The branch name for this generation'
+    required: true
+  execution-time:
+    description: 'Total execution time of the workflow'
+    required: false
+    default: 'Unknown'
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  web-player-created:
+    description: 'Whether web player was created successfully'
+    value: ${{ steps.web-player.outputs.completed }}
+  web-player-url:
+    description: 'GitHub Pages URL for the web player'
+    value: ${{ steps.web-player.outputs.web-url }}
+  docs-deployed:
+    description: 'Whether files were deployed to docs folder'
+    value: ${{ steps.deploy.outputs.deployed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Automatic Web Player Generation
+      id: web-player
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+        MUSIC_CONCEPT: ${{ inputs.music-concept }}
+        FOLDER_NAME: ${{ inputs.folder-name }}
+        BRANCH_NAME: ${{ inputs.branch-name }}
+        EXECUTION_TIME: ${{ inputs.execution-time }}
+      run: |
+        echo "::group::🌐 Automatic Web Player Generation"
+        echo "Starting web player generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定確認
+        echo "Music concept: $MUSIC_CONCEPT"
+        echo "Folder name: $FOLDER_NAME"
+        echo "Branch name: $BRANCH_NAME"
+        echo "Execution time: $EXECUTION_TIME"
+        
+        # 生成されたアセットの確認
+        echo "📁 Checking generated assets..."
+        if [ -d "$FOLDER_NAME" ]; then
+          echo "✅ Source folder found: $FOLDER_NAME"
+          
+          # アセット存在確認
+          FINAL_VIDEO=""
+          MUSIC_FILE=""
+          IMAGE_FILE=""
+          
+          if [ -f "$FOLDER_NAME/final/final-music-video.mp4" ]; then
+            FINAL_VIDEO="$FOLDER_NAME/final/final-music-video.mp4"
+            VIDEO_SIZE=$(ls -lah "$FINAL_VIDEO" | awk '{print $5}')
+            echo "✅ Found final video: $FINAL_VIDEO ($VIDEO_SIZE)"
+          fi
+          
+          if [ -f "$FOLDER_NAME/music/generated-music.wav" ]; then
+            MUSIC_FILE="$FOLDER_NAME/music/generated-music.wav"
+            echo "✅ Found music file: $MUSIC_FILE"
+          fi
+          
+          if [ -f "$FOLDER_NAME/images/generated-image.png" ]; then
+            IMAGE_FILE="$FOLDER_NAME/images/generated-image.png"
+            echo "✅ Found image file: $IMAGE_FILE"
+          fi
+          
+        else
+          echo "❌ Source folder not found: $FOLDER_NAME"
+          exit 1
+        fi
+        
+        # Intent-to-Prompt: Web Player自動生成
+        SMART_PROMPT="音楽ビデオのWebプレイヤーページを自動生成してください。
+        
+        **生成したアセット情報**:
+        - 音楽コンセプト: $MUSIC_CONCEPT
+        - フォルダ名: $FOLDER_NAME
+        - ブランチ名: $BRANCH_NAME
+        - 実行時間: $EXECUTION_TIME
+        - 最終動画: $FINAL_VIDEO
+        - 音楽ファイル: $MUSIC_FILE
+        - 画像ファイル: $IMAGE_FILE
+        
+        **あなたの判断で行ってください**:
+        1. 上記のアセット情報を基に、美しいWebプレイヤーページを作成
+        2. レスポンシブデザインでモバイル対応
+        3. ビデオ・音楽・画像の統合プレイヤー機能
+        4. ダウンロードリンクと詳細情報表示
+        5. GitHub Pages用の最適化
+        
+        **ファイル保存規約（必須遵守）**:
+        1. HTMLファイル: '$FOLDER_NAME/index.html' に保存
+        2. docsフォルダにコピー: 'docs/$FOLDER_NAME/' ディレクトリ作成
+        3. docs/index.html の更新: 新しいエントリを追加
+        4. 保存確認: 各ファイル保存後に 'ls -la [filepath]' で確認
+        
+        **参考HTMLテンプレート（カスタマイズ推奨）**:
+        基本構造として以下を参考にしつつ、より良いデザインに改善:
+        - モダンなCSS（グラデーション、シャドウ、アニメーション）
+        - ビデオプレイヤーコントロール
+        - 音楽プレイヤーコントロール
+        - 画像ギャラリー表示
+        - 生成情報とメタデータ表示
+        - ダウンロードセクション
+        
+        **重要**:
+        - あなたの創造性を最大限活用して、美しく機能的なWebプレイヤーを作成
+        - アセットファイルパスは相対パスで正確に指定
+        - GitHub Pages でのアクセス性を最優先に設計"
+        
+        echo "🚀 Starting Automatic Web Player Generation..."
+        echo "📝 Prompt length: ${#SMART_PROMPT}"
+        
+        # Claude Code SDK実行（Webプレイヤー生成専用）
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Bash" \
+          --max-turns 30 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$SMART_PROMPT" 2>&1 | tee web-player-generation.log || {
+            EXIT_CODE=$?
+            echo "::error::❌ Web player generation failed with exit code: $EXIT_CODE"
+            echo "::group::Web Player Generation Error Details"
+            tail -50 web-player-generation.log || echo "No execution log available"
+            echo "::endgroup::"
+            exit $EXIT_CODE
+          }
+        
+        # 結果確認
+        WEB_PLAYER_HTML="$FOLDER_NAME/index.html"
+        DOCS_PLAYER_HTML="docs/$FOLDER_NAME/index.html"
+        
+        if [ -f "$WEB_PLAYER_HTML" ]; then
+          echo "✅ Web player created: $WEB_PLAYER_HTML"
+          FILE_SIZE=$(ls -lah "$WEB_PLAYER_HTML" | awk '{print $5}')
+          echo "File size: $FILE_SIZE"
+          
+          if [ -f "$DOCS_PLAYER_HTML" ]; then
+            echo "✅ Docs deployment ready: $DOCS_PLAYER_HTML"
+            WEB_URL="https://$(echo $GITHUB_REPOSITORY | cut -d'/' -f1).github.io/$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)/$FOLDER_NAME/"
+            echo "🌐 GitHub Pages URL: $WEB_URL"
+            echo "web-url=$WEB_URL" >> $GITHUB_OUTPUT
+            echo "completed=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Docs deployment not completed"
+            echo "completed=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "❌ Web player generation failed"
+          exit 1
+        fi
+        
+        echo "::endgroup::"
+    
+    - name: Deploy to docs folder
+      id: deploy
+      shell: bash
+      run: |
+        echo "📁 Verifying docs deployment..."
+        
+        DOCS_FOLDER="docs/${{ inputs.folder-name }}"
+        
+        if [ -d "$DOCS_FOLDER" ]; then
+          echo "✅ Docs folder exists: $DOCS_FOLDER"
+          
+          # ファイル数確認
+          FILE_COUNT=$(find "$DOCS_FOLDER" -type f | wc -l)
+          echo "📊 Files in docs folder: $FILE_COUNT"
+          
+          # 主要ファイル確認
+          if [ -f "$DOCS_FOLDER/index.html" ]; then
+            echo "✅ index.html: OK"
+          fi
+          if [ -f "$DOCS_FOLDER/final/final-music-video.mp4" ]; then
+            echo "✅ final-music-video.mp4: OK"
+          fi
+          if [ -f "$DOCS_FOLDER/music/generated-music.wav" ]; then
+            echo "✅ generated-music.wav: OK"
+          fi
+          if [ -f "$DOCS_FOLDER/images/generated-image.png" ]; then
+            echo "✅ generated-image.png: OK"
+          fi
+          
+          echo "deployed=true" >> $GITHUB_OUTPUT
+        else
+          echo "❌ Docs folder not found: $DOCS_FOLDER"
+          echo "deployed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+    
+    - name: Commit and push web player
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # docs フォルダのみ追加（Three.jsチームとの競合回避）
+        git add docs/
+        
+        if git diff --cached --quiet; then
+          echo "No web player files to commit"
+        else
+          git commit -m "Add auto-generated web player: ${{ inputs.music-concept }}
+
+🌐 Auto-generated web interface:
+- Responsive HTML video player
+- Integrated music and image display
+- Download links for all assets
+- GitHub Pages deployment ready
+
+📊 Generation info:
+- Folder: ${{ inputs.folder-name }}
+- Branch: ${{ inputs.branch-name }}
+- Execution time: ${{ inputs.execution-time }}
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+          
+          git push origin main
+        fi
