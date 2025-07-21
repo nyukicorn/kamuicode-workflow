@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美しい薔薇の花束 - Beautiful Rose Bouquet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #ff6b9d, #c44569, #ff9ff3, #f8b500);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease-in-out infinite;
+            font-family: Arial, sans-serif;
+        }
+        
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #c44569;
+        }
+        
+        .control-group input[type="range"] {
+            width: 200px;
+            margin-bottom: 5px;
+        }
+        
+        .control-group button {
+            background: linear-gradient(45deg, #ff6b9d, #c44569);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        
+        .control-group button:hover {
+            transform: scale(1.05);
+        }
+        
+        .control-group button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 15px;
+            }
+            
+            .control-group input[type="range"] {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="particleCount">Particle Count: <span id="particleCountValue">1000</span></label>
+            <input type="range" id="particleCount" min="500" max="3000" value="1000" step="100">
+        </div>
+        
+        <div class="control-group">
+            <label for="roseGlow">Rose Glow Intensity: <span id="roseGlowValue">1.5</span></label>
+            <input type="range" id="roseGlow" min="0.5" max="3.0" value="1.5" step="0.1">
+        </div>
+        
+        <div class="control-group">
+            <label for="rotationSpeed">Rotation Speed: <span id="rotationSpeedValue">0.01</span></label>
+            <input type="range" id="rotationSpeed" min="0" max="0.05" value="0.01" step="0.005">
+        </div>
+        
+        <div class="control-group">
+            <button id="playMusic">🎵 Play Music</button>
+        </div>
+    </div>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        document.body.appendChild(renderer.domElement);
+
+        // Variables
+        let roses = [];
+        let particles;
+        let particleSystem;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentRotationX = 0, currentRotationY = 0;
+        let isMouseDown = false;
+        let rotationSpeed = 0.01;
+        let audio = null;
+        let audioContext = null;
+
+        // Create soft circle texture for particles
+        function createSoftCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas with transparent background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = 'source-over';
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 25;
+            
+            // Create radial gradient for soft circle
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            gradient.addColorStop(0, 'rgba(255, 182, 193, 1)');
+            gradient.addColorStop(0.4, 'rgba(255, 105, 180, 0.8)');
+            gradient.addColorStop(0.7, 'rgba(255, 20, 147, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 20, 147, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // Create rose geometry
+        function createRoseGeometry() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            
+            // Create rose-like shape with multiple layers
+            const layers = 8;
+            const petalsPerLayer = 8;
+            
+            for (let layer = 0; layer < layers; layer++) {
+                const layerRadius = 0.3 + layer * 0.1;
+                const layerHeight = layer * 0.05;
+                
+                for (let petal = 0; petal < petalsPerLayer; petal++) {
+                    const angle = (petal / petalsPerLayer) * Math.PI * 2 + layer * 0.3;
+                    const petalRadius = layerRadius * (0.8 + Math.sin(petal * 3) * 0.2);
+                    
+                    // Create petal vertices
+                    for (let point = 0; point < 20; point++) {
+                        const pointAngle = angle + (point / 20) * 0.5 - 0.25;
+                        const pointRadius = petalRadius * Math.sin((point / 20) * Math.PI);
+                        
+                        const x = Math.cos(pointAngle) * pointRadius;
+                        const y = layerHeight + Math.sin(point * 0.5) * 0.1;
+                        const z = Math.sin(pointAngle) * pointRadius;
+                        
+                        vertices.push(x, y, z);
+                        
+                        // Color gradient from red to pink
+                        const colorMix = (layer / layers) * 0.5 + (point / 20) * 0.5;
+                        const r = 1.0 - colorMix * 0.3;
+                        const g = 0.2 + colorMix * 0.6;
+                        const b = 0.4 + colorMix * 0.4;
+                        colors.push(r, g, b);
+                    }
+                }
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            return geometry;
+        }
+
+        // Create roses
+        function createRoses() {
+            const roseGeometry = createRoseGeometry();
+            
+            for (let i = 0; i < 10; i++) {
+                const roseMaterial = new THREE.PointsMaterial({
+                    size: 0.05,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const rose = new THREE.Points(roseGeometry, roseMaterial);
+                
+                // Position roses in a bouquet arrangement
+                const angle = (i / 10) * Math.PI * 2;
+                const radius = 2 + Math.random() * 1;
+                rose.position.x = Math.cos(angle) * radius;
+                rose.position.y = -1 + Math.random() * 2;
+                rose.position.z = Math.sin(angle) * radius;
+                
+                // Add glow effect
+                const glowGeometry = roseGeometry.clone();
+                const glowMaterial = new THREE.PointsMaterial({
+                    size: 0.15,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.3,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const glow = new THREE.Points(glowGeometry, glowMaterial);
+                rose.add(glow);
+                
+                roses.push({ rose, glow, baseY: rose.position.y });
+                scene.add(rose);
+            }
+        }
+
+        // Create particle system
+        function createParticles(count = 1000) {
+            if (particleSystem) {
+                scene.remove(particleSystem);
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            const scales = [];
+            
+            for (let i = 0; i < count; i++) {
+                vertices.push(
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20,
+                    (Math.random() - 0.5) * 20
+                );
+                
+                // Pink to rose color gradient
+                const colorMix = Math.random();
+                colors.push(
+                    1.0 - colorMix * 0.2,
+                    0.4 + colorMix * 0.4,
+                    0.6 + colorMix * 0.3
+                );
+                
+                scales.push(Math.random() * 0.5 + 0.5);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('aScale', new THREE.Float32BufferAttribute(scales, 1));
+            
+            const texture = createSoftCircleTexture();
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                map: texture,
+                transparent: true,
+                alphaTest: 0.1,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending
+            });
+            
+            particleSystem = new THREE.Points(geometry, material);
+            particles = particleSystem;
+            scene.add(particleSystem);
+        }
+
+        // Initialize audio
+        function initAudio() {
+            audio = new Audio('./generated-music.wav');
+            audio.loop = true;
+            audio.volume = 0.6;
+        }
+
+        // Mouse controls
+        function onMouseMove(event) {
+            if (isMouseDown) {
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                targetRotationX = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, targetRotationX));
+            }
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onWheel(event) {
+            camera.position.z += event.deltaY * 0.01;
+            camera.position.z = Math.max(5, Math.min(20, camera.position.z));
+        }
+
+        // Control handlers
+        function setupControls() {
+            const particleCountSlider = document.getElementById('particleCount');
+            const particleCountValue = document.getElementById('particleCountValue');
+            
+            const roseGlowSlider = document.getElementById('roseGlow');
+            const roseGlowValue = document.getElementById('roseGlowValue');
+            
+            const rotationSpeedSlider = document.getElementById('rotationSpeed');
+            const rotationSpeedValue = document.getElementById('rotationSpeedValue');
+            
+            const playMusicButton = document.getElementById('playMusic');
+            
+            particleCountSlider.addEventListener('input', (e) => {
+                const count = parseInt(e.target.value);
+                particleCountValue.textContent = count;
+                createParticles(count);
+            });
+            
+            roseGlowSlider.addEventListener('input', (e) => {
+                const intensity = parseFloat(e.target.value);
+                roseGlowValue.textContent = intensity;
+                
+                roses.forEach(({ glow }) => {
+                    glow.material.opacity = 0.3 * intensity;
+                    glow.material.size = 0.15 * intensity;
+                });
+            });
+            
+            rotationSpeedSlider.addEventListener('input', (e) => {
+                rotationSpeed = parseFloat(e.target.value);
+                rotationSpeedValue.textContent = rotationSpeed;
+            });
+            
+            playMusicButton.addEventListener('click', () => {
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        playMusicButton.textContent = '⏸️ Pause Music';
+                        playMusicButton.disabled = false;
+                    }).catch(() => {
+                        playMusicButton.textContent = '❌ Music Error';
+                        playMusicButton.disabled = true;
+                    });
+                } else {
+                    audio.pause();
+                    playMusicButton.textContent = '🎵 Play Music';
+                }
+            });
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Smooth camera rotation
+            currentRotationX += (targetRotationX - currentRotationX) * 0.05;
+            currentRotationY += (targetRotationY - currentRotationY) * 0.05;
+            
+            camera.position.x = Math.sin(currentRotationY) * 8;
+            camera.position.y = Math.sin(currentRotationX) * 3;
+            camera.lookAt(scene.position);
+            
+            // Animate roses
+            roses.forEach(({ rose, glow, baseY }, index) => {
+                rose.rotation.y += rotationSpeed;
+                rose.position.y = baseY + Math.sin(time + index) * 0.2;
+                
+                glow.rotation.y = rose.rotation.y;
+                glow.position.copy(rose.position);
+            });
+            
+            // Animate particles
+            if (particles) {
+                particles.rotation.y += rotationSpeed * 0.5;
+                particles.rotation.x += rotationSpeed * 0.3;
+                
+                const positions = particles.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i + 1] += Math.sin(time + positions[i] * 0.01) * 0.01;
+                }
+                particles.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Initialize everything
+        function init() {
+            camera.position.z = 10;
+            
+            createRoses();
+            createParticles();
+            initAudio();
+            setupControls();
+            
+            // Event listeners
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mousedown', onMouseDown);
+            window.addEventListener('mouseup', onMouseUp);
+            window.addEventListener('wheel', onWheel);
+            window.addEventListener('resize', onWindowResize);
+            
+            animate();
+        }
+
+        init();
+    </script>
+</body>
+</html>
