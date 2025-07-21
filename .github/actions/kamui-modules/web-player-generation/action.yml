@@ -231,11 +231,7 @@ runs:
         if git diff --cached --quiet; then
           echo "No web player files to commit"
         else
-          git commit -m "Add auto-generated web player: ${{ inputs.music-concept }}
-
-Auto-generated web interface with video player, music player, and GitHub Pages deployment ready.
-
-Generated with Claude Code - Co-Authored-By: Claude <noreply@anthropic.com>"
+          git commit -m "Add auto-generated web player: ${{ inputs.music-concept }} - Auto-generated web interface with GitHub Pages deployment"
           
           git push origin main
         fi
