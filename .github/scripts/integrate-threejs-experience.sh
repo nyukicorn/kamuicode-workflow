@@ -59,16 +59,21 @@ Tasks:
    - If $FOLDER_NAME/music/generated-music.wav exists, copy to $SRC_DIR/generated-music.wav
    - This ensures music works on GitHub Pages
 
-2. Create README.md in $FOLDER_NAME/ with:
+2. Copy panorama image if exists:
+   - If $FOLDER_NAME/assets/panorama.jpg exists, copy to $SRC_DIR/assets/panorama.jpg
+   - Create assets directory: mkdir -p $SRC_DIR/assets
+   - This fixes 404 error for panorama background
+
+3. Create README.md in $FOLDER_NAME/ with:
    - Experience concept: $EXPERIENCE_CONCEPT
    - Controls: mouse drag, wheel zoom, double-click auto-rotate
    - Tech: Three.js, WebGL required
    
-3. Create zip package:
+4. Create zip package:
    - Use bash: cd $FOLDER_NAME/.. && zip -r $FINAL_DIR/threejs-experience.zip $(basename $FOLDER_NAME)/
    - File must exist: $FINAL_DIR/threejs-experience.zip
 
-Simple tasks only. Focus on music copy, README and zip creation."
+CRITICAL: Ensure all asset files (music, panorama) are copied to correct locations."
 
 echo "🚀 Starting Integration & Packaging Agent..."
 echo "📝 Prompt length: ${#PROMPT}"

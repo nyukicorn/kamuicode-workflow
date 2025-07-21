@@ -206,7 +206,10 @@ IMPLEMENTATION REQUIREMENTS:
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
 Music: 'generated-music.wav', user-click play, loop
-IMPORTANT: Music file path must be 'generated-music.wav' (same directory), NOT '../music/generated-music.wav'"
+IMPORTANT: 
+- Music file path must be 'generated-music.wav' (same directory)
+- Panorama image path must be 'assets/panorama.jpg' (in assets subdirectory)
+- Ensure assets folder exists and panorama is copied during integration"
 
 PROMPT="$PROMPT
 Controls: mouse drag/zoom, interactive sliders, responsive
