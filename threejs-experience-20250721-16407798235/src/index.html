@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜万華鏡の世界 - Sakura Kaleidoscope World</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            color: white;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        input[type="range"] {
+            width: 150px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #ff69b4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        #playButton {
+            background: linear-gradient(45deg, #ff69b4, #ff1493);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+        }
+        
+        #playButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.4);
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            font-size: 12px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <div class="control-group">
+                <button id="playButton">🌸 音楽を再生</button>
+            </div>
+            <div class="control-group">
+                <label for="particleSize">花びらサイズ</label>
+                <input type="range" id="particleSize" min="0.5" max="3" value="1" step="0.1">
+            </div>
+            <div class="control-group">
+                <label for="rotationSpeed">回転速度</label>
+                <input type="range" id="rotationSpeed" min="0.1" max="2" value="0.5" step="0.1">
+            </div>
+            <div class="control-group">
+                <label for="kaleidoscopeIntensity">万華鏡効果</label>
+                <input type="range" id="kaleidoscopeIntensity" min="0" max="1" value="0.7" step="0.1">
+            </div>
+        </div>
+        
+        <div id="info">
+            <div>マウス: ドラッグで視点移動</div>
+            <div>スクロール: ズーム</div>
+            <div>桜の花びら: 1000個</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // シーンの初期化
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000, 0);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // 音楽設定
+        const audioListener = new THREE.AudioListener();
+        camera.add(audioListener);
+        const audio = new THREE.Audio(audioListener);
+        const audioLoader = new THREE.AudioLoader();
+        let isPlaying = false;
+
+        // 音楽読み込み
+        audioLoader.load('./generated-music.wav', function(buffer) {
+            audio.setBuffer(buffer);
+            audio.setLoop(true);
+            audio.setVolume(0.5);
+        });
+
+        // 再生ボタンのイベントリスナー
+        document.getElementById('playButton').addEventListener('click', function() {
+            if (!isPlaying) {
+                audio.play();
+                isPlaying = true;
+                this.textContent = '🔇 音楽を停止';
+                this.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+            } else {
+                audio.pause();
+                isPlaying = false;
+                this.textContent = '🌸 音楽を再生';
+                this.style.background = 'linear-gradient(45deg, #ff69b4, #ff1493)';
+            }
+        });
+
+        // 桜の花びらのジオメトリとマテリアル
+        const sakuraGeometry = new THREE.BufferGeometry();
+        const sakuraCount = 1000;
+        const positions = new Float32Array(sakuraCount * 3);
+        const colors = new Float32Array(sakuraCount * 3);
+        const scales = new Float32Array(sakuraCount);
+
+        // 桜の色パレット
+        const sakuraColors = [
+            new THREE.Color(0xff69b4), // ピンク
+            new THREE.Color(0xffb6c1), // ライトピンク
+            new THREE.Color(0xffc0cb), // 薄ピンク
+            new THREE.Color(0xffd1dc), // 非常に薄いピンク
+            new THREE.Color(0xffffff)  // 白
+        ];
+
+        // パーティクルの初期化
+        for (let i = 0; i < sakuraCount; i++) {
+            // 球状に配置
+            const radius = Math.random() * 20 + 5;
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.random() * Math.PI;
+            
+            positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+            positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+            positions[i * 3 + 2] = radius * Math.cos(phi);
+
+            // ランダムな桜色
+            const color = sakuraColors[Math.floor(Math.random() * sakuraColors.length)];
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+
+            // ランダムなスケール
+            scales[i] = Math.random() * 2 + 0.5;
+        }
+
+        sakuraGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        sakuraGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        sakuraGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+
+        // 桜の花びらテクスチャを作成
+        const canvas = document.createElement('canvas');
+        canvas.width = 64;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+
+        // 花びらの形を描画
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(32, 32, 30, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // 花びらの詳細
+        ctx.fillStyle = '#ffb6c1';
+        ctx.beginPath();
+        ctx.arc(32, 32, 25, 0, Math.PI * 2);
+        ctx.fill();
+
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        // ポイントマテリアル
+        const sakuraMaterial = new THREE.PointsMaterial({
+            map: texture,
+            size: 2,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const sakuraParticles = new THREE.Points(sakuraGeometry, sakuraMaterial);
+        scene.add(sakuraParticles);
+
+        // 万華鏡効果のための複数のグループ
+        const kaleidoscopeGroup = new THREE.Group();
+        const kaleidoscopeCount = 6;
+        
+        for (let i = 0; i < kaleidoscopeCount; i++) {
+            const clonedParticles = sakuraParticles.clone();
+            clonedParticles.rotation.y = (i / kaleidoscopeCount) * Math.PI * 2;
+            kaleidoscopeGroup.add(clonedParticles);
+        }
+        
+        scene.add(kaleidoscopeGroup);
+
+        // カメラの初期位置
+        camera.position.z = 30;
+
+        // マウスコントロール
+        let mouseX = 0;
+        let mouseY = 0;
+        let mouseDown = false;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+
+        document.addEventListener('mousedown', (event) => {
+            mouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        document.addEventListener('mousemove', (event) => {
+            if (mouseDown) {
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                targetRotationY += deltaX * 0.01;
+                targetRotationX += deltaY * 0.01;
+                
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            }
+        });
+
+        // ズーム機能
+        document.addEventListener('wheel', (event) => {
+            camera.position.z += event.deltaY * 0.05;
+            camera.position.z = Math.max(5, Math.min(50, camera.position.z));
+        });
+
+        // コントロール要素
+        const particleSizeSlider = document.getElementById('particleSize');
+        const rotationSpeedSlider = document.getElementById('rotationSpeed');
+        const kaleidoscopeIntensitySlider = document.getElementById('kaleidoscopeIntensity');
+
+        // アニメーションループ
+        let time = 0;
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            time += 0.01 * parseFloat(rotationSpeedSlider.value);
+            
+            // 花びらのアニメーション
+            const positions = sakuraGeometry.attributes.position.array;
+            for (let i = 0; i < sakuraCount; i++) {
+                const i3 = i * 3;
+                
+                // 浮遊アニメーション
+                positions[i3 + 1] += Math.sin(time + i * 0.1) * 0.02;
+                
+                // 回転アニメーション
+                const angle = time * 0.5 + i * 0.1;
+                const radius = Math.sqrt(positions[i3] * positions[i3] + positions[i3 + 2] * positions[i3 + 2]);
+                positions[i3] = Math.cos(angle) * radius;
+                positions[i3 + 2] = Math.sin(angle) * radius;
+            }
+            sakuraGeometry.attributes.position.needsUpdate = true;
+
+            // マテリアルのサイズ更新
+            sakuraMaterial.size = parseFloat(particleSizeSlider.value);
+            
+            // 万華鏡効果の強度
+            const intensity = parseFloat(kaleidoscopeIntensitySlider.value);
+            kaleidoscopeGroup.children.forEach((child, index) => {
+                if (index > 0) {
+                    child.material.opacity = 0.8 * intensity;
+                }
+            });
+
+            // カメラの回転
+            camera.rotation.x += (targetRotationX - camera.rotation.x) * 0.05;
+            camera.rotation.y += (targetRotationY - camera.rotation.y) * 0.05;
+
+            // 全体の回転
+            kaleidoscopeGroup.rotation.y += 0.005;
+            kaleidoscopeGroup.rotation.x += 0.002;
+
+            renderer.render(scene, camera);
+        }
+
+        // レスポンシブ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // アニメーション開始
+        animate();
+    </script>
+</body>
+</html>
