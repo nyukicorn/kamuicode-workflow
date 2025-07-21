@@ -11,7 +11,9 @@ ASSETS_DIR="$FOLDER_NAME/assets"
 echo "Configuration:"
 echo "  Experience concept: $EXPERIENCE_CONCEPT"
 echo "  Background type: $BACKGROUND_TYPE"
-echo "  Particle enabled: $PARTICLE_ENABLED"
+echo "  Visual type: $VISUAL_TYPE"
+echo "  Category: $PARTICLE_ART_CATEGORY"
+echo "  Arrangement: $ARRANGEMENT"
 echo "  Target folders: $SRC_DIR"
 
 # ディレクトリを事前に作成
@@ -47,14 +49,107 @@ else
 - Default background"
 fi
 
-# パーティクル設定
-if [ "$PARTICLE_ENABLED" = "true" ]; then
+# ビジュアルタイプとパーティクル設定
+if [ "$VISUAL_TYPE" = "particle_art" ]; then
+  case "$PARTICLE_ART_CATEGORY" in
+    "flower")
+      case "$FLOWER_TYPE" in
+        "sakura")
+          PROMPT="$PROMPT
+- Create 3D sakura (cherry blossom) art using particles:
+  - Pink and white sakura petals arranged in 3D space
+  - ${PARTICLE_COUNT:-1000} particles forming sakura shapes
+  - Floating petals with gentle movement
+  - Beautiful sakura tree or branch structure"
+          ;;
+        "rose")
+          PROMPT="$PROMPT
+- Create 3D rose art using particles:
+  - Red and pink rose petals in 3D formation
+  - ${PARTICLE_COUNT:-1000} particles forming rose shapes
+  - Elegant rose structure with layered petals"
+          ;;
+        *)
+          PROMPT="$PROMPT
+- Create 3D flower art using particles:
+  - Beautiful flower formation using ${PARTICLE_COUNT:-1000} particles
+  - Colorful petals arranged in 3D space"
+          ;;
+      esac
+      ;;
+    "nature")
+      case "$NATURE_TYPE" in
+        "tree")
+          PROMPT="$PROMPT
+- Create 3D tree art using particles:
+  - Tree structure with branches and leaves
+  - ${PARTICLE_COUNT:-1000} particles forming natural tree shape
+  - Green and brown color scheme"
+          ;;
+        *)
+          PROMPT="$PROMPT
+- Create 3D nature art using particles:
+  - Natural formation using ${PARTICLE_COUNT:-1000} particles"
+          ;;
+      esac
+      ;;
+    "geometric")
+      case "$GEOMETRIC_TYPE" in
+        "sphere")
+          PROMPT="$PROMPT
+- Create 3D geometric sphere art using particles:
+  - Perfect sphere formation with ${PARTICLE_COUNT:-1000} particles
+  - Mathematical precision in particle placement
+  - Clean geometric lines"
+          ;;
+        *)
+          PROMPT="$PROMPT
+- Create 3D geometric art using particles:
+  - Geometric formation using ${PARTICLE_COUNT:-1000} particles"
+          ;;
+      esac
+      ;;
+    *)
+      PROMPT="$PROMPT
+- Create 3D abstract art using particles:
+  - Abstract formation using ${PARTICLE_COUNT:-1000} particles
+  - Fluid and organic shapes"
+      ;;
+  esac
+else
   PROMPT="$PROMPT
-- Add particle system with:
-  - Particle count: ${PARTICLE_COUNT:-1000}
-  - Floating particles
-  - Random positions
-  - Simple animation"
+- Add simple particle system:
+  - ${PARTICLE_COUNT:-1000} floating particles
+  - Random positions and simple animation
+  - Basic particle effects"
+fi
+
+# 配置スタイル
+case "$ARRANGEMENT" in
+  "floating")
+    PROMPT="$PROMPT
+- Particles float freely in 3D space"
+    ;;
+  "grounded")
+    PROMPT="$PROMPT
+- Particles arranged with ground reference"
+    ;;
+  "scene")
+    PROMPT="$PROMPT
+- Particles form complete 3D scene"
+    ;;
+esac
+
+# カラースキーム
+if [ "$COLOR_SCHEME" != "auto" ]; then
+  PROMPT="$PROMPT
+- Color scheme: $COLOR_SCHEME colors"
+fi
+
+# エフェクト
+if [ "$EFFECTS" != "none" ]; then
+  PROMPT="$PROMPT
+- Add $EFFECTS effects with $EFFECT_PARTICLE_SHAPE shaped particles"
 fi
 
 # 音楽設定
@@ -69,12 +164,17 @@ if [ "$INCLUDE_MUSIC" = "true" ] && [ -n "$MUSIC_URL" ]; then
   - Music file path: './generated-music.wav' (same directory as index.html)"
 fi
 
-# 基本機能
+# インタラクティブ機能
 PROMPT="$PROMPT
-- Mouse drag to rotate view
-- Mouse wheel to zoom
-- Double-click for auto-rotation
-- Responsive design"
+- Mouse controls:
+  - Drag to rotate view
+  - Wheel to zoom
+  - Double-click for auto-rotation
+- Interactive controls (if particle_art):
+  - Color adjustment controls
+  - Size adjustment controls
+  - Speed adjustment controls
+- Responsive design for all screen sizes"
 
 echo "🚀 Starting Three.js Scene Generation Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"

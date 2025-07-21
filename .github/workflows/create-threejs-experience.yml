@@ -18,11 +18,112 @@ on:
           - gradient
           - panorama
         default: 'gradient'
-      particle_enabled:
-        description: 'パーティクル効果を有効にするか'
+      visual_type:
+        description: 'ビジュアルタイプ'
         required: false
-        type: boolean
-        default: true
+        type: choice
+        options:
+          - particle_art
+          - simple_particles
+        default: 'particle_art'
+      particle_art_category:
+        description: 'パーティクルアートカテゴリ（particle_art選択時）'
+        required: false
+        type: choice
+        options:
+          - flower
+          - nature
+          - geometric
+          - abstract
+        default: 'flower'
+      flower_type:
+        description: '花の種類（flower選択時）'
+        required: false
+        type: choice
+        options:
+          - sakura
+          - rose
+          - lily
+          - tulip
+          - mixed
+        default: 'sakura'
+      nature_type:
+        description: '自然要素（nature選択時）'
+        required: false
+        type: choice
+        options:
+          - tree
+          - ocean
+          - mountain
+          - forest
+          - mixed
+        default: 'tree'
+      geometric_type:
+        description: '幾何学形状（geometric選択時）'
+        required: false
+        type: choice
+        options:
+          - sphere
+          - cube
+          - pyramid
+          - torus
+          - mixed
+        default: 'sphere'
+      abstract_type:
+        description: '抽象形状（abstract選択時）'
+        required: false
+        type: choice
+        options:
+          - fluid
+          - crystalline
+          - organic
+          - fractal
+          - mixed
+        default: 'fluid'
+      arrangement:
+        description: '配置スタイル'
+        required: false
+        type: choice
+        options:
+          - floating
+          - grounded
+          - scene
+        default: 'floating'
+      color_scheme:
+        description: 'カラースキーム'
+        required: false
+        type: choice
+        options:
+          - auto
+          - warm
+          - cool
+          - monochrome
+          - vibrant
+          - pastel
+        default: 'auto'
+      effects:
+        description: '追加エフェクト'
+        required: false
+        type: choice
+        options:
+          - none
+          - sparkle
+          - glow
+          - trail
+          - shimmer
+          - multiple
+        default: 'none'
+      effect_particle_shape:
+        description: 'エフェクト粒子形状（エフェクト有効時）'
+        required: false
+        type: choice
+        options:
+          - circle
+          - star
+          - diamond
+          - heart
+          - custom
+        default: 'circle'
       particle_count:
         description: 'パーティクル数'
         required: false
@@ -34,10 +135,10 @@ on:
           - '5000'
         default: '1000'
       include_music:
-        description: 'BGM付きにするか（テスト機能）'
+        description: 'BGM付きにするか'
         required: false
         type: boolean
-        default: false
+        default: true
       image_model:
         description: '画像生成モデル（パノラマ背景時のみ）'
         required: false
@@ -109,13 +210,19 @@ jobs:
           experience-concept: ${{ inputs.experience_concept }}
           panorama-image-url: ${{ inputs.background_type == 'panorama' && steps.image.outputs.google-image-url || '' }}
           background-type: ${{ inputs.background_type }}
-          art-mode: ${{ inputs.art_mode }}
-          art-object-type: ${{ inputs.art_object_type }}
-          complexity-level: ${{ inputs.complexity_level }}
+          visual-type: ${{ inputs.visual_type }}
+          particle-art-category: ${{ inputs.particle_art_category }}
+          flower-type: ${{ inputs.flower_type }}
+          nature-type: ${{ inputs.nature_type }}
+          geometric-type: ${{ inputs.geometric_type }}
+          abstract-type: ${{ inputs.abstract_type }}
+          arrangement: ${{ inputs.arrangement }}
+          color-scheme: ${{ inputs.color_scheme }}
+          effects: ${{ inputs.effects }}
+          effect-particle-shape: ${{ inputs.effect_particle_shape }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
-          particle-enabled: ${{ inputs.particle_enabled }}
-          particle-config: ${{ inputs.particle_config }}
+          particle-count: ${{ inputs.particle_count }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -147,7 +254,9 @@ jobs:
           echo "🌿 Branch: ${{ steps.setup.outputs.branch-name }}"
           echo "📁 Folder: ${{ steps.setup.outputs.folder-name }}"
           echo "🎨 Background Type: ${{ inputs.background_type }}"
-          echo "🎨 Art Mode: ${{ inputs.art_mode }}"
+          echo "🎨 Visual Type: ${{ inputs.visual_type }}"
+          echo "🌸 Category: ${{ inputs.particle_art_category }}"
+          echo "🎯 Arrangement: ${{ inputs.arrangement }}"
           echo ""
           if [ "${{ inputs.background_type }}" == "panorama" ]; then
             echo "🖼️ Used Image Model: ${{ steps.image.outputs.used-model }}"

@@ -13,17 +13,46 @@ inputs:
     description: 'Background type (panorama/solid_black/solid_white/transparent/gradient)'
     required: false
     default: 'panorama'
-  art-mode:
-    description: 'Art creation mode (none/sculptural/organic/geometric/abstract)'
+  visual-type:
+    description: 'Visual type (particle_art/simple_particles)'
+    required: false
+    default: 'particle_art'
+  particle-art-category:
+    description: 'Particle art category (flower/nature/geometric/abstract)'
+    required: false
+    default: 'flower'
+  flower-type:
+    description: 'Type of flower (sakura/rose/lily/tulip/mixed)'
+    required: false
+    default: 'sakura'
+  nature-type:
+    description: 'Type of nature element (tree/ocean/mountain/forest/mixed)'
+    required: false
+    default: 'tree'
+  geometric-type:
+    description: 'Type of geometric shape (sphere/cube/pyramid/torus/mixed)'
+    required: false
+    default: 'sphere'
+  abstract-type:
+    description: 'Type of abstract form (fluid/crystalline/organic/fractal/mixed)'
+    required: false
+    default: 'fluid'
+  arrangement:
+    description: 'Arrangement style (floating/grounded/scene)'
+    required: false
+    default: 'floating'
+  color-scheme:
+    description: 'Color scheme (auto/warm/cool/monochrome/vibrant/pastel)'
+    required: false
+    default: 'auto'
+  effects:
+    description: 'Additional effects (none/sparkle/glow/trail/shimmer/multiple)'
     required: false
     default: 'none'
-  art-object-type:
-    description: 'Type of 3D art object to create'
+  effect-particle-shape:
+    description: 'Effect particle shape (circle/star/diamond/heart/custom)'
     required: false
-  complexity-level:
-    description: 'Complexity level (simple/medium/complex/masterpiece)'
-    required: false
-    default: 'medium'
+    default: 'circle'
   include-music:
     description: 'Whether to include music controls'
     required: false
@@ -31,14 +60,10 @@ inputs:
   music-url:
     description: 'Google URL of the background music (if applicable)'
     required: false
-  particle-enabled:
-    description: 'Whether to enable particle effects'
+  particle-count:
+    description: 'Number of particles (500/1000/2000/5000)'
     required: false
-    default: 'true'
-  particle-config:
-    description: 'Particle configuration (count:size:shape:corner_radius)'
-    required: false
-    default: '1000:0.5:circle:0.0'
+    default: '1000'
   folder-name:
     description: 'The folder name for storing Three.js files'
     required: true
@@ -83,12 +108,18 @@ runs:
         EXPERIENCE_CONCEPT: ${{ inputs.experience-concept }}
         PANORAMA_IMAGE_URL: ${{ inputs.panorama-image-url }}
         BACKGROUND_TYPE: ${{ inputs.background-type }}
-        ART_MODE: ${{ inputs.art-mode }}
-        ART_OBJECT_TYPE: ${{ inputs.art-object-type }}
-        COMPLEXITY_LEVEL: ${{ inputs.complexity-level }}
+        VISUAL_TYPE: ${{ inputs.visual-type }}
+        PARTICLE_ART_CATEGORY: ${{ inputs.particle-art-category }}
+        FLOWER_TYPE: ${{ inputs.flower-type }}
+        NATURE_TYPE: ${{ inputs.nature-type }}
+        GEOMETRIC_TYPE: ${{ inputs.geometric-type }}
+        ABSTRACT_TYPE: ${{ inputs.abstract-type }}
+        ARRANGEMENT: ${{ inputs.arrangement }}
+        COLOR_SCHEME: ${{ inputs.color-scheme }}
+        EFFECTS: ${{ inputs.effects }}
+        EFFECT_PARTICLE_SHAPE: ${{ inputs.effect-particle-shape }}
         INCLUDE_MUSIC: ${{ inputs.include-music }}
         MUSIC_URL: ${{ inputs.music-url }}
-        PARTICLE_ENABLED: ${{ inputs.particle-enabled }}
         PARTICLE_COUNT: ${{ inputs.particle-count }}
       run: $GITHUB_WORKSPACE/.github/scripts/generate-threejs-scene.sh
     
