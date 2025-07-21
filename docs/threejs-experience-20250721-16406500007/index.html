@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桜の万華鏡 - Sakura Kaleidoscope</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            color: white;
+            min-width: 250px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #music-controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        #playBtn {
+            background: linear-gradient(45deg, #ff6b9d, #ff8a80);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        }
+        
+        #playBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 157, 0.4);
+        }
+        
+        #playBtn:active {
+            transform: translateY(0);
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ffc1cc;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            height: 5px;
+            background: #333;
+            outline: none;
+            border-radius: 5px;
+            -webkit-appearance: none;
+        }
+        
+        .control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 15px;
+            height: 15px;
+            background: #ff6b9d;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .control-group input[type="color"] {
+            width: 100%;
+            height: 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            text-align: right;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+        }
+        
+        @media (max-width: 768px) {
+            #controls {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                min-width: auto;
+                padding: 15px;
+            }
+            
+            #info {
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <div id="music-controls">
+                <button id="playBtn">🌸 Play Music 🌸</button>
+                <audio id="audio" loop muted>
+                    <source src="./generated-music.wav" type="audio/wav">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+            
+            <div class="control-group">
+                <label>Particle Color</label>
+                <input type="color" id="colorPicker" value="#ffb3d9">
+            </div>
+            
+            <div class="control-group">
+                <label>Particle Size: <span id="sizeValue">1.0</span></label>
+                <input type="range" id="sizeSlider" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <label>Animation Speed: <span id="speedValue">1.0</span></label>
+                <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.1" value="1.0">
+            </div>
+            
+            <div class="control-group">
+                <label>Sparkle Intensity: <span id="sparkleValue">1.0</span></label>
+                <input type="range" id="sparkleSlider" min="0.0" max="2.0" step="0.1" value="1.0">
+            </div>
+        </div>
+        
+        <div id="info">
+            <div>🌸 Sakura Kaleidoscope 🌸</div>
+            <div>Drag: Rotate | Wheel: Zoom | Double-click: Auto-rotate</div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, particles, sparkles;
+        let mouse = new THREE.Vector2();
+        let isMouseDown = false;
+        let autoRotate = false;
+        let rotationSpeed = 0.01;
+        let animationSpeed = 1.0;
+        let particleSize = 1.0;
+        let sparkleIntensity = 1.0;
+        let cameraRadius = 30;
+        let cameraTheta = 0;
+        let cameraPhi = Math.PI / 2;
+
+        // Audio variables
+        const audio = document.getElementById('audio');
+        const playBtn = document.getElementById('playBtn');
+        let isPlaying = false;
+
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            updateCameraPosition();
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('container').appendChild(renderer.domElement);
+
+            // Create gradient background
+            createGradientBackground();
+
+            // Create sakura particles
+            createSakuraParticles();
+
+            // Create sparkle effects
+            createSparkles();
+
+            // Add lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // Setup controls
+            setupControls();
+
+            // Start animation
+            animate();
+        }
+
+        function createGradientBackground() {
+            const geometry = new THREE.SphereGeometry(100, 32, 32);
+            
+            const vertexShader = `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                    vWorldPosition = worldPosition.xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            const fragmentShader = `
+                varying vec3 vWorldPosition;
+                void main() {
+                    vec3 color1 = vec3(0.1, 0.0, 0.2); // Deep purple
+                    vec3 color2 = vec3(0.8, 0.4, 0.8); // Light pink
+                    vec3 color3 = vec3(0.2, 0.1, 0.4); // Medium purple
+                    
+                    float mixValue = (vWorldPosition.y + 50.0) / 100.0;
+                    vec3 color = mix(color1, color2, mixValue);
+                    color = mix(color, color3, sin(vWorldPosition.x * 0.01) * 0.5 + 0.5);
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+
+            const material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                side: THREE.BackSide
+            });
+
+            const backgroundSphere = new THREE.Mesh(geometry, material);
+            scene.add(backgroundSphere);
+        }
+
+        function createSakuraParticles() {
+            const particleCount = 1000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            const sizes = new Float32Array(particleCount);
+
+            // Create sakura tree structure
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Create tree-like distribution
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 15;
+                const height = (Math.random() - 0.5) * 20;
+                
+                // Add some clustering for branches
+                const branchFactor = Math.sin(angle * 3) * 2;
+                const finalRadius = radius + branchFactor;
+                
+                positions[i3] = Math.cos(angle) * finalRadius;
+                positions[i3 + 1] = height;
+                positions[i3 + 2] = Math.sin(angle) * finalRadius;
+
+                // Sakura colors (pink and white variations)
+                const colorVariation = Math.random();
+                if (colorVariation < 0.7) {
+                    // Pink petals
+                    colors[i3] = 1.0; // R
+                    colors[i3 + 1] = 0.7 + Math.random() * 0.3; // G
+                    colors[i3 + 2] = 0.8 + Math.random() * 0.2; // B
+                } else {
+                    // White petals
+                    colors[i3] = 1.0; // R
+                    colors[i3 + 1] = 1.0; // G
+                    colors[i3 + 2] = 1.0; // B
+                }
+
+                sizes[i] = Math.random() * 2 + 1;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            // Create petal-shaped particles
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Draw sakura petal shape
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(32, 32, 20, 30, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Add petal details
+            ctx.fillStyle = '#ffb3d9';
+            ctx.beginPath();
+            ctx.ellipse(32, 25, 8, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            const texture = new THREE.CanvasTexture(canvas);
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    pointTexture: { value: texture },
+                    time: { value: 0 },
+                    size: { value: particleSize },
+                    color: { value: new THREE.Color(0xffb3d9) }
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute vec3 color;
+                    varying vec3 vColor;
+                    uniform float time;
+                    uniform float size as uSize;
+                    
+                    void main() {
+                        vColor = color;
+                        
+                        vec3 pos = position;
+                        pos.x += sin(time * 0.5 + position.y * 0.1) * 0.5;
+                        pos.z += cos(time * 0.3 + position.x * 0.1) * 0.3;
+                        pos.y += sin(time * 0.2 + position.z * 0.1) * 0.2;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = size * uSize * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D pointTexture;
+                    uniform vec3 color;
+                    varying vec3 vColor;
+                    
+                    void main() {
+                        vec4 textureColor = texture2D(pointTexture, gl_PointCoord);
+                        gl_FragColor = vec4(vColor * color, textureColor.a);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                vertexColors: true
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        function createSparkles() {
+            const sparkleCount = 200;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(sparkleCount * 3);
+            const sizes = new Float32Array(sparkleCount);
+
+            for (let i = 0; i < sparkleCount; i++) {
+                const i3 = i * 3;
+                positions[i3] = (Math.random() - 0.5) * 50;
+                positions[i3 + 1] = (Math.random() - 0.5) * 50;
+                positions[i3 + 2] = (Math.random() - 0.5) * 50;
+                sizes[i] = Math.random() * 2;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    intensity: { value: sparkleIntensity }
+                },
+                vertexShader: `
+                    attribute float size;
+                    uniform float time;
+                    uniform float intensity;
+                    
+                    void main() {
+                        vec3 pos = position;
+                        float sparkle = sin(time * 2.0 + position.x * 10.0) * 0.5 + 0.5;
+                        
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = size * intensity * sparkle * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    void main() {
+                        vec2 center = gl_PointCoord - vec2(0.5);
+                        float dist = length(center);
+                        float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+                        gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+                    }
+                `,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true
+            });
+
+            sparkles = new THREE.Points(geometry, material);
+            scene.add(sparkles);
+        }
+
+        function setupControls() {
+            const canvas = renderer.domElement;
+
+            // Mouse controls
+            canvas.addEventListener('mousedown', onMouseDown);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseup', onMouseUp);
+            canvas.addEventListener('wheel', onWheel);
+            canvas.addEventListener('dblclick', onDoubleClick);
+
+            // Touch controls for mobile
+            canvas.addEventListener('touchstart', onTouchStart);
+            canvas.addEventListener('touchmove', onTouchMove);
+            canvas.addEventListener('touchend', onTouchEnd);
+
+            // Music controls
+            playBtn.addEventListener('click', toggleMusic);
+
+            // Interactive controls
+            const colorPicker = document.getElementById('colorPicker');
+            const sizeSlider = document.getElementById('sizeSlider');
+            const speedSlider = document.getElementById('speedSlider');
+            const sparkleSlider = document.getElementById('sparkleSlider');
+
+            colorPicker.addEventListener('change', (e) => {
+                particles.material.uniforms.color.value = new THREE.Color(e.target.value);
+            });
+
+            sizeSlider.addEventListener('input', (e) => {
+                particleSize = parseFloat(e.target.value);
+                particles.material.uniforms.size.value = particleSize;
+                document.getElementById('sizeValue').textContent = particleSize.toFixed(1);
+            });
+
+            speedSlider.addEventListener('input', (e) => {
+                animationSpeed = parseFloat(e.target.value);
+                document.getElementById('speedValue').textContent = animationSpeed.toFixed(1);
+            });
+
+            sparkleSlider.addEventListener('input', (e) => {
+                sparkleIntensity = parseFloat(e.target.value);
+                sparkles.material.uniforms.intensity.value = sparkleIntensity;
+                document.getElementById('sparkleValue').textContent = sparkleIntensity.toFixed(1);
+            });
+        }
+
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+            autoRotate = false;
+        }
+
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+
+            const deltaX = event.clientX - mouse.x;
+            const deltaY = event.clientY - mouse.y;
+
+            cameraTheta += deltaX * 0.01;
+            cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.01));
+
+            updateCameraPosition();
+
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onWheel(event) {
+            cameraRadius = Math.max(10, Math.min(100, cameraRadius + event.deltaY * 0.05));
+            updateCameraPosition();
+        }
+
+        function onDoubleClick() {
+            autoRotate = !autoRotate;
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+                isMouseDown = true;
+                autoRotate = false;
+            }
+        }
+
+        function onTouchMove(event) {
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaX = event.touches[0].clientX - mouse.x;
+                const deltaY = event.touches[0].clientY - mouse.y;
+
+                cameraTheta += deltaX * 0.01;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi + deltaY * 0.01));
+
+                updateCameraPosition();
+
+                mouse.x = event.touches[0].clientX;
+                mouse.y = event.touches[0].clientY;
+            }
+            event.preventDefault();
+        }
+
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+
+        function updateCameraPosition() {
+            camera.position.x = cameraRadius * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+            camera.position.y = cameraRadius * Math.cos(cameraPhi);
+            camera.position.z = cameraRadius * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+            camera.lookAt(0, 0, 0);
+        }
+
+        function toggleMusic() {
+            if (isPlaying) {
+                audio.pause();
+                playBtn.textContent = '🌸 Play Music 🌸';
+                isPlaying = false;
+            } else {
+                audio.muted = false;
+                audio.play().then(() => {
+                    playBtn.textContent = '🌸 Pause Music 🌸';
+                    isPlaying = true;
+                }).catch(err => {
+                    console.log('Audio play failed:', err);
+                });
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const time = Date.now() * 0.001 * animationSpeed;
+
+            // Update particle animation
+            particles.material.uniforms.time.value = time;
+            
+            // Update sparkle animation
+            sparkles.material.uniforms.time.value = time;
+
+            // Auto rotation
+            if (autoRotate) {
+                cameraTheta += rotationSpeed;
+                updateCameraPosition();
+            }
+
+            // Rotate particles slowly
+            particles.rotation.y += 0.002 * animationSpeed;
+            sparkles.rotation.x += 0.001 * animationSpeed;
+            sparkles.rotation.z += 0.003 * animationSpeed;
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Event listeners
+        window.addEventListener('resize', onWindowResize);
+
+        // Initialize the scene
+        init();
+    </script>
+</body>
+</html>
