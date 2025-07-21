@@ -213,13 +213,7 @@ class EnhancedParticleSystem {
                 }
                 system.geometry.attributes.position.needsUpdate = true;
             } else if (system.userData && system.userData.type === 'flower') {
-                // Manual rotation from double-click
-                if (this.isRotating) {
-                    system.rotation.y += this.rotationSpeed * deltaTime;
-                } else {
-                    // Default subtle rotation
-                    system.rotation.y = this.time * 0.1 * (system.userData.index * 0.5 + 1);
-                }
+                // Only subtle floating animation for flowers
                 system.position.y = Math.sin(this.time + system.userData.index) * 2;
             }
         });
@@ -241,12 +235,26 @@ class EnhancedParticleSystem {
     toggleRotation() {
         this.isRotating = !this.isRotating;
     }
+    
+    updateCameraRotation(camera, deltaTime) {
+        if (this.isRotating) {
+            // Rotate camera around scene center
+            const radius = Math.sqrt(camera.position.x * camera.position.x + camera.position.z * camera.position.z);
+            const currentAngle = Math.atan2(camera.position.z, camera.position.x);
+            const newAngle = currentAngle + this.rotationSpeed * deltaTime;
+            
+            camera.position.x = radius * Math.cos(newAngle);
+            camera.position.z = radius * Math.sin(newAngle);
+            camera.lookAt(0, 0, 0);
+        }
+    }
 }
 
 IMPLEMENTATION REQUIREMENTS:
 - Use the EnhancedParticleSystem class above
 - Initialize with: new EnhancedParticleSystem(scene, { artStyle: '$ART_STYLE' })
-- Call update() in animation loop
+- In animation loop: call particleSystem.update(deltaTime) AND particleSystem.updateCameraRotation(camera, deltaTime)
+- Double-click canvas calls: particleSystem.toggleRotation()
 - High particle density for realistic flower shapes
 - Mathematical petal arrangements
 - Layer-based opacity and colors"
@@ -263,22 +271,30 @@ CRITICAL MUSIC PATH FIX:
 PROMPT="$PROMPT
 Controls: mouse drag/zoom, interactive sliders, responsive
 
-CRITICAL NEW FEATURES:
-1. Add Rotation Speed slider (0.1-5.0, default 1.0) for flower rotation speed
-2. Double-click canvas to start/stop flower rotation (toggle)
-3. Update existing controls to include:
-   - Particle Size (existing)
-   - Animation Speed (existing - for particle movement)
-   - Rotation Speed (NEW - for double-click rotation)
-   - Rose Opacity (existing)
-   - Ambient Opacity (existing)
+CRITICAL FEATURES:
+1. MOUSE CONTROLS (ESSENTIAL):
+   - Mouse drag: Rotate camera view around scene center
+   - Mouse wheel: Zoom in/out 
+   - MUST work smoothly and responsively
 
-IMPLEMENTATION DETAILS:
-- Add rotation speed slider to HTML controls
-- Add double-click event listener to canvas
-- Call particleSystem.toggleRotation() on double-click
-- Update controls to pass rotationSpeed to updateControls()
-- Display rotation status (rotating/stopped) in UI
+2. ANIMATION CONTROLS:
+   - Animation Speed slider (0.1-3.0): Controls particle floating/movement speed
+   - Rotation Speed slider (0.1-5.0): Controls camera/scene rotation speed
+
+3. CAMERA ROTATION:
+   - Double-click canvas: Start/stop automatic camera rotation around scene
+   - Camera rotates around Y-axis, NOT individual flowers
+   - Individual flowers should only float up/down subtly
+
+4. UI CONTROLS:
+   - Particle Size, Animation Speed, Rotation Speed, Rose Opacity, Ambient Opacity
+
+IMPLEMENTATION REQUIREMENTS:
+- ESSENTIAL: Mouse drag for camera control must work
+- ESSENTIAL: Mouse wheel zoom must work  
+- Double-click toggles camera rotation (not flower rotation)
+- Animation Speed affects floating particles only
+- Rotation Speed affects camera rotation only
 
 WebGL Shader Requirements:
 - Use BasicMaterial or PointsMaterial instead of custom ShaderMaterial
