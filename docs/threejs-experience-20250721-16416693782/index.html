@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Particle Test v3 - パノラマ修正版バラの花園</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #000;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .control-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-item label {
+            min-width: 100px;
+        }
+        
+        .control-item input[type="range"] {
+            flex: 1;
+        }
+        
+        .music-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .music-btn {
+            background: #ff69b4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .music-btn:hover {
+            background: #ff1493;
+        }
+        
+        .info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 12px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="controls">
+        <h3>バラの花園制御</h3>
+        <div class="control-item">
+            <label>Particle Size:</label>
+            <input type="range" id="particleSize" min="0.1" max="2.0" step="0.1" value="0.5">
+        </div>
+        <div class="control-item">
+            <label>Animation Speed:</label>
+            <input type="range" id="animSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-item">
+            <label>Opacity:</label>
+            <input type="range" id="opacity" min="0.1" max="1.0" step="0.1" value="0.8">
+        </div>
+        <div class="control-item">
+            <label>Zoom:</label>
+            <input type="range" id="zoom" min="0.5" max="3.0" step="0.1" value="1.0">
+        </div>
+    </div>
+    
+    <div class="music-controls">
+        <button class="music-btn" id="musicToggle">🎵 音楽再生</button>
+    </div>
+    
+    <div class="info">
+        <h4>Enhanced Particle Test v3</h4>
+        <p>パノラマ修正版バラの花園</p>
+        <p>• マウス: カメラ回転</p>
+        <p>• ホイール: ズーム</p>
+        <p>• スライダー: 粒子制御</p>
+        <p>• 音楽: クリックで再生/停止</p>
+    </div>
+    
+    <audio id="backgroundMusic" loop preload="auto">
+        <source src="generated-music.wav" type="audio/wav">
+    </audio>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Enhanced Particle System Class
+        class EnhancedParticleSystem {
+            constructor(scene, config = {}) {
+                this.scene = scene;
+                this.artStyle = config.artStyle || 'flower:rose';
+                this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
+                this.time = 0;
+                this.systems = [];
+                this.init();
+            }
+
+            init() {
+                const [category, type] = this.artStyle.split(':');
+                if (category === 'flower') this.createFlower(type);
+                this.createAmbientParticles();
+                this.createFloatingParticles();
+            }
+
+            createFlower(type) {
+                const configs = {
+                    rose: { layers: 5, particlesPerLayer: 800, colors: [0xff69b4, 0xff1493, 0xdc143c] },
+                    sakura: { layers: 4, particlesPerLayer: 1000, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4] },
+                    lily: { layers: 5, particlesPerLayer: 800, colors: [0xffffff, 0xfffacd, 0xf0e68c] }
+                };
+                
+                const config = configs[type] || configs.rose;
+                
+                for (let i = 0; i < 5; i++) {
+                    const flower = this.createSingleFlower(config, i);
+                    this.systems.push(flower);
+                    this.scene.add(flower);
+                }
+            }
+
+            createSingleFlower(config, index) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                const colors = new Float32Array(config.layers * config.particlesPerLayer * 3);
+                
+                const center = new THREE.Vector3((Math.random()-0.5)*100, Math.random()*30-15, (Math.random()-0.5)*100);
+                
+                let particleIndex = 0;
+                for (let layer = 0; layer < config.layers; layer++) {
+                    for (let i = 0; i < config.particlesPerLayer; i++) {
+                        const angle = (i / config.particlesPerLayer) * Math.PI * 2;
+                        const radius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                        
+                        positions[particleIndex * 3] = center.x + radius * Math.cos(angle);
+                        positions[particleIndex * 3 + 1] = center.y + layer * 0.1;
+                        positions[particleIndex * 3 + 2] = center.z + radius * Math.sin(angle);
+                        
+                        const color = new THREE.Color(config.colors[Math.floor(Math.random() * config.colors.length)]);
+                        colors[particleIndex * 3] = color.r;
+                        colors[particleIndex * 3 + 1] = color.g;
+                        colors[particleIndex * 3 + 2] = color.b;
+                        
+                        particleIndex++;
+                    }
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.5,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                
+                return new THREE.Points(geometry, material);
+            }
+
+            createAmbientParticles() {
+                const particleCount = 1200;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = Math.random() * 40 - 20;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.4,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                const ambient = new THREE.Points(geometry, material);
+                this.systems.push(ambient);
+                this.scene.add(ambient);
+            }
+
+            createFloatingParticles() {
+                const particleCount = 400;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 80;
+                    positions[i * 3 + 1] = Math.random() * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                    
+                    const color = new THREE.Color(0xff69b4);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.8,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.NormalBlending,
+                    depthWrite: false
+                });
+
+                const floating = new THREE.Points(geometry, material);
+                floating.userData = { type: 'floating' };
+                this.systems.push(floating);
+                this.scene.add(floating);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime;
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'floating') {
+                        const positions = system.geometry.attributes.position.array;
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i + 1] += Math.sin(this.time * 0.5 + positions[i] * 0.01) * 0.02;
+                        }
+                        system.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
+            }
+        }
+
+        // Main Three.js Setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        // Panorama Background
+        const loader = new THREE.TextureLoader();
+        loader.load(
+            'assets/panorama.jpg',
+            function(texture) {
+                const geometry = new THREE.SphereGeometry(500, 60, 40);
+                geometry.scale(-1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ map: texture });
+                const panorama = new THREE.Mesh(geometry, material);
+                scene.add(panorama);
+            },
+            function(progress) {
+                console.log('パノラマ読み込み中...', (progress.loaded / progress.total * 100) + '%');
+            },
+            function(error) {
+                console.log('パノラマ読み込みエラー:', error);
+                // フォールバック: グラデーション背景
+                const geometry = new THREE.SphereGeometry(500, 60, 40);
+                geometry.scale(-1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: new THREE.Color().setHSL(0.1, 0.3, 0.1)
+                });
+                const panorama = new THREE.Mesh(geometry, material);
+                scene.add(panorama);
+            }
+        );
+
+        // Enhanced Particle System
+        const particleSystem = new EnhancedParticleSystem(scene, { artStyle: 'flower:rose' });
+
+        // Camera position
+        camera.position.set(0, 10, 30);
+        camera.lookAt(0, 0, 0);
+
+        // Mouse controls
+        let mouseX = 0, mouseY = 0;
+        let mouseDown = false;
+        let cameraAngleX = 0, cameraAngleY = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        document.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (mouseDown) {
+                const deltaX = e.clientX - mouseX;
+                const deltaY = e.clientY - mouseY;
+                cameraAngleX -= deltaY * 0.01;
+                cameraAngleY -= deltaX * 0.01;
+                cameraAngleX = Math.max(-Math.PI/2, Math.min(Math.PI/2, cameraAngleX));
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+        });
+
+        // Zoom control
+        let cameraDistance = 30;
+        document.addEventListener('wheel', (e) => {
+            cameraDistance += e.deltaY * 0.1;
+            cameraDistance = Math.max(10, Math.min(100, cameraDistance));
+        });
+
+        // Interactive Controls
+        let particleSize = 0.5;
+        let animSpeed = 1.0;
+        let opacity = 0.8;
+        let zoom = 1.0;
+
+        document.getElementById('particleSize').addEventListener('input', (e) => {
+            particleSize = parseFloat(e.target.value);
+            particleSystem.systems.forEach(system => {
+                if (system.material) system.material.size = particleSize;
+            });
+        });
+
+        document.getElementById('animSpeed').addEventListener('input', (e) => {
+            animSpeed = parseFloat(e.target.value);
+        });
+
+        document.getElementById('opacity').addEventListener('input', (e) => {
+            opacity = parseFloat(e.target.value);
+            particleSystem.systems.forEach(system => {
+                if (system.material) system.material.opacity = opacity;
+            });
+        });
+
+        document.getElementById('zoom').addEventListener('input', (e) => {
+            zoom = parseFloat(e.target.value);
+        });
+
+        // Music Controls
+        const audio = document.getElementById('backgroundMusic');
+        const musicBtn = document.getElementById('musicToggle');
+        let isPlaying = false;
+
+        musicBtn.addEventListener('click', () => {
+            if (isPlaying) {
+                audio.pause();
+                musicBtn.textContent = '🎵 音楽再生';
+                isPlaying = false;
+            } else {
+                audio.play().then(() => {
+                    musicBtn.textContent = '⏸️ 音楽停止';
+                    isPlaying = true;
+                }).catch(error => {
+                    console.log('音楽再生エラー:', error);
+                    musicBtn.textContent = '🎵 音楽なし';
+                });
+            }
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = clock.getDelta() * animSpeed;
+
+            // Update camera position
+            camera.position.x = Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance * zoom;
+            camera.position.y = Math.sin(cameraAngleX) * cameraDistance * zoom;
+            camera.position.z = Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance * zoom;
+            camera.lookAt(0, 0, 0);
+
+            // Update particle system
+            particleSystem.update(deltaTime);
+
+            renderer.render(scene, camera);
+        }
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
