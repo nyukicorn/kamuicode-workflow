@@ -134,12 +134,12 @@ runs:
         echo "🚀 Starting Music Video Planning Agent Claude Code CLI..."
         echo "📝 Prompt length: ${#PROMPT}"
         
-        # Claude Code CLIの実行
+        # Claude Code CLIの実行（Bashツール追加でディレクトリ作成可能に）
         npx @anthropic-ai/claude-code \
-          --allowedTools "Read,Write,Edit" \
+          --allowedTools "Read,Write,Edit,Bash" \
           --max-turns 25 \
           --verbose \
-          --permission-mode "acceptEdits" \
+          --permission-mode "bypassPermissions" \
           -p "$PROMPT" || {
             echo "::error::❌ Claude Code CLI execution failed"
             exit 1
