@@ -64,7 +64,7 @@ jobs:
           echo "Starting experimental image generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
           
           # 設定
-          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          MUSIC_CONCEPT='${{ inputs.music_concept }}'
           FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
           IMAGES_DIR="$FOLDER_NAME/images"
           OPTIMIZED_PROMPT="${{ steps.analysis.outputs.image-prompt-1 }}"
@@ -190,7 +190,7 @@ jobs:
           echo "Starting experimental video generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
           
           # 設定
-          MUSIC_CONCEPT="${{ inputs.music_concept }}"
+          MUSIC_CONCEPT='${{ inputs.music_concept }}'
           FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
           GOOGLE_IMAGE_URL="${{ steps.image.outputs.google-image-url }}"
           OPTIMIZED_VIDEO_PROMPT="${{ steps.analysis.outputs.video-prompt-1 }}"
@@ -391,36 +391,53 @@ jobs:
           fi
           
           # プロンプトの構築
-          PROMPT="ffmpegで動画セグメントを連結し音楽と統合してミュージックビデオを作成してください。
-          **最重要**: 最終動画に音楽を必ず結合（音声なしは失敗）
-          
-          **現在の状況**:
-          - フォルダ: $FOLDER_NAME
-          - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
-          - 音楽ディレクトリ: $MUSIC_DIR
-          - 出力ディレクトリ: $OUTPUT_DIR
+          PROMPT="動画と音楽を統合して最終的な音楽ビデオを作成してください。
+
+          **必須タスク**: ffmpegで音楽付き動画を '$OUTPUT_DIR/final-music-video.mp4' に作成
+
+          **ファイル情報**:
           - 音楽ファイル: $MUSIC_FILE
-          
+          - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
+          - 最終出力: $OUTPUT_DIR/final-music-video.mp4
+
           **実行手順**:
-          1. 利用可能な動画セグメントファイルを確認
-          2. 音楽ファイル（$MUSIC_FILE）の長さを確認
-          3. ffmpegで動画を音楽の長さに合わせて調整・延長
-          4. 複数セグメントがある場合は連結、1つの場合はループで延長
-          5. ffmpegで動画と音楽を統合
-          6. **必須**: '$OUTPUT_DIR/final-music-video.mp4'に保存
-          7. 最終動画の音声ストリーム確認
+          1. cd $VIDEOS_DIR で動画ディレクトリに移動
+          2. 動画セグメントを確認: ls -la *.mp4
+          3. 音楽の長さを取得: ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"../$MUSIC_FILE\"
+          4. 以下のコマンドで音楽付き動画を作成:
+
+          **1つの動画セグメントの場合**:
+          \`\`\`bash
+          ffmpeg -stream_loop -1 -i segment-1.mp4 -i \"../$MUSIC_FILE\" \\
+            -c:v libx264 -c:a aac -shortest \\
+            -y \"../$OUTPUT_DIR/final-music-video.mp4\"
+          \`\`\`
+
+          **複数の動画セグメントの場合**:
+          \`\`\`bash
+          # まず動画を連結
+          ls -1 *.mp4 | sed 's/^/file /' > filelist.txt
+          ffmpeg -f concat -safe 0 -i filelist.txt -c copy concatenated.mp4
           
-          **ffmpegコマンド例**:
-          - 動画延長: ffmpeg -i segment-1.mp4 -filter_complex 'loop=loop=7:size=150:start=0' segment-1-extended.mp4
-          - 複数セグメント連結: ffmpeg -i seg1.mp4 -i seg2.mp4 -i seg3.mp4 -filter_complex '[0:v][1:v][2:v]concat=n=3:v=1:a=0[outv]' -map '[outv]' video-concatenated.mp4
-          - 音楽統合: ffmpeg -i video-concatenated.mp4 -i \"$MUSIC_FILE\" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest '$OUTPUT_DIR/final-music-video.mp4'
-          - 音声確認: ffmpeg -i '$OUTPUT_DIR/final-music-video.mp4' -show_streams -select_streams a
+          # 音楽と結合
+          ffmpeg -stream_loop -1 -i concatenated.mp4 -i \"../$MUSIC_FILE\" \\
+            -c:v libx264 -c:a aac -shortest \\
+            -y \"../$OUTPUT_DIR/final-music-video.mp4\"
+          \`\`\`
+
+          5. 最終確認: ls -la \"../$OUTPUT_DIR/final-music-video.mp4\"
+
+          **重要**: 最終ファイルが音声付きで作成されることを確認してください。"
           
-          **重要事項**:
-          - 必ず音楽ファイル（$MUSIC_FILE）が存在することを確認
-          - 最終動画は音声ストリームを含む必要がある
-          - 動画の長さは音楽の長さに合わせる
-          - 最終ファイルは '$OUTPUT_DIR/final-music-video.mp4' に保存"
+          # 必要なツールのインストール
+          echo "🔧 Installing required tools..."
+          sudo apt-get update > /dev/null 2>&1
+          sudo apt-get install -y ffmpeg nodejs npm > /dev/null 2>&1
+          echo "✅ FFmpeg, Node.js, and npm installed"
+          
+          echo "📦 Installing Claude Code SDK..."
+          npm install @anthropic-ai/claude-code > /dev/null 2>&1
+          echo "✅ Claude Code SDK ready"
           
           echo "🚀 Starting Video Concatenation Agent Claude Code CLI..."
           echo "📝 Prompt length: ${#PROMPT}"
@@ -477,6 +494,31 @@ jobs:
           branch-name: ${{ steps.setup.outputs.branch-name }}
           execution-time: "${{ github.event.created_at }} - $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          
+      - name: Ensure final video is copied to docs
+        shell: bash
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          
+          echo "🎬 Ensuring final video is copied to docs folder..."
+          
+          # finalディレクトリが存在し、docsにコピーされているか確認
+          if [ -d "$FOLDER_NAME/final" ]; then
+            if [ ! -d "docs/$FOLDER_NAME/final" ]; then
+              echo "📁 Final directory not found in docs, copying now..."
+              mkdir -p "docs/$FOLDER_NAME"
+              cp -r "$FOLDER_NAME/final" "docs/$FOLDER_NAME/"
+              echo "✅ Final directory copied to docs/$FOLDER_NAME/final"
+            else
+              echo "✅ Final directory already exists in docs"
+            fi
+            
+            # ファイルの確認
+            echo "Final files in docs:"
+            ls -la "docs/$FOLDER_NAME/final/" || echo "No files found in final directory"
+          else
+            echo "⚠️ Final directory not found: $FOLDER_NAME/final"
+          fi
       
       - name: Commit and push final music video
         shell: bash
