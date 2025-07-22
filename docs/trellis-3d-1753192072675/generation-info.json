@@ -1,0 +1,9 @@
+{
+  "input_type": "text",
+  "input_data": "beautiful cherry blossom tree in spring", 
+  "output_format": "glb",
+  "steps": 12,
+  "model_name": "generated_model",
+  "generated_at": "2025-07-22T13:49:12Z",
+  "generation_method": "trellis_mcp"
+}
