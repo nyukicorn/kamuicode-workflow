@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バラの花をイメージした美しいオルゴールの曲 - Music Video</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .media-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .media-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-icon {
+            font-size: 1.6rem;
+        }
+
+        .media-content {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .media-content img {
+            width: 100%;
+            height: auto;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .media-content audio,
+        .media-content video {
+            width: 100%;
+            border-radius: 12px;
+        }
+
+        .description {
+            margin-top: 15px;
+            color: #6a737d;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .download-section {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            box-shadow: 0 10px 40px rgba(238, 90, 36, 0.3);
+        }
+
+        .download-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .download-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 12px;
+            padding: 15px 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .download-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .metadata-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .metadata-value {
+            color: #6a737d;
+            text-align: right;
+        }
+
+        .generation-time {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .title {
+                font-size: 2rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">🌹 バラの花をイメージした美しいオルゴールの曲</h1>
+            <p class="subtitle">AI生成音楽ビデオ - Generated Music Video Experience</p>
+        </header>
+
+        <div class="info-card">
+            <div class="metadata">
+                <div class="metadata-item">
+                    <span class="metadata-label">🎵 音楽コンセプト</span>
+                    <span class="metadata-value">バラの花をイメージした美しいオルゴール</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">📂 フォルダ名</span>
+                    <span class="metadata-value">music-video-20250722-16456947115</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">🌿 ブランチ名</span>
+                    <span class="metadata-value">music-video/20250722-16456947115</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">⏰ 生成時刻</span>
+                    <span class="metadata-value generation-time">2025-07-22T16:45:69:47</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="media-grid">
+            <div class="media-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🖼️</span>
+                    Generated Image
+                </h2>
+                <div class="media-content">
+                    <img src="images/generated-image.png" alt="Generated Rose Music Box Image" />
+                </div>
+                <p class="description">
+                    バラの花をイメージした美しい画像。静止画像のみを表示し、音楽は含まれていません。
+                </p>
+            </div>
+
+            <div class="media-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🎵</span>
+                    Generated Music
+                </h2>
+                <div class="media-content">
+                    <audio controls>
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        お使いのブラウザはaudio要素をサポートしていません。
+                    </audio>
+                </div>
+                <p class="description">
+                    オルゴールの美しいメロディー。音楽のみの再生で、画像は含まれていません。
+                </p>
+            </div>
+
+            <div class="media-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🎬</span>
+                    Individual Video
+                </h2>
+                <div class="media-content">
+                    <video controls muted>
+                        <source src="videos/segment-1.mp4" type="video/mp4">
+                        お使いのブラウザはvideo要素をサポートしていません。
+                    </video>
+                </div>
+                <p class="description">
+                    ビデオセグメントのみの表示。音楽は含まれておらず、映像のみをご覧いただけます。
+                </p>
+            </div>
+
+            <div class="media-section">
+                <h2 class="section-title">
+                    <span class="section-icon">🎭</span>
+                    Final Music Video
+                </h2>
+                <div class="media-content">
+                    <video controls>
+                        <source src="final/final-music-video.mp4" type="video/mp4">
+                        お使いのブラウザはvideo要素をサポートしていません。
+                    </video>
+                </div>
+                <p class="description">
+                    完成した音楽ビデオ。映像と音楽が統合された最終バージョンです。
+                </p>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <h2 class="download-title">📥 ダウンロード</h2>
+            <p>生成されたアセットをダウンロードしてお楽しみください</p>
+            <div class="download-grid">
+                <a href="images/generated-image.png" download class="download-btn">
+                    🖼️ 画像をダウンロード
+                </a>
+                <a href="music/generated-music.wav" download class="download-btn">
+                    🎵 音楽をダウンロード
+                </a>
+                <a href="videos/segment-1.mp4" download class="download-btn">
+                    🎬 ビデオをダウンロード
+                </a>
+                <a href="final/final-music-video.mp4" download class="download-btn">
+                    🎭 最終版をダウンロード
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // プレイヤーの改良とアクセシビリティ向上
+        document.addEventListener('DOMContentLoaded', function() {
+            // すべてのメディア要素にローディング改善を適用
+            const mediaElements = document.querySelectorAll('audio, video');
+            
+            mediaElements.forEach(element => {
+                element.addEventListener('loadstart', function() {
+                    console.log('Loading started for:', element.src);
+                });
+                
+                element.addEventListener('canplaythrough', function() {
+                    console.log('Can play through:', element.src);
+                });
+                
+                // エラーハンドリング
+                element.addEventListener('error', function() {
+                    console.error('Media loading error:', element.src);
+                    const parent = element.closest('.media-section');
+                    if (parent) {
+                        parent.style.opacity = '0.6';
+                        const description = parent.querySelector('.description');
+                        if (description) {
+                            description.innerHTML = '<em>⚠️ このメディアファイルは現在利用できません。</em>';
+                        }
+                    }
+                });
+            });
+
+            // スムーススクロール効果
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+
+            // アニメーション効果（スクロール時）
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver(function(entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+            // メディアセクションにアニメーション適用
+            document.querySelectorAll('.media-section').forEach(section => {
+                section.style.opacity = '0';
+                section.style.transform = 'translateY(20px)';
+                section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>
