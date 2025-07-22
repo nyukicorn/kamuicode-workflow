@@ -82,10 +82,32 @@ runs:
         echo "MCP config absolute path: $MCP_CONFIG_ABS_PATH"
         echo "Allowed tools: mcp__t2m-google-lyria__lyria_generate,Bash"
         
-        # Create MCP config file from GitHub Secret
+        # Install jq for JSON validation
+        sudo apt-get update > /dev/null 2>&1
+        sudo apt-get install -y jq > /dev/null 2>&1
+        
+        # Create MCP config file from GitHub Secret with validation
         mkdir -p .claude
         echo '${{ inputs.mcp-config }}' > "$MCP_CONFIG_ABS_PATH"
         echo "✅ MCP config file created from GitHub Secret"
+        
+        # Validate JSON format
+        if ! jq empty "$MCP_CONFIG_ABS_PATH" 2>/dev/null; then
+          echo "❌ Invalid JSON in MCP config. Showing content:"
+          cat "$MCP_CONFIG_ABS_PATH"
+          echo "Creating fallback config..."
+          cat > "$MCP_CONFIG_ABS_PATH" << 'EOF'
+{
+  "mcpServers": {
+    "t2m-google-lyria": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {}
+    }
+  }
+}
+EOF
+        fi
         
         # MCP設定ファイルの確認
         if [ -f "$MCP_CONFIG_ABS_PATH" ]; then
