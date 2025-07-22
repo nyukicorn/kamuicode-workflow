@@ -45,6 +45,7 @@ jobs:
         id: music
         uses: ./.github/actions/kamui-modules/music-generation
         with:
+          music-concept: ${{ inputs.music_concept }}
           music-prompt: ${{ steps.planning.outputs.music-prompt }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
