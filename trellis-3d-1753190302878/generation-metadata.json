@@ -1,0 +1,21 @@
+{
+  "generation_info": {
+    "timestamp": "2025-07-22T00:00:00Z",
+    "input_prompt": "beautiful cherry blossom tree in spring",
+    "output_format": "glb",
+    "diffusion_steps": 12,
+    "output_filename": "generated_model.glb",
+    "output_path": "trellis-3d-1753190302878/generated_model.glb",
+    "model_type": "text-to-3d",
+    "status": "simulation_placeholder",
+    "note": "This is a placeholder file created for testing purposes. In a real implementation, this would contain a 3D model generated using TRELLIS MCP integration."
+  },
+  "expected_model_properties": {
+    "subject": "cherry blossom tree",
+    "season": "spring",
+    "expected_colors": ["pink", "white", "brown", "green"],
+    "expected_components": ["trunk", "branches", "blossoms", "leaves"],
+    "file_format": "GLB (Binary glTF)",
+    "expected_size_range": "2-10MB"
+  }
+}
