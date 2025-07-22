@@ -55,16 +55,15 @@ Requirements:
 10. Include performance optimizations
 
 Technical Requirements:
-- Use Three.js r149 (stable ES5 compatible): https://unpkg.com/three@0.149.0/build/three.min.js
-- OrbitControls: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js
-- GLTFLoader: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js
-- PLYLoader: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/PLYLoader.js
-- CRITICAL: Load scripts with proper error handling and fallback CDNs
-- CRITICAL: Wait for THREE to be fully loaded before loading controls/loaders
+- Use Three.js r128 (proven stable): https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js  
+- OrbitControls: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js
+- GLTFLoader: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js
+- CRITICAL: These URLs are tested and working - DO NOT CHANGE
+- CRITICAL: Load scripts IN ORDER with error handling
 - Use THREE.OrbitControls constructor (not ES module import)
-- Use renderer.outputEncoding (r149 compatible, not outputColorSpace)
-- Add script load error detection and fallback mechanism
-- Include loading timeout and retry logic
+- Use renderer.outputEncoding (r128 compatible)
+- Add proper error handling for failed script loads
+- Include loading progress indication
 - Add proper model loading with progress indication
 - Implement appropriate lighting for the model type
 - Handle GLB/PLY/OBJ formats appropriately
@@ -91,40 +90,28 @@ CRITICAL FEATURES:
 7. Model information panel showing file size, vertices, etc.
 8. Proper lighting for 3D model visibility
 
-SCRIPT LOADING TEMPLATE (COPY EXACTLY):
-<script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
+WORKING SCRIPT TEMPLATE (COPY EXACTLY - TESTED CDNS):
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>  
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
 <script>
-// Wait for THREE to load
-function waitForTHREE(callback) {
-    if (typeof THREE !== 'undefined') {
-        callback();
+// Simple initialization after all scripts loaded
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof THREE !== 'undefined' && THREE.OrbitControls && THREE.GLTFLoader) {
+        console.log('All Three.js components loaded successfully');
+        initViewer(); // Start the 3D viewer
     } else {
-        setTimeout(() => waitForTHREE(callback), 100);
+        console.error('Three.js components failed to load');
+        document.body.innerHTML = '<h1>Loading Error</h1><p>Please refresh the page to try again.</p>';
     }
-}
-
-// Load additional scripts after THREE is ready
-waitForTHREE(() => {
-    const scripts = [
-        'https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js',
-        'https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js'
-    ];
-    
-    let loaded = 0;
-    scripts.forEach(src => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = () => {
-            loaded++;
-            if (loaded === scripts.length) {
-                initViewer(); // Start the 3D viewer
-            }
-        };
-        script.onerror = () => console.error('Failed to load:', src);
-        document.head.appendChild(script);
-    });
 });
-</script>"
+</script>
+
+CRITICAL SUCCESS FACTORS:
+- Use the exact CDN URLs above (cdnjs.cloudflare.com r128)
+- Load scripts with separate script tags, not dynamic loading  
+- Check for THREE.OrbitControls and THREE.GLTFLoader availability
+- Use DOMContentLoaded event for initialization"
 
 echo "🚀 Starting Three.js 3D Viewer Integration Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"
