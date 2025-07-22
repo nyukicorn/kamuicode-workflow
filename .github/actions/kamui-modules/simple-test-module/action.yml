@@ -1,0 +1,45 @@
+name: 'Simple Test Module'
+description: 'Simple test module for KamuiCode Workflow push functionality testing'
+inputs:
+  test-message:
+    description: 'Test message to output'
+    required: true
+  test-count:
+    description: 'Number of times to repeat the message'
+    required: false
+    default: '3'
+outputs:
+  result:
+    description: 'Test execution result'
+  message-count:
+    description: 'Actual number of messages output'
+runs:
+  using: 'composite'
+  steps:
+    - name: Execute simple test
+      shell: bash
+      run: |
+        echo "Simple Test Module - Start"
+        echo "Test Message: ${{ inputs.test-message }}"
+        echo "Test Count: ${{ inputs.test-count }}"
+        echo "Current Time: $(date)"
+        echo ""
+        
+        # Output the test message specified number of times
+        for i in $(seq 1 ${{ inputs.test-count }}); do
+          echo "[$i] ${{ inputs.test-message }}"
+        done
+        
+        # Set outputs
+        echo "result=success" >> $GITHUB_OUTPUT
+        echo "message-count=${{ inputs.test-count }}" >> $GITHUB_OUTPUT
+        
+        # Output result in JSON format
+        echo "Execution Result:"
+        echo "{"
+        echo "  \"result\": \"success\","
+        echo "  \"message-count\": ${{ inputs.test-count }},"
+        echo "  \"timestamp\": \"$(date -Iseconds)\""
+        echo "}"
+        
+        echo "Simple Test Module - Complete"
