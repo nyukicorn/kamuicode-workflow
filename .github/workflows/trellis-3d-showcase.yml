@@ -50,6 +50,9 @@ jobs:
       branch-name: ${{ steps.branch.outputs.branch-name }}
       folder-name: ${{ steps.branch.outputs.folder-name }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Create unique branch and folder names
         id: branch
         run: |
@@ -61,11 +64,12 @@ jobs:
           echo "Generated branch: $BRANCH_NAME"
           echo "Generated folder: $FOLDER_NAME"
 
-      - name: Setup new branch
-        uses: ./.github/actions/kamui-modules/setup-branch
-        with:
-          branch-name: ${{ steps.branch.outputs.branch-name }}
-          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      - name: Create and push new branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b ${{ steps.branch.outputs.branch-name }}
+          git push origin ${{ steps.branch.outputs.branch-name }}
 
   generate-3d-model:
     needs: setup-branch
