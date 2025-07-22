@@ -48,16 +48,16 @@ PROMPT="$PROMPT
 Particle Shape: $PARTICLE_SHAPE shaped particles
 Particle Color: $PARTICLE_COLOR color scheme
 
-LIGHTWEIGHT ENHANCED PARTICLE SYSTEM - COPY THESE TEMPLATES:
+HIGH-DENSITY ENHANCED PARTICLE SYSTEM - COPY THESE TEMPLATES:
 
 1. Include these JavaScript classes directly in HTML:
 
-// TEMPLATE 1: Enhanced Particle System (Lightweight Version)
+// TEMPLATE 1: Enhanced Particle System (High-Density + 3D Visual Version)
 class EnhancedParticleSystem {
     constructor(scene, config = {}) {
         this.scene = scene;
         this.artStyle = config.artStyle || '$ART_STYLE';
-        this.particleCount = { main: 4000, ambient: 1200, floating: 400 };
+        this.particleCount = { main: 10000, ambient: 3000, floating: 1000 };
         this.time = 0;
         this.animationSpeed = 1.0;
         this.rotationSpeed = 1.0;
@@ -75,9 +75,9 @@ class EnhancedParticleSystem {
 
     createFlower(type) {
         const configs = {
-            rose: { layers: 5, particlesPerLayer: 800, colors: [0xff69b4, 0xff1493, 0xdc143c] },
-            sakura: { layers: 4, particlesPerLayer: 1000, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4] },
-            lily: { layers: 5, particlesPerLayer: 800, colors: [0xffffff, 0xfffacd, 0xf0e68c] }
+            rose: { layers: 8, particlesPerLayer: 1250, colors: [0xff69b4, 0xff1493, 0xdc143c, 0xff91c7, 0xff0080] },
+            sakura: { layers: 6, particlesPerLayer: 1667, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4, 0xff91a4, 0xffd1dc] },
+            lily: { layers: 7, particlesPerLayer: 1429, colors: [0xffffff, 0xfffacd, 0xf0e68c, 0xffefd5, 0xfff8dc] }
         };
         
         const config = configs[type] || configs.rose;
@@ -100,16 +100,30 @@ class EnhancedParticleSystem {
         for (let layer = 0; layer < config.layers; layer++) {
             for (let i = 0; i < config.particlesPerLayer; i++) {
                 const angle = (i / config.particlesPerLayer) * Math.PI * 2;
-                const radius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                const spiralAngle = angle + layer * 0.3; // Spiral effect
                 
-                positions[particleIndex * 3] = center.x + radius * Math.cos(angle);
-                positions[particleIndex * 3 + 1] = center.y + layer * 0.1;
-                positions[particleIndex * 3 + 2] = center.z + radius * Math.sin(angle);
+                // Enhanced 3D flower shape
+                const petalRadius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
+                const heightCurve = Math.sin(layer / config.layers * Math.PI) * 2;
+                const depthVariation = Math.cos(angle * 3) * 0.5 * (layer / config.layers);
                 
-                const color = new THREE.Color(config.colors[Math.floor(Math.random() * config.colors.length)]);
-                colors[particleIndex * 3] = color.r;
-                colors[particleIndex * 3 + 1] = color.g;
-                colors[particleIndex * 3 + 2] = color.b;
+                positions[particleIndex * 3] = center.x + petalRadius * Math.cos(spiralAngle);
+                positions[particleIndex * 3 + 1] = center.y + layer * 0.2 + heightCurve;
+                positions[particleIndex * 3 + 2] = center.z + petalRadius * Math.sin(spiralAngle) + depthVariation;
+                
+                // Enhanced color gradients for depth
+                const layerProgress = layer / (config.layers - 1);
+                const colorIndex = Math.floor(layerProgress * (config.colors.length - 1));
+                const nextColorIndex = Math.min(colorIndex + 1, config.colors.length - 1);
+                const blend = (layerProgress * (config.colors.length - 1)) % 1;
+                
+                const color1 = new THREE.Color(config.colors[colorIndex]);
+                const color2 = new THREE.Color(config.colors[nextColorIndex]);
+                const finalColor = color1.clone().lerp(color2, blend);
+                
+                colors[particleIndex * 3] = finalColor.r;
+                colors[particleIndex * 3 + 1] = finalColor.g;
+                colors[particleIndex * 3 + 2] = finalColor.b;
                 
                 particleIndex++;
             }
@@ -127,7 +141,7 @@ class EnhancedParticleSystem {
     }
 
     createAmbientParticles() {
-        const particleCount = 1200;
+        const particleCount = 3000;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
@@ -158,7 +172,7 @@ class EnhancedParticleSystem {
     }
 
     createFloatingParticles() {
-        const particleCount = 400;
+        const particleCount = 1000;
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(particleCount * 3);
         const colors = new Float32Array(particleCount * 3);
