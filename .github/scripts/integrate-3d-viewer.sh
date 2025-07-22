@@ -28,48 +28,27 @@ cat > "$FOLDER_NAME/viewer-info.json" << EOF
 }
 EOF
 
-# Create Claude Code script for 3D viewer integration
-cat > claude_3d_integration.js << 'EOF'
-import { ClaudeCode } from '@anthropic-ai/claude-code';
-
-const client = new ClaudeCode({
-  apiKey: process.env.CLAUDE_CODE_OAUTH_TOKEN
-});
-
-async function integrate3DViewer() {
-  const modelConcept = process.env.MODEL_CONCEPT;
-  const modelFileName = process.env.MODEL_FILE_NAME;
-  const modelFormat = process.env.MODEL_FORMAT;
-  const viewerStyle = process.env.VIEWER_STYLE;
-  const backgroundType = process.env.BACKGROUND_TYPE;
-  const lightingPreset = process.env.LIGHTING_PRESET;
-  const cameraControls = process.env.CAMERA_CONTROLS;
-  const folderName = process.env.FOLDER_NAME;
-
-  console.log(`🚀 Creating Three.js 3D viewer for: ${modelConcept}`);
-  
-  try {
-    const prompt = `
-Create a professional Three.js 3D model viewer for the following specifications:
+# Build the Claude Code prompt for 3D viewer
+PROMPT="Create a professional Three.js 3D model viewer for the following specifications:
 
 Model Details:
-- Concept: ${modelConcept}
-- File: ${modelFileName}.${modelFormat}
-- Format: ${modelFormat.toUpperCase()}
+- Concept: $MODEL_CONCEPT  
+- File: $MODEL_FILE_NAME.$MODEL_FORMAT
+- Format: $MODEL_FORMAT
 
 Viewer Configuration:
-- Style: ${viewerStyle}
-- Background: ${backgroundType}
-- Lighting: ${lightingPreset}
-- Camera: ${cameraControls}
+- Style: $VIEWER_STYLE
+- Background: $BACKGROUND_TYPE
+- Lighting: $LIGHTING_PRESET  
+- Camera: $CAMERA_CONTROLS
 
 Requirements:
-1. Create an index.html file in the ${folderName}/ folder
-2. Include complete Three.js viewer with proper ${modelFormat.toUpperCase()} loader
-3. Implement ${cameraControls} camera controls
-4. Set up ${lightingPreset} lighting preset
-5. Apply ${backgroundType} background
-6. Use ${viewerStyle} styling approach
+1. Create an index.html file in the $FOLDER_NAME/ folder
+2. Include complete Three.js viewer with proper $MODEL_FORMAT loader
+3. Implement $CAMERA_CONTROLS camera controls
+4. Set up $LIGHTING_PRESET lighting preset
+5. Apply $BACKGROUND_TYPE background
+6. Use $VIEWER_STYLE styling approach
 7. Include loading screen and error handling
 8. Make it responsive and mobile-friendly
 9. Add model information display
@@ -80,63 +59,39 @@ Technical Requirements:
 - Include OrbitControls for camera movement
 - Add proper model loading with progress indication
 - Implement appropriate lighting for the model type
-- Handle different model formats appropriately
+- Handle GLB/PLY/OBJ formats appropriately
 - Include model statistics display
 - Add fullscreen capability
 - Ensure cross-browser compatibility
 
 Please create a complete, professional 3D viewer that works directly in GitHub Pages.
-The model file ${modelFileName}.${modelFormat} will be in the same directory as the index.html.
+The model file $MODEL_FILE_NAME.$MODEL_FORMAT will be in the same directory as the index.html.
 
 Make sure the viewer is:
 - User-friendly with intuitive controls
 - Visually appealing with proper styling
 - Well-documented with inline comments
 - Error-resistant with proper fallbacks
-    `;
 
-    const response = await client.beta.tools.use({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 8192,
-      messages: [{ role: 'user', content: prompt }],
-      tools: [
-        { type: 'bash' },
-        { type: 'computer_use', display_width: 1024, display_height: 768 }
-      ]
-    });
+CRITICAL FEATURES:
+1. GLB/PLY/OBJ loader support
+2. Mouse orbit controls (drag to rotate, wheel to zoom)
+3. Model centering and auto-scaling
+4. Loading progress indicator
+5. Error handling for missing/corrupt files
+6. Mobile-responsive design
+7. Model information panel showing file size, vertices, etc.
+8. Proper lighting for 3D model visibility"
 
-    console.log('✅ 3D viewer integration completed');
-    console.log('Response:', response.content);
+echo "🚀 Starting Three.js 3D Viewer Integration Agent..."
+echo "📝 Prompt length: ${#PROMPT} characters"
 
-    // Set outputs
-    console.log(`::set-output name=completed::true`);
-
-    // Check if viewer was created
-    const fs = require('fs');
-    const path = require('path');
-    const viewerPath = path.join(folderName, 'index.html');
-    
-    if (fs.existsSync(viewerPath)) {
-      const stats = fs.statSync(viewerPath);
-      console.log(`📁 3D viewer created: ${viewerPath} (${stats.size} bytes)`);
-      console.log(`🌐 Viewer will be available at GitHub Pages`);
-    } else {
-      console.log(`⚠️  Viewer file not found: ${viewerPath}`);
-    }
-
-  } catch (error) {
-    console.error('❌ Error creating 3D viewer:', error);
-    console.log(`::set-output name=completed::false`);
-    process.exit(1);
-  }
-}
-
-integrate3DViewer();
-EOF
-
-# Run the Claude Code 3D viewer integration
-echo "🎬 Running Claude Code 3D viewer integration..."
-node claude_3d_integration.js
+# Claude Code CLI (following existing pattern)
+npx @anthropic-ai/claude-code \
+  --allowedTools "Write,Read,LS" \
+  --max-turns 8 \
+  --permission-mode "acceptEdits" \
+  -p "$PROMPT"
 
 echo "🎉 Three.js 3D Model Integration completed!"
 

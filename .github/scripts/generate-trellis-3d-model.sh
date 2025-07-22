@@ -26,34 +26,14 @@ cat > "$FOLDER_NAME/generation-info.json" << EOF
 }
 EOF
 
-# Create Claude Code script for 3D generation
-cat > claude_3d_generation.js << 'EOF'
-import { ClaudeCode } from '@anthropic-ai/claude-code';
+# Build the Claude Code prompt
+PROMPT="Generate a 3D model using the TRELLIS MCP integration.
 
-const client = new ClaudeCode({
-  apiKey: process.env.CLAUDE_CODE_OAUTH_TOKEN
-});
-
-async function generate3DModel() {
-  const inputType = process.env.INPUT_TYPE;
-  const inputData = process.env.INPUT_DATA;
-  const outputFormat = process.env.OUTPUT_FORMAT;
-  const steps = parseInt(process.env.STEPS);
-  const modelName = process.env.MODEL_NAME;
-  const folderName = process.env.FOLDER_NAME;
-
-  console.log(`🚀 Generating 3D model from ${inputType}: ${inputData}`);
-  
-  try {
-    // Generate 3D model using TRELLIS MCP tools
-    const prompt = `
-Generate a 3D model using the TRELLIS integration.
-
-Input: ${inputType === 'image' ? 'Image URL: ' + inputData : 'Text prompt: ' + inputData}
-Output format: ${outputFormat}
-Diffusion steps: ${steps}
-Output filename: ${modelName}.${outputFormat}
-Output folder: ${folderName}/
+Input: $INPUT_TYPE - $INPUT_DATA
+Output format: $OUTPUT_FORMAT
+Diffusion steps: $STEPS
+Output filename: $MODEL_NAME.$OUTPUT_FORMAT
+Output folder: $FOLDER_NAME/
 
 Please:
 1. Use the appropriate MCP tool to generate the 3D model
@@ -61,53 +41,23 @@ Please:
 3. Provide generation details and any relevant metadata
 4. If TRELLIS is not available, create a simulation/placeholder file for testing
 
-Make sure the generated file is properly saved to ${folderName}/${modelName}.${outputFormat}
-    `;
+Make sure the generated file is properly saved to $FOLDER_NAME/$MODEL_NAME.$OUTPUT_FORMAT
 
-    const response = await client.beta.tools.use({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-      tools: [
-        { type: 'bash' },
-        { type: 'computer_use', display_width: 1024, display_height: 768 }
-      ]
-    });
+CRITICAL REQUIREMENTS:
+- Use polycam MCP tools for TRELLIS 3D generation
+- Handle both image-to-3D and text-to-3D workflows
+- Create proper $OUTPUT_FORMAT file format
+- Save to exact path: $FOLDER_NAME/$MODEL_NAME.$OUTPUT_FORMAT"
 
-    console.log('✅ 3D model generation completed');
-    console.log('Response:', response.content);
+echo "🚀 Starting TRELLIS 3D Model Generation Agent..."
+echo "📝 Prompt length: ${#PROMPT} characters"
 
-    // Set outputs
-    console.log(`::set-output name=completed::true`);
-    console.log(`::set-output name=model-file-path::${folderName}/${modelName}.${outputFormat}`);
-    
-    // Check if file was created and get size
-    const fs = require('fs');
-    const path = require('path');
-    const modelPath = path.join(folderName, `${modelName}.${outputFormat}`);
-    
-    if (fs.existsSync(modelPath)) {
-      const stats = fs.statSync(modelPath);
-      console.log(`::set-output name=model-size::${stats.size}`);
-      console.log(`📁 Model file created: ${modelPath} (${stats.size} bytes)`);
-    } else {
-      console.log(`⚠️  Model file not found: ${modelPath}`);
-      console.log(`::set-output name=model-size::0`);
-    }
-
-  } catch (error) {
-    console.error('❌ Error generating 3D model:', error);
-    console.log(`::set-output name=completed::false`);
-    process.exit(1);
-  }
-}
-
-generate3DModel();
-EOF
-
-# Run the Claude Code 3D generation
-echo "🎬 Running Claude Code 3D generation..."
-node claude_3d_generation.js
+# Claude Code CLI (following existing pattern)
+npx @anthropic-ai/claude-code \
+  --allowedTools "Bash,Read,Write,LS" \
+  --max-turns 10 \
+  --permission-mode "acceptEdits" \
+  -p "$PROMPT"
 
 echo "🎉 TRELLIS 3D Model Generation completed!"
 
