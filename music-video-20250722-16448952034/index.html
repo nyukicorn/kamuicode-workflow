@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>バラのオルゴール音楽ビデオ | Music Video Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-style: italic;
+        }
+        
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 40px;
+        }
+        
+        .media-section {
+            background: #fff;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .media-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .media-section h3 {
+            color: #764ba2;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 500;
+            border-bottom: 2px solid #ff9a9e;
+            padding-bottom: 10px;
+        }
+        
+        .media-section img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .media-section audio,
+        .media-section video {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .media-section video {
+            height: 200px;
+        }
+        
+        .media-description {
+            margin-top: 15px;
+            color: #666;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+        
+        .download-section {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            padding: 40px;
+            text-align: center;
+            color: #fff;
+        }
+        
+        .download-section h3 {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+        
+        .download-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .download-link {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .download-link:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+        
+        .metadata {
+            background: #f8f9fa;
+            padding: 30px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .metadata h3 {
+            color: #764ba2;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+        }
+        
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .metadata-item {
+            background: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #ff9a9e;
+        }
+        
+        .metadata-item strong {
+            color: #764ba2;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header p {
+                font-size: 1rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+                padding: 20px;
+                gap: 20px;
+            }
+            
+            .download-links {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .download-link {
+                width: 200px;
+            }
+        }
+        
+        .final-video-section {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+            color: #fff;
+        }
+        
+        .final-video-section h3 {
+            color: #fff;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }
+        
+        .final-video-section .media-description {
+            color: rgba(255,255,255,0.9);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>バラのオルゴール音楽ビデオ</h1>
+            <p>美しいオルゴールの調べと共に咲く薔薇の物語</p>
+            <small>Generated: 2025-01-22 | Music Video ID: 16448952034</small>
+        </div>
+        
+        <div class="media-grid">
+            <!-- Generated Image Section -->
+            <div class="media-section">
+                <h3>🌹 Generated Image</h3>
+                <img src="images/generated-image.png" alt="Generated Rose Image" />
+                <div class="media-description">
+                    美しいバラの花をイメージした静止画像。この画像はオルゴールの美しいメロディーにインスパイアされて生成されました。
+                </div>
+            </div>
+            
+            <!-- Generated Music Section -->
+            <div class="media-section">
+                <h3>🎵 Generated Music</h3>
+                <audio controls>
+                    <source src="music/generated-music.wav" type="audio/wav">
+                    お使いのブラウザはオーディオ要素をサポートしていません。
+                </audio>
+                <div class="media-description">
+                    バラの花をイメージした美しいオルゴールのメロディー。70 BPMのCメジャーで、優雅で愛に満ちたノスタルジックな雰囲気を演出します。
+                </div>
+            </div>
+            
+            <!-- Individual Video Section -->
+            <div class="media-section">
+                <h3>🎬 Individual Video</h3>
+                <video controls muted>
+                    <source src="videos/segment-1.mp4" type="video/mp4">
+                    お使いのブラウザはビデオ要素をサポートしていません。
+                </video>
+                <div class="media-description">
+                    音楽なしのビデオセグメント。バラのイメージに基づいて生成された映像のみをご覧いただけます。
+                </div>
+            </div>
+            
+            <!-- Final Music Video Section -->
+            <div class="media-section final-video-section">
+                <h3>🌹🎵 Final Music Video</h3>
+                <video controls>
+                    <source src="final/final-music-video.mp4" type="video/mp4">
+                    お使いのブラウザはビデオ要素をサポートしていません。
+                </video>
+                <div class="media-description">
+                    完成した音楽ビデオ。美しいオルゴールのメロディーとバラの映像が調和した最終作品です。
+                </div>
+            </div>
+        </div>
+        
+        <div class="download-section">
+            <h3>📥 ダウンロード</h3>
+            <div class="download-links">
+                <a href="images/generated-image.png" download class="download-link">画像をダウンロード</a>
+                <a href="music/generated-music.wav" download class="download-link">音楽をダウンロード</a>
+                <a href="videos/segment-1.mp4" download class="download-link">ビデオをダウンロード</a>
+                <a href="final/final-music-video.mp4" download class="download-link">完成版をダウンロード</a>
+            </div>
+        </div>
+        
+        <div class="metadata">
+            <h3>📋 作品情報</h3>
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <strong>音楽コンセプト:</strong>
+                    バラの花をイメージした美しいオルゴールの曲
+                </div>
+                <div class="metadata-item">
+                    <strong>生成日時:</strong>
+                    2025年1月22日
+                </div>
+                <div class="metadata-item">
+                    <strong>プロジェクトID:</strong>
+                    music-video-20250722-16448952034
+                </div>
+                <div class="metadata-item">
+                    <strong>音楽特性:</strong>
+                    70 BPM、Cメジャー、30-40秒
+                </div>
+                <div class="metadata-item">
+                    <strong>ムード:</strong>
+                    優雅、愛、ノスタルジック、ロマンチック
+                </div>
+                <div class="metadata-item">
+                    <strong>楽器:</strong>
+                    オルゴール、金属音色、繊細な音色
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // プレイヤーの自動調整
+        document.addEventListener('DOMContentLoaded', function() {
+            const videos = document.querySelectorAll('video');
+            const audios = document.querySelectorAll('audio');
+            
+            // ビデオの品質調整
+            videos.forEach(video => {
+                video.addEventListener('loadedmetadata', function() {
+                    console.log(`ビデオ読み込み完了: ${video.src}`);
+                });
+                
+                video.addEventListener('error', function() {
+                    console.warn(`ビデオ読み込みエラー: ${video.src}`);
+                    video.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = 'ビデオファイルが見つかりません';
+                    errorMsg.style.color = '#999';
+                    errorMsg.style.textAlign = 'center';
+                    errorMsg.style.padding = '20px';
+                    video.parentNode.appendChild(errorMsg);
+                });
+            });
+            
+            // オーディオの品質調整
+            audios.forEach(audio => {
+                audio.addEventListener('loadedmetadata', function() {
+                    console.log(`オーディオ読み込み完了: ${audio.src}`);
+                });
+                
+                audio.addEventListener('error', function() {
+                    console.warn(`オーディオ読み込みエラー: ${audio.src}`);
+                });
+            });
+            
+            // レスポンシブ画像調整
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.addEventListener('error', function() {
+                    console.warn(`画像読み込みエラー: ${img.src}`);
+                    img.style.display = 'none';
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = '画像ファイルが見つかりません';
+                    errorMsg.style.color = '#999';
+                    errorMsg.style.textAlign = 'center';
+                    errorMsg.style.padding = '20px';
+                    img.parentNode.appendChild(errorMsg);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
