@@ -55,11 +55,13 @@ Requirements:
 10. Include performance optimizations
 
 Technical Requirements:
-- Use Three.js via CDN: https://unpkg.com/three@0.155.0/build/three.min.js
-- OrbitControls: https://unpkg.com/three@0.155.0/examples/js/controls/OrbitControls.js
-- GLTFLoader: https://unpkg.com/three@0.155.0/examples/js/loaders/GLTFLoader.js
-- PLYLoader: https://unpkg.com/three@0.155.0/examples/js/loaders/PLYLoader.js
+- Use Three.js r149 (stable ES5 compatible): https://unpkg.com/three@0.149.0/build/three.min.js
+- OrbitControls: https://unpkg.com/three@0.149.0/examples/js/controls/OrbitControls.js
+- GLTFLoader: https://unpkg.com/three@0.149.0/examples/js/loaders/GLTFLoader.js
+- PLYLoader: https://unpkg.com/three@0.149.0/examples/js/loaders/PLYLoader.js
 - CRITICAL: Load scripts IN ORDER - Three.js first, then controls/loaders
+- Use THREE.OrbitControls constructor (not ES module import)
+- Use renderer.outputEncoding (r149 compatible, not outputColorSpace)
 - Ensure THREE is globally available before using
 - Add proper model loading with progress indication
 - Implement appropriate lighting for the model type
