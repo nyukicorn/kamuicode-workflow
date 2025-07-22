@@ -56,13 +56,15 @@ Requirements:
 
 Technical Requirements:
 - Use Three.js r149 (stable ES5 compatible): https://unpkg.com/three@0.149.0/build/three.min.js
-- OrbitControls: https://unpkg.com/three@0.149.0/examples/js/controls/OrbitControls.js
-- GLTFLoader: https://unpkg.com/three@0.149.0/examples/js/loaders/GLTFLoader.js
-- PLYLoader: https://unpkg.com/three@0.149.0/examples/js/loaders/PLYLoader.js
-- CRITICAL: Load scripts IN ORDER - Three.js first, then controls/loaders
+- OrbitControls: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js
+- GLTFLoader: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js
+- PLYLoader: https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/PLYLoader.js
+- CRITICAL: Load scripts with proper error handling and fallback CDNs
+- CRITICAL: Wait for THREE to be fully loaded before loading controls/loaders
 - Use THREE.OrbitControls constructor (not ES module import)
 - Use renderer.outputEncoding (r149 compatible, not outputColorSpace)
-- Ensure THREE is globally available before using
+- Add script load error detection and fallback mechanism
+- Include loading timeout and retry logic
 - Add proper model loading with progress indication
 - Implement appropriate lighting for the model type
 - Handle GLB/PLY/OBJ formats appropriately
@@ -87,7 +89,42 @@ CRITICAL FEATURES:
 5. Error handling for missing/corrupt files
 6. Mobile-responsive design
 7. Model information panel showing file size, vertices, etc.
-8. Proper lighting for 3D model visibility"
+8. Proper lighting for 3D model visibility
+
+SCRIPT LOADING TEMPLATE (COPY EXACTLY):
+<script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
+<script>
+// Wait for THREE to load
+function waitForTHREE(callback) {
+    if (typeof THREE !== 'undefined') {
+        callback();
+    } else {
+        setTimeout(() => waitForTHREE(callback), 100);
+    }
+}
+
+// Load additional scripts after THREE is ready
+waitForTHREE(() => {
+    const scripts = [
+        'https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/controls/OrbitControls.js',
+        'https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js'
+    ];
+    
+    let loaded = 0;
+    scripts.forEach(src => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            loaded++;
+            if (loaded === scripts.length) {
+                initViewer(); // Start the 3D viewer
+            }
+        };
+        script.onerror = () => console.error('Failed to load:', src);
+        document.head.appendChild(script);
+    });
+});
+</script>"
 
 echo "🚀 Starting Three.js 3D Viewer Integration Agent..."
 echo "📝 Prompt length: ${#PROMPT} characters"
