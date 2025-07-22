@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cherry Blossom 3D Model Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+
+        canvas:active {
+            cursor: grabbing;
+        }
+
+        .loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .loader h2 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 300;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            margin: 15px auto;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #667eea;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            font-size: 14px;
+            line-height: 1.5;
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .info-panel.show {
+            transform: translateX(0);
+        }
+
+        .info-panel h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .info-item {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .info-label {
+            color: #ccc;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            background: rgba(102, 126, 234, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
+
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title h1 {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 5px;
+        }
+
+        .title p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .info-panel {
+                position: fixed;
+                top: auto;
+                bottom: 80px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
+                transform: translateY(100%);
+            }
+
+            .info-panel.show {
+                transform: translateY(0);
+            }
+
+            .title {
+                position: relative;
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                margin-bottom: 10px;
+            }
+
+            .controls {
+                bottom: 10px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .control-btn {
+                padding: 10px 16px;
+                font-size: 12px;
+            }
+        }
+
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div class="title">
+            <h1>🌸 Cherry Blossom Tree</h1>
+            <p>Interactive 3D Model Viewer</p>
+        </div>
+
+        <div class="stats" id="stats">
+            FPS: -- | Triangles: -- | Vertices: --
+        </div>
+
+        <div class="loader" id="loader">
+            <h2>Loading Cherry Blossom Model</h2>
+            <div class="spinner"></div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <p id="loadingText">Preparing 3D viewer...</p>
+        </div>
+
+        <div class="info-panel" id="infoPanel">
+            <h3>📋 Model Information</h3>
+            <div class="info-item">
+                <span class="info-label">File:</span>
+                <span id="fileName">generated_model.glb</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Format:</span>
+                <span id="fileFormat">GLB</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">File Size:</span>
+                <span id="fileSize">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Vertices:</span>
+                <span id="vertexCount">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Triangles:</span>
+                <span id="triangleCount">--</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Materials:</span>
+                <span id="materialCount">--</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="infoBtn">ℹ️ Info</button>
+            <button class="control-btn" id="resetBtn">🔄 Reset View</button>
+            <button class="control-btn" id="fullscreenBtn">⛶ Fullscreen</button>
+            <button class="control-btn" id="wireframeBtn">🔲 Wireframe</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r155/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r155/controls/OrbitControls.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r155/loaders/GLTFLoader.min.js"></script>
+
+    <script>
+        class CherryBlossomViewer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.model = null;
+                this.mixer = null;
+                this.clock = new THREE.Clock();
+                this.isWireframe = false;
+                this.originalMaterials = [];
+                
+                this.stats = {
+                    fps: 0,
+                    frameCount: 0,
+                    lastTime: performance.now()
+                };
+
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupControls();
+                this.setupLights();
+                this.loadModel();
+                this.setupEventListeners();
+                this.animate();
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                
+                const gradientTexture = this.createGradientTexture();
+                this.scene.background = gradientTexture;
+                
+                this.scene.fog = new THREE.Fog(0x667eea, 10, 100);
+            }
+
+            createGradientTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const context = canvas.getContext('2d');
+
+                const gradient = context.createLinearGradient(0, 0, 0, 512);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(1, '#764ba2');
+
+                context.fillStyle = gradient;
+                context.fillRect(0, 0, 512, 512);
+
+                const texture = new THREE.CanvasTexture(canvas);
+                return texture;
+            }
+
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    45,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(5, 3, 5);
+            }
+
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true,
+                    alpha: true,
+                    powerPreference: 'high-performance'
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+                document.getElementById('container').appendChild(this.renderer.domElement);
+            }
+
+            setupControls() {
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.enableZoom = true;
+                this.controls.enablePan = true;
+                this.controls.autoRotate = false;
+                this.controls.autoRotateSpeed = 0.5;
+                this.controls.maxDistance = 20;
+                this.controls.minDistance = 1;
+                this.controls.maxPolarAngle = Math.PI * 0.9;
+            }
+
+            setupLights() {
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.camera.near = 0.1;
+                directionalLight.shadow.camera.far = 50;
+                directionalLight.shadow.camera.left = -10;
+                directionalLight.shadow.camera.right = 10;
+                directionalLight.shadow.camera.top = 10;
+                directionalLight.shadow.camera.bottom = -10;
+                this.scene.add(directionalLight);
+
+                const fillLight = new THREE.DirectionalLight(0x667eea, 0.3);
+                fillLight.position.set(-5, 3, -5);
+                this.scene.add(fillLight);
+
+                const rimLight = new THREE.DirectionalLight(0xffffff, 0.2);
+                rimLight.position.set(0, -10, -5);
+                this.scene.add(rimLight);
+            }
+
+            loadModel() {
+                const loader = new THREE.GLTFLoader();
+                const loadingManager = new THREE.LoadingManager();
+
+                loadingManager.onProgress = (url, loaded, total) => {
+                    const progress = (loaded / total) * 100;
+                    document.getElementById('progress').style.width = progress + '%';
+                    document.getElementById('loadingText').textContent = `Loading... ${Math.round(progress)}%`;
+                };
+
+                loadingManager.onLoad = () => {
+                    document.getElementById('loader').style.display = 'none';
+                };
+
+                loadingManager.onError = (url) => {
+                    this.showError(`Failed to load model: ${url}`);
+                };
+
+                loader.setManager(loadingManager);
+
+                loader.load(
+                    './generated_model.glb',
+                    (gltf) => {
+                        this.model = gltf.scene;
+                        this.setupModel();
+                        this.centerModel();
+                        this.updateModelInfo();
+                        
+                        if (gltf.animations && gltf.animations.length) {
+                            this.mixer = new THREE.AnimationMixer(this.model);
+                            gltf.animations.forEach((clip) => {
+                                this.mixer.clipAction(clip).play();
+                            });
+                        }
+
+                        this.scene.add(this.model);
+                        document.getElementById('loader').style.display = 'none';
+                    },
+                    (progress) => {
+                        const percent = (progress.loaded / progress.total) * 100;
+                        document.getElementById('progress').style.width = percent + '%';
+                        document.getElementById('loadingText').textContent = `Loading model... ${Math.round(percent)}%`;
+                    },
+                    (error) => {
+                        console.error('Error loading model:', error);
+                        this.showError('Failed to load the 3D model. Please check if the file exists and is valid.');
+                    }
+                );
+            }
+
+            setupModel() {
+                this.model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                        
+                        if (child.material) {
+                            this.originalMaterials.push(child.material.clone());
+                            
+                            if (child.material.map) {
+                                child.material.map.encoding = THREE.sRGBEncoding;
+                            }
+                        }
+                    }
+                });
+            }
+
+            centerModel() {
+                const box = new THREE.Box3().setFromObject(this.model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                this.model.position.sub(center);
+
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 3 / maxDim;
+                this.model.scale.setScalar(scale);
+
+                const distance = maxDim * 1.5;
+                this.camera.position.set(distance, distance * 0.8, distance);
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+            }
+
+            updateModelInfo() {
+                if (!this.model) return;
+
+                let vertices = 0;
+                let triangles = 0;
+                let materials = 0;
+
+                this.model.traverse((child) => {
+                    if (child.isMesh && child.geometry) {
+                        if (child.geometry.attributes.position) {
+                            vertices += child.geometry.attributes.position.count;
+                        }
+                        if (child.geometry.index) {
+                            triangles += child.geometry.index.count / 3;
+                        } else if (child.geometry.attributes.position) {
+                            triangles += child.geometry.attributes.position.count / 3;
+                        }
+                        if (child.material) {
+                            materials++;
+                        }
+                    }
+                });
+
+                document.getElementById('vertexCount').textContent = vertices.toLocaleString();
+                document.getElementById('triangleCount').textContent = Math.round(triangles).toLocaleString();
+                document.getElementById('materialCount').textContent = materials;
+
+                fetch('./generated_model.glb')
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const size = (blob.size / (1024 * 1024)).toFixed(2);
+                        document.getElementById('fileSize').textContent = `${size} MB`;
+                    })
+                    .catch(() => {
+                        document.getElementById('fileSize').textContent = 'Unknown';
+                    });
+            }
+
+            showError(message) {
+                document.getElementById('loader').style.display = 'none';
+                
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = `
+                    <h3>❌ Error Loading Model</h3>
+                    <p>${message}</p>
+                    <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">
+                        Please ensure the model file 'generated_model.glb' exists and is valid.
+                    </p>
+                `;
+                document.getElementById('container').appendChild(errorDiv);
+            }
+
+            toggleWireframe() {
+                this.isWireframe = !this.isWireframe;
+                
+                if (this.model) {
+                    this.model.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            child.material.wireframe = this.isWireframe;
+                        }
+                    });
+                }
+
+                const btn = document.getElementById('wireframeBtn');
+                btn.textContent = this.isWireframe ? '◼️ Solid' : '🔲 Wireframe';
+            }
+
+            resetCamera() {
+                if (this.model) {
+                    this.centerModel();
+                    this.controls.reset();
+                }
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    document.getElementById('fullscreenBtn').textContent = '⤷ Exit Fullscreen';
+                } else {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreenBtn').textContent = '⛶ Fullscreen';
+                }
+            }
+
+            toggleInfo() {
+                const panel = document.getElementById('infoPanel');
+                panel.classList.toggle('show');
+                
+                const btn = document.getElementById('infoBtn');
+                btn.textContent = panel.classList.contains('show') ? '✕ Close' : 'ℹ️ Info';
+            }
+
+            updateStats() {
+                this.stats.frameCount++;
+                const currentTime = performance.now();
+                
+                if (currentTime >= this.stats.lastTime + 1000) {
+                    this.stats.fps = Math.round((this.stats.frameCount * 1000) / (currentTime - this.stats.lastTime));
+                    this.stats.frameCount = 0;
+                    this.stats.lastTime = currentTime;
+                    
+                    const triangles = this.model ? 
+                        document.getElementById('triangleCount').textContent : '--';
+                    const vertices = this.model ? 
+                        document.getElementById('vertexCount').textContent : '--';
+                    
+                    document.getElementById('stats').textContent = 
+                        `FPS: ${this.stats.fps} | Triangles: ${triangles} | Vertices: ${vertices}`;
+                }
+            }
+
+            setupEventListeners() {
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                document.getElementById('infoBtn').addEventListener('click', () => {
+                    this.toggleInfo();
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetCamera();
+                });
+
+                document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                    this.toggleFullscreen();
+                });
+
+                document.getElementById('wireframeBtn').addEventListener('click', () => {
+                    this.toggleWireframe();
+                });
+
+                document.addEventListener('fullscreenchange', () => {
+                    const btn = document.getElementById('fullscreenBtn');
+                    btn.textContent = document.fullscreenElement ? '⤷ Exit Fullscreen' : '⛶ Fullscreen';
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    switch(event.key) {
+                        case 'r':
+                        case 'R':
+                            this.resetCamera();
+                            break;
+                        case 'i':
+                        case 'I':
+                            this.toggleInfo();
+                            break;
+                        case 'w':
+                        case 'W':
+                            this.toggleWireframe();
+                            break;
+                        case 'f':
+                        case 'F':
+                            this.toggleFullscreen();
+                            break;
+                        case ' ':
+                            event.preventDefault();
+                            this.controls.autoRotate = !this.controls.autoRotate;
+                            break;
+                    }
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                const delta = this.clock.getDelta();
+
+                if (this.mixer) {
+                    this.mixer.update(delta);
+                }
+
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+                this.updateStats();
+            }
+        }
+
+        window.addEventListener('load', () => {
+            new CherryBlossomViewer();
+        });
+
+        window.addEventListener('error', (e) => {
+            console.error('Application error:', e.error);
+        });
+    </script>
+</body>
+</html>
