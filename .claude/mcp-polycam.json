@@ -1,14 +1,9 @@
 {
   "mcpServers": {
-    "t2i3d-polycam-trellis": {
-      "type": "http",
-      "url": "http://localhost:8000",
-      "description": "Polycam TRELLIS Text-to-3D Generation (2B parameters) ⭐"
-    },
-    "i2i3d-polycam-trellis": {
-      "type": "http",
-      "url": "http://localhost:8000",
-      "description": "Polycam TRELLIS Image-to-3D Generation (High Quality) ⭐"
+    "polycam-trellis": {
+      "command": "python3",
+      "args": ["/Users/nukuiyuki/Dev/kamuicode-workflow/polycam-mcp-server/trellis_server.py"],
+      "description": "Polycam TRELLIS 3D Generation (Text/Image-to-3D) ⭐"
     }
   }
 }
