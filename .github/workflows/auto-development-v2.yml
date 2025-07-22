@@ -1,0 +1,251 @@
+name: Auto Feature Development v2
+
+on:
+  workflow_dispatch:
+    inputs:
+      requirements_file:
+        description: '要件定義書のパス'
+        required: true
+        default: 'docs/requirements/multi-image-generation-requirements.md'
+        type: string
+      target_module:
+        description: '対象モジュール名'
+        required: true
+        default: 'image-generation-multi'
+        type: string
+      development_mode:
+        description: '開発モード'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - 'analysis_only'
+          - 'design_only'
+          - 'implement_only'
+          - 'full'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  auto-development:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+        
+      - name: Verify Requirements File
+        run: |
+          if [ ! -f "${{ inputs.requirements_file }}" ]; then
+            echo "::error::要件定義書が見つかりません: ${{ inputs.requirements_file }}"
+            exit 1
+          fi
+          echo "✅ 要件定義書を確認しました"
+          echo "📄 ファイル: ${{ inputs.requirements_file }}"
+          
+      - name: Phase 1 - Requirements Analysis and Design
+        id: analysis
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "🔍 Phase 1: Requirements Analysis and Design"
+          
+          REQUIREMENTS_CONTENT=$(cat "${{ inputs.requirements_file }}")
+          
+          ANALYSIS_PROMPT="GitHub Actions自動開発システムの実験です。
+
+要件定義書を分析し、詳細な技術設計書を作成してください。
+
+**要件定義書**:
+$REQUIREMENTS_CONTENT
+
+**作成するファイル**:
+- docs/design/${{ inputs.target_module }}-design.md (詳細設計書)
+- docs/design/${{ inputs.target_module }}-implementation-plan.md (実装計画)
+
+**重要**: 
+- 既存のimage-generation/action.ymlを必ず読み込んで分析
+- 後方互換性を厳格に維持
+- GitHub Actionsのbest practicesに従う"
+          
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Bash,Glob,Grep" \
+            --max-turns 50 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$ANALYSIS_PROMPT" 2>&1 | tee analysis_log.txt
+            
+          if [ $? -eq 0 ]; then
+            echo "analysis_completed=true" >> $GITHUB_OUTPUT
+            echo "::notice::✅ Phase 1 完了"
+          else
+            echo "analysis_completed=false" >> $GITHUB_OUTPUT
+            echo "::error::❌ Phase 1 失敗"
+            exit 1
+          fi
+          
+      - name: Phase 2 - Implementation
+        if: ${{ (inputs.development_mode == 'full' || inputs.development_mode == 'implement_only') && steps.analysis.outputs.analysis_completed == 'true' }}
+        id: implementation
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "🛠️ Phase 2: Implementation"
+          
+          IMPLEMENTATION_PROMPT="GitHub Actions自動開発システム - Phase 2: 実装フェーズ
+
+設計書に基づいて実装を行ってください:
+
+**実装タスク**:
+1. 設計書の内容確認
+2. 新しいモジュール .github/actions/kamui-modules/${{ inputs.target_module }}/ の作成
+3. action.yml の実装
+4. README.md の作成
+
+**実装要件**:
+- 既存のimage-generationモジュールとの互換性維持
+- 新機能（N枚生成、モデル比較）の完全実装
+- 適切なエラーハンドリング
+- GitHub Actions best practices準拠"
+          
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
+            --max-turns 80 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$IMPLEMENTATION_PROMPT" 2>&1 | tee implementation_log.txt
+            
+          if [ $? -eq 0 ]; then
+            echo "implementation_completed=true" >> $GITHUB_OUTPUT
+            echo "::notice::✅ Phase 2 完了"
+          else
+            echo "implementation_completed=false" >> $GITHUB_OUTPUT
+            echo "::error::❌ Phase 2 失敗"
+            exit 1
+          fi
+          
+      - name: Phase 3 - Testing and Validation
+        if: ${{ steps.implementation.outputs.implementation_completed == 'true' }}
+        id: testing
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "🧪 Phase 3: Testing and Validation"
+          
+          TESTING_PROMPT="GitHub Actions自動開発システム - Phase 3: テスト・検証フェーズ
+
+実装されたモジュールの品質確認を行ってください:
+
+**テスト項目**:
+1. action.yml構文チェック
+2. 必要な入力パラメータの確認
+3. 出力仕様の検証
+4. エラーハンドリングの確認
+5. ドキュメントの完整性チェック
+
+**品質チェック**:
+- コードレビュー（ベストプラクティス準拠）
+- セキュリティチェック
+- パフォーマンス考慮点の確認
+
+**レポート作成**:
+- テスト結果レポート作成
+- 問題点と改善提案
+- 実装完了サマリー
+
+**もし問題が見つかった場合**:
+- 自動的に修正を実施
+- 修正内容をレポートに記録"
+          
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
+            --max-turns 40 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$TESTING_PROMPT" 2>&1 | tee testing_log.txt
+            
+          if [ $? -eq 0 ]; then
+            echo "testing_completed=true" >> $GITHUB_OUTPUT
+            echo "::notice::✅ Phase 3 完了"
+          else
+            echo "testing_completed=false" >> $GITHUB_OUTPUT
+            echo "::warning::⚠️ Phase 3 で問題検出"
+          fi
+          
+      - name: Commit and Create PR
+        if: ${{ steps.analysis.outputs.analysis_completed == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Git設定
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # ブランチ作成
+          BRANCH_NAME="auto-dev/${{ inputs.target_module }}-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH_NAME"
+          
+          # 変更をコミット
+          git add docs/design/ || true
+          git add docs/requirements/ || true  
+          git add .github/actions/kamui-modules/${{ inputs.target_module }}/ || true
+          
+          if git diff --cached --quiet; then
+            echo "::notice::コミットする変更がありません"
+          else
+            git commit -m "Auto-implement ${{ inputs.target_module }} module - Generated with Claude Code SDK Auto-Development System - Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push origin "$BRANCH_NAME"
+            
+            # PR作成
+            gh pr create \
+              --title "Auto-implement: ${{ inputs.target_module }} module" \
+              --body "## Auto-Development System Implementation
+
+### Overview
+New feature automatically implemented by Claude Code SDK on GitHub Actions.
+
+### Implementation Details
+- Requirements file: ${{ inputs.requirements_file }}
+- Target module: ${{ inputs.target_module }}
+- Development mode: ${{ inputs.development_mode }}
+
+### Completed Phases
+- Phase 1 Analysis: ${{ steps.analysis.outputs.analysis_completed }}
+- Phase 2 Implementation: ${{ steps.implementation.outputs.implementation_completed || 'skipped' }}
+- Phase 3 Testing: ${{ steps.testing.outputs.testing_completed || 'skipped' }}
+
+Generated by Auto-Development System
+Co-Authored-By: Claude <noreply@anthropic.com>" \
+              --label "auto-development,experimental" \
+              --assignee "${{ github.actor }}"
+              
+            echo "✅ PR作成完了: $BRANCH_NAME"
+          fi
+          
+      - name: Final Summary
+        if: always()
+        run: |
+          echo "📊 Auto-Development Summary"
+          echo "============================================="
+          echo "🎯 Target Module: ${{ inputs.target_module }}"
+          echo "📄 Requirements: ${{ inputs.requirements_file }}"
+          echo "🔧 Development Mode: ${{ inputs.development_mode }}"
+          echo ""
+          echo "📈 Phase Results:"
+          echo "  🔍 Analysis: ${{ steps.analysis.outputs.analysis_completed || 'not_run' }}"
+          echo "  🛠️ Implementation: ${{ steps.implementation.outputs.implementation_completed || 'not_run' }}"
+          echo "  🧪 Testing: ${{ steps.testing.outputs.testing_completed || 'not_run' }}"
+          echo ""
+          echo "🤖 GitHub Actions Auto-Development Experiment"
+          echo "============================================="
