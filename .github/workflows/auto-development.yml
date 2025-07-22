@@ -1,4 +1,4 @@
-name: Auto Feature Development (Experimental)
+name: Auto Feature Development (Experimental v2)
 
 on:
   workflow_dispatch:
