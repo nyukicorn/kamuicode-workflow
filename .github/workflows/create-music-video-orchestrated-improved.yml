@@ -390,44 +390,75 @@ jobs:
             exit 1
           fi
           
-          # プロンプトの構築
-          PROMPT="動画と音楽を統合して最終的な音楽ビデオを作成してください。
+          # 絶対パスの取得
+          ABS_MUSIC_FILE=$(realpath "$MUSIC_FILE")
+          ABS_VIDEOS_DIR=$(realpath "$VIDEOS_DIR")
+          ABS_OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
+          ABS_FINAL_VIDEO="$ABS_OUTPUT_DIR/final-music-video.mp4"
+          
+          echo "Absolute paths:"
+          echo "Music file: $ABS_MUSIC_FILE"
+          echo "Videos dir: $ABS_VIDEOS_DIR"
+          echo "Output dir: $ABS_OUTPUT_DIR"
+          echo "Final video: $ABS_FINAL_VIDEO"
+          
+          # プロンプトの構築（絶対パス使用）
+          PROMPT="音楽と動画を統合して最終的な音楽ビデオを作成してください。
 
-          **必須タスク**: ffmpegで音楽付き動画を '$OUTPUT_DIR/final-music-video.mp4' に作成
+          **重要**: 全てのパスは以下の絶対パスを使用し、各ステップでエラーチェックを行ってください。
 
-          **ファイル情報**:
-          - 音楽ファイル: $MUSIC_FILE
-          - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
-          - 最終出力: $OUTPUT_DIR/final-music-video.mp4
+          **ファイル情報（絶対パス）**:
+          - 音楽ファイル: $ABS_MUSIC_FILE
+          - 動画ディレクトリ: $ABS_VIDEOS_DIR
+          - 最終出力ファイル: $ABS_FINAL_VIDEO
 
-          **実行手順**:
-          1. cd $VIDEOS_DIR で動画ディレクトリに移動
-          2. 動画セグメントを確認: ls -la *.mp4
-          3. 音楽の長さを取得: ffprobe -v quiet -show_entries format=duration -of csv=p=0 \"../$MUSIC_FILE\"
-          4. 以下のコマンドで音楽付き動画を作成:
+          **必須実行手順（エラーチェック付き）**:
+          1. 現在のディレクトリを確認: pwd
+          2. 音楽ファイルの存在と形式を確認:
+             - ls -la \"$ABS_MUSIC_FILE\"
+             - ffprobe -v quiet -show_format \"$ABS_MUSIC_FILE\" || echo \"音楽ファイル形式チェック失敗\"
+          3. 動画ファイルの確認:
+             - ls -la \"$ABS_VIDEOS_DIR\"/*.mp4
+             - VIDEO_COUNT=\$(find \"$ABS_VIDEOS_DIR\" -name \"segment-*.mp4\" | wc -l)
+             - echo \"動画セグメント数: \$VIDEO_COUNT\"
+          4. 出力ディレクトリの確認:
+             - mkdir -p \"$ABS_OUTPUT_DIR\"
+             - test -w \"$ABS_OUTPUT_DIR\" || echo \"出力ディレクトリ書き込み権限なし\"
+          5. ffmpeg実行（絶対パス使用、エラーハンドリング付き）:
 
           **1つの動画セグメントの場合**:
           \`\`\`bash
-          ffmpeg -stream_loop -1 -i segment-1.mp4 -i \"../$MUSIC_FILE\" \\
-            -c:v libx264 -c:a aac -shortest \\
-            -y \"../$OUTPUT_DIR/final-music-video.mp4\"
+          cd \"$ABS_VIDEOS_DIR\"
+          if ffmpeg -stream_loop -1 -i segment-1.mp4 -i \"$ABS_MUSIC_FILE\" \\
+            -c:v libx264 -c:a aac -shortest -y \"$ABS_FINAL_VIDEO\"; then
+            echo \"動画作成成功\"
+          else
+            echo \"動画作成失敗: \$?\"
+          fi
           \`\`\`
 
           **複数の動画セグメントの場合**:
           \`\`\`bash
-          # まず動画を連結
+          cd \"$ABS_VIDEOS_DIR\"
           ls -1 *.mp4 | sed 's/^/file /' > filelist.txt
-          ffmpeg -f concat -safe 0 -i filelist.txt -c copy concatenated.mp4
-          
-          # 音楽と結合
-          ffmpeg -stream_loop -1 -i concatenated.mp4 -i \"../$MUSIC_FILE\" \\
-            -c:v libx264 -c:a aac -shortest \\
-            -y \"../$OUTPUT_DIR/final-music-video.mp4\"
+          if ffmpeg -f concat -safe 0 -i filelist.txt -c copy concatenated.mp4; then
+            if ffmpeg -stream_loop -1 -i concatenated.mp4 -i \"$ABS_MUSIC_FILE\" \\
+              -c:v libx264 -c:a aac -shortest -y \"$ABS_FINAL_VIDEO\"; then
+              echo \"動画作成成功\"
+            else
+              echo \"音楽結合失敗: \$?\"
+            fi
+          else
+            echo \"動画連結失敗: \$?\"
+          fi
           \`\`\`
 
-          5. 最終確認: ls -la \"../$OUTPUT_DIR/final-music-video.mp4\"
+          6. 結果の詳細検証:
+             - ls -la \"$ABS_FINAL_VIDEO\"
+             - ffprobe -v quiet -show_streams \"$ABS_FINAL_VIDEO\"
+             - echo \"最終動画作成完了\"
 
-          **重要**: 最終ファイルが音声付きで作成されることを確認してください。"
+          **エラー時の対応**: 各ステップで失敗した場合は詳細なエラーメッセージを出力し、次のステップに進まないでください。"
           
           # 必要なツールのインストール
           echo "🔧 Installing required tools..."
