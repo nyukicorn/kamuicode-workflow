@@ -234,7 +234,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "::notice::📝 コミットする変更がありません"
           else
-            COMMIT_MESSAGE="✨ Auto-implement ${{ inputs.target_module }} module
+            git commit -m "$(cat <<'EOF'
+✨ Auto-implement ${{ inputs.target_module }} module
 
 🤖 GitHub Actions自動開発システムによる実装
 
@@ -250,9 +251,9 @@ jobs:
 
 🚀 Generated with Claude Code SDK Auto-Development System
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-            git commit -m "$COMMIT_MESSAGE"
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
             git push origin "$BRANCH_NAME"
             
             # PR作成
