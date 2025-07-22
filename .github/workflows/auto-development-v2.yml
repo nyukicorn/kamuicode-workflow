@@ -63,7 +63,8 @@ jobs:
           
           REQUIREMENTS_CONTENT=$(cat "${{ inputs.requirements_file }}")
           
-          ANALYSIS_PROMPT="GitHub Actions自動開発システムの実験です。
+          ANALYSIS_PROMPT=$(cat <<'EOF'
+GitHub Actions自動開発システムの実験です。
 
 要件定義書を分析し、詳細な技術設計書を作成してください。
 
@@ -77,7 +78,9 @@ $REQUIREMENTS_CONTENT
 **重要**: 
 - 既存のimage-generation/action.ymlを必ず読み込んで分析
 - 後方互換性を厳格に維持
-- GitHub Actionsのbest practicesに従う"
+- GitHub Actionsのbest practicesに従う
+EOF
+)
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Bash,Glob,Grep" \
@@ -103,7 +106,8 @@ $REQUIREMENTS_CONTENT
         run: |
           echo "🛠️ Phase 2: Implementation"
           
-          IMPLEMENTATION_PROMPT="GitHub Actions自動開発システム - Phase 2: 実装フェーズ
+          IMPLEMENTATION_PROMPT=$(cat <<'EOF'
+GitHub Actions自動開発システム - Phase 2: 実装フェーズ
 
 設計書に基づいて実装を行ってください:
 
@@ -117,7 +121,9 @@ $REQUIREMENTS_CONTENT
 - 既存のimage-generationモジュールとの互換性維持
 - 新機能（N枚生成、モデル比較）の完全実装
 - 適切なエラーハンドリング
-- GitHub Actions best practices準拠"
+- GitHub Actions best practices準拠
+EOF
+)
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
@@ -143,7 +149,8 @@ $REQUIREMENTS_CONTENT
         run: |
           echo "🧪 Phase 3: Testing and Validation"
           
-          TESTING_PROMPT="GitHub Actions自動開発システム - Phase 3: テスト・検証フェーズ
+          TESTING_PROMPT=$(cat <<'EOF'
+GitHub Actions自動開発システム - Phase 3: テスト・検証フェーズ
 
 実装されたモジュールの品質確認を行ってください:
 
@@ -166,7 +173,9 @@ $REQUIREMENTS_CONTENT
 
 **もし問題が見つかった場合**:
 - 自動的に修正を実施
-- 修正内容をレポートに記録"
+- 修正内容をレポートに記録
+EOF
+)
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
