@@ -102,14 +102,30 @@ class EnhancedParticleSystem {
                 const angle = (i / config.particlesPerLayer) * Math.PI * 2;
                 const spiralAngle = angle + layer * 0.3; // Spiral effect
                 
-                // Enhanced 3D flower shape
-                const petalRadius = (layer + 1) * 0.8 * (Math.sin(5 * angle) * 0.5 + 1);
-                const heightCurve = Math.sin(layer / config.layers * Math.PI) * 2;
-                const depthVariation = Math.cos(angle * 3) * 0.5 * (layer / config.layers);
+                // Realistic 3D Rose Structure
+                const layerNormalized = layer / (config.layers - 1);
+                const petalAngle = angle + layer * 0.618; // Golden ratio spiral
                 
-                positions[particleIndex * 3] = center.x + petalRadius * Math.cos(spiralAngle);
-                positions[particleIndex * 3 + 1] = center.y + layer * 0.2 + heightCurve;
-                positions[particleIndex * 3 + 2] = center.z + petalRadius * Math.sin(spiralAngle) + depthVariation;
+                // Petal curvature - creates natural 3D petal shape
+                const petalCurvature = Math.sin(angle * 5) * 0.7; // Petal edge curves
+                const radialDistance = (layerNormalized * 2 + 0.5) * (1 + petalCurvature * 0.3);
+                
+                // 3D Rose opening - inner petals tight, outer petals open
+                const openingFactor = Math.pow(layerNormalized, 0.7);
+                const petalTilt = openingFactor * Math.PI * 0.4; // Petals tilt outward
+                
+                // Base position
+                const baseX = radialDistance * Math.cos(petalAngle);
+                const baseZ = radialDistance * Math.sin(petalAngle);
+                
+                // Apply 3D petal curvature
+                const curvatureHeight = Math.sin(layerNormalized * Math.PI) * openingFactor * 3;
+                const petalDepth = Math.cos(petalAngle * 7) * 0.8 * layerNormalized;
+                
+                // Final 3D positions with natural rose structure
+                positions[particleIndex * 3] = center.x + baseX * Math.cos(petalTilt) + petalDepth;
+                positions[particleIndex * 3 + 1] = center.y + curvatureHeight + layerNormalized * 1.5;
+                positions[particleIndex * 3 + 2] = center.z + baseZ * Math.cos(petalTilt) + baseX * Math.sin(petalTilt) * 0.5;
                 
                 // Enhanced color gradients for depth
                 const layerProgress = layer / (config.layers - 1);
