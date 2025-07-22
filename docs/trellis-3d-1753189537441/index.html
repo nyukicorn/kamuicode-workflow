@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cherry Blossom Tree 3D Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            color: white;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        #loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #error-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .error-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .error-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .error-message {
+            font-size: 16px;
+            opacity: 0.8;
+            max-width: 500px;
+        }
+
+        #ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            min-width: 250px;
+            transition: transform 0.3s ease;
+        }
+
+        #ui-panel.collapsed {
+            transform: translateX(-200px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+            margin-left: auto;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .info-label {
+            opacity: 0.8;
+        }
+
+        .info-value {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        #controls-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            min-width: 250px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .control-button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .control-button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .control-button.active {
+            background: rgba(255,255,255,0.3);
+            border-color: white;
+        }
+
+        #fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 100;
+            transition: background 0.3s ease;
+        }
+
+        #fullscreen-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+
+        @media (max-width: 768px) {
+            #ui-panel, #controls-panel {
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                min-width: auto;
+            }
+
+            #ui-panel {
+                top: 10px;
+            }
+
+            #controls-panel {
+                bottom: 10px;
+            }
+
+            #fullscreen-btn {
+                top: 10px;
+                right: 10px;
+            }
+        }
+
+        .help-text {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            opacity: 0.8;
+            max-width: 200px;
+            z-index: 100;
+        }
+
+        @media (max-width: 768px) {
+            .help-text {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container"></div>
+        
+        <div id="loading-screen">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading 3D Model...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+
+        <div id="error-screen">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Failed to Load Model</div>
+            <div class="error-message" id="error-message">
+                Could not load the 3D model. Please check if the file exists and try refreshing the page.
+            </div>
+        </div>
+
+        <div id="ui-panel">
+            <div class="panel-header">
+                <div class="panel-title">Model Information</div>
+                <button class="toggle-btn" id="panel-toggle">−</button>
+            </div>
+            <div class="panel-content">
+                <div class="info-item">
+                    <span class="info-label">Model:</span>
+                    <span class="info-value">Cherry Blossom Tree</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Format:</span>
+                    <span class="info-value" id="format-info">GLB</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">File Size:</span>
+                    <span class="info-value" id="filesize-info">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Vertices:</span>
+                    <span class="info-value" id="vertices-info">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Triangles:</span>
+                    <span class="info-value" id="triangles-info">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Materials:</span>
+                    <span class="info-value" id="materials-info">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls-panel">
+            <div class="control-group">
+                <label class="control-label">Camera Presets</label>
+                <button class="control-button" data-preset="default">Default</button>
+                <button class="control-button" data-preset="top">Top View</button>
+                <button class="control-button" data-preset="front">Front</button>
+                <button class="control-button" data-preset="side">Side</button>
+            </div>
+            <div class="control-group">
+                <label class="control-label">Lighting</label>
+                <button class="control-button active" data-lighting="studio">Studio</button>
+                <button class="control-button" data-lighting="natural">Natural</button>
+                <button class="control-button" data-lighting="dramatic">Dramatic</button>
+            </div>
+            <div class="control-group">
+                <label class="control-label">Actions</label>
+                <button class="control-button" id="reset-btn">Reset View</button>
+                <button class="control-button" id="wireframe-btn">Wireframe</button>
+            </div>
+        </div>
+
+        <button id="fullscreen-btn" title="Toggle Fullscreen">⛶</button>
+
+        <div class="help-text">
+            <strong>Controls:</strong><br>
+            • Drag to rotate<br>
+            • Scroll to zoom<br>
+            • Right-click & drag to pan
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.155.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.155.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://unpkg.com/three@0.155.0/examples/js/loaders/PLYLoader.js"></script>
+
+    <script>
+        class ModelViewer {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.controls = null;
+                this.model = null;
+                this.modelInfo = {
+                    vertices: 0,
+                    triangles: 0,
+                    materials: 0,
+                    fileSize: 0
+                };
+                this.lights = {
+                    ambient: null,
+                    directional: [],
+                    point: []
+                };
+                this.currentLighting = 'studio';
+                this.wireframeMode = false;
+                this.originalMaterials = [];
+
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupCamera();
+                this.setupRenderer();
+                this.setupControls();
+                this.setupLighting();
+                this.setupEventListeners();
+                this.loadModel();
+                this.animate();
+            }
+
+            setupScene() {
+                this.scene = new THREE.Scene();
+                this.scene.background = null; // Transparent to show CSS gradient
+            }
+
+            setupCamera() {
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(5, 5, 5);
+            }
+
+            setupRenderer() {
+                this.renderer = new THREE.WebGLRenderer({ 
+                    antialias: true, 
+                    alpha: true,
+                    powerPreference: "high-performance"
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                this.renderer.toneMappingExposure = 1.2;
+
+                document.getElementById('canvas-container').appendChild(this.renderer.domElement);
+            }
+
+            setupControls() {
+                this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.enableZoom = true;
+                this.controls.enablePan = true;
+                this.controls.enableRotate = true;
+                this.controls.maxPolarAngle = Math.PI;
+                this.controls.minDistance = 1;
+                this.controls.maxDistance = 50;
+            }
+
+            setupLighting() {
+                this.lights.ambient = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(this.lights.ambient);
+
+                // Studio lighting setup
+                const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                keyLight.position.set(5, 10, 5);
+                keyLight.castShadow = true;
+                keyLight.shadow.camera.near = 0.1;
+                keyLight.shadow.camera.far = 50;
+                keyLight.shadow.camera.left = -10;
+                keyLight.shadow.camera.right = 10;
+                keyLight.shadow.camera.top = 10;
+                keyLight.shadow.camera.bottom = -10;
+                keyLight.shadow.mapSize.width = 2048;
+                keyLight.shadow.mapSize.height = 2048;
+                this.scene.add(keyLight);
+                this.lights.directional.push(keyLight);
+
+                const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                fillLight.position.set(-5, 5, 5);
+                this.scene.add(fillLight);
+                this.lights.directional.push(fillLight);
+
+                const backLight = new THREE.DirectionalLight(0xffffff, 0.2);
+                backLight.position.set(0, 5, -5);
+                this.scene.add(backLight);
+                this.lights.directional.push(backLight);
+            }
+
+            loadModel() {
+                const loader = new THREE.GLTFLoader();
+                const modelUrl = './generated_model.glb';
+                
+                // Get file size
+                fetch(modelUrl, { method: 'HEAD' })
+                    .then(response => {
+                        const size = response.headers.get('content-length');
+                        if (size) {
+                            this.modelInfo.fileSize = parseInt(size);
+                            this.updateFileSize();
+                        }
+                    })
+                    .catch(() => {
+                        // File size unavailable
+                        document.getElementById('filesize-info').textContent = 'Unknown';
+                    });
+
+                loader.load(
+                    modelUrl,
+                    (gltf) => this.onModelLoaded(gltf),
+                    (progress) => this.onLoadProgress(progress),
+                    (error) => this.onLoadError(error)
+                );
+            }
+
+            onModelLoaded(gltf) {
+                this.model = gltf.scene;
+                this.scene.add(this.model);
+
+                // Calculate model statistics
+                this.calculateModelStats();
+
+                // Center and scale the model
+                this.centerAndScaleModel();
+
+                // Store original materials for wireframe toggle
+                this.storeOriginalMaterials();
+
+                // Enable shadows
+                this.model.traverse((child) => {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                // Hide loading screen
+                document.getElementById('loading-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loading-screen').style.display = 'none';
+                }, 500);
+
+                console.log('Model loaded successfully:', gltf);
+            }
+
+            onLoadProgress(progress) {
+                if (progress.lengthComputable) {
+                    const percentComplete = (progress.loaded / progress.total) * 100;
+                    document.getElementById('progress-bar').style.width = percentComplete + '%';
+                }
+            }
+
+            onLoadError(error) {
+                console.error('Error loading model:', error);
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('error-screen').style.display = 'flex';
+                
+                let errorMsg = 'Could not load the 3D model. ';
+                if (error.message) {
+                    errorMsg += error.message;
+                } else {
+                    errorMsg += 'Please check if the file exists and try refreshing the page.';
+                }
+                document.getElementById('error-message').textContent = errorMsg;
+            }
+
+            calculateModelStats() {
+                let vertices = 0;
+                let triangles = 0;
+                const materials = new Set();
+
+                this.model.traverse((child) => {
+                    if (child.isMesh) {
+                        if (child.geometry) {
+                            const geometry = child.geometry;
+                            if (geometry.attributes.position) {
+                                vertices += geometry.attributes.position.count;
+                            }
+                            if (geometry.index) {
+                                triangles += geometry.index.count / 3;
+                            } else if (geometry.attributes.position) {
+                                triangles += geometry.attributes.position.count / 3;
+                            }
+                        }
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => materials.add(mat.uuid));
+                            } else {
+                                materials.add(child.material.uuid);
+                            }
+                        }
+                    }
+                });
+
+                this.modelInfo.vertices = vertices;
+                this.modelInfo.triangles = Math.floor(triangles);
+                this.modelInfo.materials = materials.size;
+
+                this.updateModelInfo();
+            }
+
+            updateModelInfo() {
+                document.getElementById('vertices-info').textContent = this.modelInfo.vertices.toLocaleString();
+                document.getElementById('triangles-info').textContent = this.modelInfo.triangles.toLocaleString();
+                document.getElementById('materials-info').textContent = this.modelInfo.materials.toString();
+            }
+
+            updateFileSize() {
+                const size = this.modelInfo.fileSize;
+                let sizeStr = 'Unknown';
+                if (size > 0) {
+                    if (size < 1024) {
+                        sizeStr = size + ' B';
+                    } else if (size < 1024 * 1024) {
+                        sizeStr = (size / 1024).toFixed(1) + ' KB';
+                    } else {
+                        sizeStr = (size / (1024 * 1024)).toFixed(1) + ' MB';
+                    }
+                }
+                document.getElementById('filesize-info').textContent = sizeStr;
+            }
+
+            centerAndScaleModel() {
+                const box = new THREE.Box3().setFromObject(this.model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                // Center the model
+                this.model.position.sub(center);
+
+                // Scale the model to fit in view
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const scale = 4 / maxDim;
+                this.model.scale.setScalar(scale);
+
+                // Adjust camera and controls
+                this.controls.target.set(0, 0, 0);
+                this.camera.position.set(5, 5, 5);
+                this.controls.update();
+            }
+
+            storeOriginalMaterials() {
+                this.originalMaterials = [];
+                this.model.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        this.originalMaterials.push({
+                            mesh: child,
+                            material: child.material.clone ? child.material.clone() : child.material
+                        });
+                    }
+                });
+            }
+
+            toggleWireframe() {
+                this.wireframeMode = !this.wireframeMode;
+                this.model.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                mat.wireframe = this.wireframeMode;
+                            });
+                        } else {
+                            child.material.wireframe = this.wireframeMode;
+                        }
+                    }
+                });
+            }
+
+            setLighting(type) {
+                this.currentLighting = type;
+                
+                // Remove existing lights except ambient
+                this.lights.directional.forEach(light => this.scene.remove(light));
+                this.lights.point.forEach(light => this.scene.remove(light));
+                this.lights.directional = [];
+                this.lights.point = [];
+
+                switch (type) {
+                    case 'studio':
+                        this.setupStudioLighting();
+                        break;
+                    case 'natural':
+                        this.setupNaturalLighting();
+                        break;
+                    case 'dramatic':
+                        this.setupDramaticLighting();
+                        break;
+                }
+            }
+
+            setupStudioLighting() {
+                this.lights.ambient.intensity = 0.4;
+
+                const keyLight = new THREE.DirectionalLight(0xffffff, 1.0);
+                keyLight.position.set(5, 10, 5);
+                keyLight.castShadow = true;
+                this.scene.add(keyLight);
+                this.lights.directional.push(keyLight);
+
+                const fillLight = new THREE.DirectionalLight(0xffffff, 0.3);
+                fillLight.position.set(-5, 5, 5);
+                this.scene.add(fillLight);
+                this.lights.directional.push(fillLight);
+
+                const backLight = new THREE.DirectionalLight(0xffffff, 0.2);
+                backLight.position.set(0, 5, -5);
+                this.scene.add(backLight);
+                this.lights.directional.push(backLight);
+            }
+
+            setupNaturalLighting() {
+                this.lights.ambient.intensity = 0.6;
+
+                const sunLight = new THREE.DirectionalLight(0xfff7e6, 0.8);
+                sunLight.position.set(10, 15, 5);
+                sunLight.castShadow = true;
+                this.scene.add(sunLight);
+                this.lights.directional.push(sunLight);
+
+                const skyLight = new THREE.DirectionalLight(0x87ceeb, 0.2);
+                skyLight.position.set(-5, 10, -5);
+                this.scene.add(skyLight);
+                this.lights.directional.push(skyLight);
+            }
+
+            setupDramaticLighting() {
+                this.lights.ambient.intensity = 0.1;
+
+                const spotLight = new THREE.SpotLight(0xffffff, 2.0);
+                spotLight.position.set(0, 10, 0);
+                spotLight.angle = Math.PI / 6;
+                spotLight.penumbra = 0.3;
+                spotLight.castShadow = true;
+                this.scene.add(spotLight);
+                this.lights.point.push(spotLight);
+
+                const rimLight = new THREE.DirectionalLight(0x4169e1, 0.5);
+                rimLight.position.set(-10, 5, -10);
+                this.scene.add(rimLight);
+                this.lights.directional.push(rimLight);
+            }
+
+            setCameraPreset(preset) {
+                const distance = 7;
+                switch (preset) {
+                    case 'default':
+                        this.camera.position.set(5, 5, 5);
+                        break;
+                    case 'top':
+                        this.camera.position.set(0, distance, 0);
+                        break;
+                    case 'front':
+                        this.camera.position.set(0, 0, distance);
+                        break;
+                    case 'side':
+                        this.camera.position.set(distance, 0, 0);
+                        break;
+                }
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+            }
+
+            resetView() {
+                this.camera.position.set(5, 5, 5);
+                this.controls.target.set(0, 0, 0);
+                this.controls.update();
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            setupEventListeners() {
+                // Window resize
+                window.addEventListener('resize', () => this.onWindowResize());
+
+                // Panel toggle
+                document.getElementById('panel-toggle').addEventListener('click', () => {
+                    const panel = document.getElementById('ui-panel');
+                    panel.classList.toggle('collapsed');
+                    const btn = document.getElementById('panel-toggle');
+                    btn.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+                });
+
+                // Camera presets
+                document.querySelectorAll('[data-preset]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.setCameraPreset(e.target.dataset.preset);
+                    });
+                });
+
+                // Lighting controls
+                document.querySelectorAll('[data-lighting]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('[data-lighting]').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.setLighting(e.target.dataset.lighting);
+                    });
+                });
+
+                // Action buttons
+                document.getElementById('reset-btn').addEventListener('click', () => this.resetView());
+                document.getElementById('wireframe-btn').addEventListener('click', () => {
+                    this.toggleWireframe();
+                    const btn = document.getElementById('wireframe-btn');
+                    btn.classList.toggle('active');
+                });
+
+                // Fullscreen
+                document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', (e) => {
+                    switch (e.key) {
+                        case 'f':
+                        case 'F':
+                            this.toggleFullscreen();
+                            break;
+                        case 'r':
+                        case 'R':
+                            this.resetView();
+                            break;
+                        case 'w':
+                        case 'W':
+                            this.toggleWireframe();
+                            break;
+                    }
+                });
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+                this.controls.update();
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Wait for Three.js to load, then initialize
+        window.addEventListener('load', () => {
+            if (typeof THREE !== 'undefined') {
+                new ModelViewer();
+            } else {
+                console.error('Three.js failed to load');
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('error-screen').style.display = 'flex';
+                document.getElementById('error-message').textContent = 'Failed to load Three.js library. Please check your internet connection.';
+            }
+        });
+    </script>
+</body>
+</html>
