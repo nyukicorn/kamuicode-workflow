@@ -97,16 +97,16 @@ runs:
           cat "$MCP_CONFIG_ABS_PATH"
           echo "Creating fallback config..."
           cat > "$MCP_CONFIG_ABS_PATH" << 'EOF'
-{
-  "mcpServers": {
-    "t2m-google-lyria": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "env": {}
-    }
-  }
-}
-EOF
+        {
+          "mcpServers": {
+            "t2m-google-lyria": {
+              "command": "npx",
+              "args": ["-y", "@modelcontextprotocol/server-memory"],
+              "env": {}
+            }
+          }
+        }
+        EOF
         fi
         
         # MCP設定ファイルの確認
