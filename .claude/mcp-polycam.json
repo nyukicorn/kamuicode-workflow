@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "t2i3d-polycam-trellis": {
+      "type": "http",
+      "url": "http://localhost:8000",
+      "description": "Polycam TRELLIS Text-to-3D Generation (2B parameters) ⭐"
+    },
+    "i2i3d-polycam-trellis": {
+      "type": "http",
+      "url": "http://localhost:8000",
+      "description": "Polycam TRELLIS Image-to-3D Generation (High Quality) ⭐"
+    }
+  }
+}
