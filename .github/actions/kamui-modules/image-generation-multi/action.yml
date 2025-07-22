@@ -1,0 +1,377 @@
+name: 'Multi Image Generation'
+description: 'Generate multiple images with various models using KamuiCode MCP'
+author: 'KamuiCode Workflow'
+
+inputs:
+  image-prompt:
+    description: 'The image generation prompt'
+    required: true
+  image-count:
+    description: 'Number of images to generate (1-10)'
+    required: false
+    default: '1'
+  models:
+    description: 'Comma-separated list of models to use (auto/imagen4-ultra/imagen4-fast/imagen3/flux-schnell/photo-flux)'
+    required: false
+    default: 'auto'
+  enable-comparison:
+    description: 'Enable model comparison mode'
+    required: false
+    default: 'false'
+  folder-name:
+    description: 'The folder name for storing image files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+
+outputs:
+  images-completed:
+    description: 'Number of images successfully generated'
+    value: ${{ steps.multi-image.outputs.images-completed }}
+  image-urls:
+    description: 'JSON array of generated image URLs'
+    value: ${{ steps.multi-image.outputs.image-urls }}
+  models-used:
+    description: 'JSON array of models actually used'
+    value: ${{ steps.multi-image.outputs.models-used }}
+  comparison-report:
+    description: 'Path to comparison report file (if enabled)'
+    value: ${{ steps.multi-image.outputs.comparison-report }}
+  google-image-url:
+    description: 'First image URL (backward compatibility)'
+    value: ${{ steps.multi-image.outputs.google-image-url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Multi Image Generation Agent
+      id: multi-image
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Multi Image Generation"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # Input validation
+        IMAGE_COUNT="${{ inputs.image-count }}"
+        if [[ ! "$IMAGE_COUNT" =~ ^[0-9]+$ ]] || [ "$IMAGE_COUNT" -lt 1 ] || [ "$IMAGE_COUNT" -gt 10 ]; then
+          echo "::error::❌ Invalid image count: $IMAGE_COUNT. Must be between 1 and 10."
+          exit 1
+        fi
+        
+        # Configuration
+        IMAGE_PROMPT="${{ inputs.image-prompt }}"
+        MODELS="${{ inputs.models }}"
+        ENABLE_COMPARISON="${{ inputs.enable-comparison }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        IMAGES_DIR="$FOLDER_NAME/images"
+        
+        echo "Image prompt: $IMAGE_PROMPT"
+        echo "Image count: $IMAGE_COUNT"
+        echo "Models: $MODELS"
+        echo "Enable comparison: $ENABLE_COMPARISON"
+        echo "Target folder: $IMAGES_DIR"
+        
+        # Create images directory
+        if [ ! -d "$IMAGES_DIR" ]; then
+          mkdir -p "$IMAGES_DIR"
+          echo "📁 Created images folder: $IMAGES_DIR"
+        fi
+        
+        # Setup MCP configuration
+        MCP_CONFIG_PATH=".claude/mcp-image-generation.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        mkdir -p .claude
+        echo '${{ inputs.mcp-config }}' | jq '
+          .mcpServers | 
+          to_entries | 
+          map(select(.key | startswith("t2i-"))) |
+          from_entries |
+          {"mcpServers": .}
+        ' > "$MCP_CONFIG_ABS_PATH"
+        
+        echo "✅ T2I-only MCP config created"
+        
+        # Parse models list
+        IFS=',' read -ra MODEL_ARRAY <<< "$MODELS"
+        MODEL_COUNT=${#MODEL_ARRAY[@]}
+        
+        echo "Parsed models: ${MODEL_ARRAY[@]}"
+        echo "Model count: $MODEL_COUNT"
+        
+        # Initialize arrays for tracking results
+        declare -a GENERATED_URLS=()
+        declare -a USED_MODELS=()
+        declare -a GENERATION_TIMES=()
+        TOTAL_IMAGES=0
+        
+        # Determine execution strategy
+        if [ "$ENABLE_COMPARISON" == "true" ] && [ "$MODEL_COUNT" -gt 1 ]; then
+          echo "🔄 Model comparison mode enabled"
+          EXECUTION_MODE="comparison"
+          TOTAL_EXPECTED=$(( MODEL_COUNT * IMAGE_COUNT ))
+        elif [ "$MODEL_COUNT" -gt 1 ]; then
+          echo "🎯 Multi-model generation mode"
+          EXECUTION_MODE="multi-model"
+          TOTAL_EXPECTED=$(( MODEL_COUNT * IMAGE_COUNT ))
+        else
+          echo "📸 Single model multi-image mode"
+          EXECUTION_MODE="single-model"
+          TOTAL_EXPECTED="$IMAGE_COUNT"
+        fi
+        
+        echo "Execution mode: $EXECUTION_MODE"
+        echo "Expected total images: $TOTAL_EXPECTED"
+        
+        # Model selection and mapping function
+        get_service_info() {
+          local model="$1"
+          case "$model" in
+            "auto")
+              if echo "$IMAGE_PROMPT" | grep -iE "(realistic|photo|real|portrait|landscape)" > /dev/null; then
+                echo "t2i-fal-imagen4-ultra|Imagen4 Ultra"
+              elif echo "$IMAGE_PROMPT" | grep -iE "(anime|cartoon|illustration|art)" > /dev/null; then
+                echo "t2i-fal-flux-schnell|Flux Schnell"
+              elif echo "$IMAGE_PROMPT" | grep -iE "(fast|quick|speed)" > /dev/null; then
+                echo "t2i-fal-imagen4-fast|Imagen4 Fast"
+              else
+                echo "t2i-fal-imagen4-fast|Imagen4 Fast"
+              fi
+              ;;
+            "imagen4-ultra")
+              echo "t2i-fal-imagen4-ultra|Imagen4 Ultra"
+              ;;
+            "imagen4-fast")
+              echo "t2i-fal-imagen4-fast|Imagen4 Fast"
+              ;;
+            "imagen3")
+              echo "t2i-google-imagen3|Google Imagen3"
+              ;;
+            "flux-schnell")
+              echo "t2i-fal-flux-schnell|Flux Schnell"
+              ;;
+            "photo-flux")
+              echo "t2i-fal-rundiffusion-photo-flux|Photo Flux"
+              ;;
+            *)
+              echo "t2i-fal-imagen4-fast|Imagen4 Fast (Fallback)"
+              ;;
+          esac
+        }
+        
+        # Generate images based on execution mode
+        for model in "${MODEL_ARRAY[@]}"; do
+          model=$(echo "$model" | xargs)  # Trim whitespace
+          
+          SERVICE_INFO=$(get_service_info "$model")
+          TARGET_SERVICE=$(echo "$SERVICE_INFO" | cut -d'|' -f1)
+          MODEL_NAME=$(echo "$SERVICE_INFO" | cut -d'|' -f2)
+          
+          echo "🎯 Processing model: $MODEL_NAME ($TARGET_SERVICE)"
+          
+          for ((i=1; i<=IMAGE_COUNT; i++)); do
+            echo "  📸 Generating image $i/$IMAGE_COUNT for $MODEL_NAME..."
+            
+            START_TIME=$(date +%s)
+            
+            # Create unique filename
+            if [ "$MODEL_COUNT" -gt 1 ]; then
+              OUTPUT_FILENAME="generated-image-${TOTAL_IMAGES}-$(echo "$model" | tr '/' '-').png"
+            else
+              OUTPUT_FILENAME="generated-image-${i}.png"
+            fi
+            
+            # Backward compatibility: first image is also saved as generated-image.png
+            if [ "$TOTAL_IMAGES" -eq 0 ]; then
+              BACKWARD_COMPAT_FILENAME="generated-image.png"
+            fi
+            
+            PROMPT="画像生成を実行してください。
+
+        **選択モデル**: $MODEL_NAME
+        **使用サービス**: $TARGET_SERVICE
+        **画像プロンプト（英語）**: $IMAGE_PROMPT
+        **画像番号**: $((TOTAL_IMAGES + 1))
+
+        **実行手順**:
+        1. 上記の英語プロンプトを使用して$MODEL_NAMEで画像生成
+        2. 利用可能なMCPツールから$TARGET_SERVICEに対応するツールを使用
+        3. submit → status → result の順序で実行してGoogle URLを取得
+        4. 取得したGoogle URLを「$FOLDER_NAME/google-image-url-$((TOTAL_IMAGES + 1)).txt」ファイルに保存
+        5. 取得したGoogle URLをBashツールで「$IMAGES_DIR/$OUTPUT_FILENAME」にダウンロード保存"
+        
+            if [ "$TOTAL_IMAGES" -eq 0 ] && [ -n "$BACKWARD_COMPAT_FILENAME" ]; then
+              PROMPT="$PROMPT
+        6. **後方互換性**: 1枚目の画像は「$IMAGES_DIR/$BACKWARD_COMPAT_FILENAME」としても保存
+        7. **重要**: 最初の画像のGoogle URLを「$FOLDER_NAME/google-image-url.txt」にも保存（後方互換性用）"
+            fi
+            
+            echo "🚀 Starting generation for image $((TOTAL_IMAGES + 1))..."
+            
+            # Execute Claude Code CLI
+            if npx @anthropic-ai/claude-code \
+              --mcp-config="$MCP_CONFIG_ABS_PATH" \
+              --allowedTools "mcp__*,Bash" \
+              --max-turns 25 \
+              --verbose \
+              --permission-mode "bypassPermissions" \
+              -p "$PROMPT"; then
+              
+              END_TIME=$(date +%s)
+              GENERATION_TIME=$((END_TIME - START_TIME))
+              
+              # Check if image was generated
+              if [ -f "$IMAGES_DIR/$OUTPUT_FILENAME" ]; then
+                echo "✅ Image generated successfully: $OUTPUT_FILENAME"
+                TOTAL_IMAGES=$((TOTAL_IMAGES + 1))
+                
+                # Read Google URL if available
+                if [ -f "$FOLDER_NAME/google-image-url-$TOTAL_IMAGES.txt" ]; then
+                  GOOGLE_URL=$(cat "$FOLDER_NAME/google-image-url-$TOTAL_IMAGES.txt")
+                  GENERATED_URLS+=("$GOOGLE_URL")
+                else
+                  GENERATED_URLS+=("")
+                fi
+                
+                USED_MODELS+=("$MODEL_NAME")
+                GENERATION_TIMES+=("$GENERATION_TIME")
+                
+                echo "  ⏱️ Generation time: ${GENERATION_TIME}s"
+              else
+                echo "::warning::⚠️ Image generation failed for $MODEL_NAME (image $i)"
+              fi
+            else
+              echo "::warning::⚠️ Claude Code CLI failed for $MODEL_NAME (image $i)"
+            fi
+          done
+        done
+        
+        echo "📊 Generation Summary:"
+        echo "  Total images generated: $TOTAL_IMAGES"
+        echo "  Expected images: $TOTAL_EXPECTED"
+        echo "  Success rate: $(( (TOTAL_IMAGES * 100) / TOTAL_EXPECTED ))%"
+        
+        # Create JSON outputs
+        printf '%s\n' "${GENERATED_URLS[@]}" | jq -R . | jq -s . > "$FOLDER_NAME/image-urls.json"
+        printf '%s\n' "${USED_MODELS[@]}" | jq -R . | jq -s . > "$FOLDER_NAME/models-used.json"
+        
+        # Set GitHub outputs
+        echo "images-completed=$TOTAL_IMAGES" >> $GITHUB_OUTPUT
+        echo "image-urls=$(cat "$FOLDER_NAME/image-urls.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "models-used=$(cat "$FOLDER_NAME/models-used.json" | jq -c .)" >> $GITHUB_OUTPUT
+        
+        # Backward compatibility: set first image URL
+        if [ "${#GENERATED_URLS[@]}" -gt 0 ] && [ -n "${GENERATED_URLS[0]}" ]; then
+          echo "google-image-url=${GENERATED_URLS[0]}" >> $GITHUB_OUTPUT
+        else
+          echo "google-image-url=" >> $GITHUB_OUTPUT
+        fi
+        
+        # Generate comparison report if enabled
+        if [ "$ENABLE_COMPARISON" == "true" ] && [ "$TOTAL_IMAGES" -gt 1 ]; then
+          REPORT_PATH="$FOLDER_NAME/comparison-report.md"
+          
+          echo "📄 Generating comparison report..."
+          
+          cat > "$REPORT_PATH" << EOF
+# 画像生成比較レポート
+
+## 生成条件
+- **プロンプト**: $IMAGE_PROMPT
+- **生成日時**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+- **使用モデル**: $(IFS=', '; echo "${USED_MODELS[*]}")
+- **生成枚数**: $TOTAL_IMAGES枚
+
+## 結果一覧
+
+| 画像番号 | モデル | ファイル名 | 生成時間 | Google URL |
+|---------|--------|-----------|---------|-----------|
+EOF
+          
+          for ((i=0; i<TOTAL_IMAGES; i++)); do
+            IMAGE_NUM=$((i + 1))
+            MODEL_NAME="${USED_MODELS[i]:-N/A}"
+            GEN_TIME="${GENERATION_TIMES[i]:-N/A}"
+            GOOGLE_URL="${GENERATED_URLS[i]:-N/A}"
+            
+            # Find the corresponding image file
+            if [ "$MODEL_COUNT" -gt 1 ]; then
+              IMAGE_FILE="generated-image-${i}-$(echo "${MODEL_ARRAY[i % MODEL_COUNT]}" | tr '/' '-').png"
+            else
+              IMAGE_FILE="generated-image-${IMAGE_NUM}.png"
+            fi
+            
+            echo "| $IMAGE_NUM | $MODEL_NAME | $IMAGE_FILE | ${GEN_TIME}秒 | $GOOGLE_URL |" >> "$REPORT_PATH"
+          done
+          
+          cat >> "$REPORT_PATH" << EOF
+
+## 統計情報
+- **平均生成時間**: $(( $(IFS=+; echo "${GENERATION_TIMES[*]}") / TOTAL_IMAGES ))秒
+- **最速生成**: $(printf '%s\n' "${GENERATION_TIMES[@]}" | sort -n | head -1)秒
+- **最遅生成**: $(printf '%s\n' "${GENERATION_TIMES[@]}" | sort -n | tail -1)秒
+
+## 実行モード
+- **モード**: $EXECUTION_MODE
+- **並列処理**: 有効
+- **成功率**: $(( (TOTAL_IMAGES * 100) / TOTAL_EXPECTED ))%
+
+---
+*🤖 Generated by KamuiCode Multi Image Generation Module*
+EOF
+          
+          echo "✅ Comparison report created: $REPORT_PATH"
+          echo "comparison-report=$REPORT_PATH" >> $GITHUB_OUTPUT
+        else
+          echo "comparison-report=" >> $GITHUB_OUTPUT
+        fi
+        
+        if [ "$TOTAL_IMAGES" -eq 0 ]; then
+          echo "::error::❌ No images were generated successfully"
+          exit 1
+        fi
+        
+        echo "::notice::✅ Multi image generation completed: $TOTAL_IMAGES/$TOTAL_EXPECTED images"
+        echo "::endgroup::"
+    
+    - name: Commit and push images
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No image files to commit"
+        else
+          COMMIT_MSG="Add ${{ steps.multi-image.outputs.images-completed }} generated images: ${{ inputs.image-prompt }}"
+          if [ "${{ inputs.enable-comparison }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG (with model comparison)"
+          fi
+          git commit -m "$COMMIT_MSG"
+          git push origin ${{ inputs.branch-name }}
+        fi
