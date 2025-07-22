@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cherry Blossom Tree - 3D Model Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            color: white;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #viewer {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #progress-bar {
+            width: 200px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            margin: 15px auto;
+            overflow: hidden;
+        }
+        
+        #progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            min-width: 250px;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        
+        #info-panel.visible {
+            transform: translateX(0);
+        }
+        
+        #info-panel h3 {
+            margin-bottom: 15px;
+            color: #4facfe;
+        }
+        
+        #info-panel .stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        #controls-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        #controls-panel h4 {
+            margin-bottom: 10px;
+            color: #4facfe;
+            font-size: 14px;
+        }
+        
+        #controls-panel .control {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        
+        #fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+            transition: background 0.3s ease;
+        }
+        
+        #fullscreen-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+        }
+        
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            display: none;
+        }
+        
+        #toggle-info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        @media (max-width: 768px) {
+            #info-panel {
+                min-width: 200px;
+                font-size: 12px;
+            }
+            
+            #controls-panel {
+                font-size: 10px;
+            }
+            
+            #fullscreen-btn {
+                padding: 8px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="viewer"></canvas>
+        
+        <div id="loading">
+            <div class="spinner"></div>
+            <h3>Loading Cherry Blossom Tree</h3>
+            <p>Please wait while we prepare your 3D model...</p>
+            <div id="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+            <div id="progress-text">0%</div>
+        </div>
+        
+        <div id="info-panel">
+            <h3>Model Information</h3>
+            <div class="stat">
+                <span>Model:</span>
+                <span>Cherry Blossom Tree</span>
+            </div>
+            <div class="stat">
+                <span>Format:</span>
+                <span>GLB</span>
+            </div>
+            <div class="stat">
+                <span>Vertices:</span>
+                <span id="vertex-count">Loading...</span>
+            </div>
+            <div class="stat">
+                <span>Triangles:</span>
+                <span id="triangle-count">Loading...</span>
+            </div>
+            <div class="stat">
+                <span>File Size:</span>
+                <span id="file-size">Loading...</span>
+            </div>
+            <div class="stat">
+                <span>Materials:</span>
+                <span id="material-count">Loading...</span>
+            </div>
+        </div>
+        
+        <button id="toggle-info">ℹ Info</button>
+        
+        <div id="controls-panel">
+            <h4>Controls</h4>
+            <div class="control">🖱️ Drag: Rotate model</div>
+            <div class="control">🔄 Wheel: Zoom in/out</div>
+            <div class="control">📱 Touch: Pinch to zoom</div>
+            <div class="control">⌨️ R: Reset view</div>
+        </div>
+        
+        <button id="fullscreen-btn" title="Fullscreen">⛶</button>
+        
+        <div id="error-message">
+            <h3>Loading Error</h3>
+            <p id="error-text">Failed to load the 3D model. Please check if the model file exists and try refreshing the page.</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/GLTFLoader.js"></script>
+    <script>
+        let scene, camera, renderer, controls, model;
+        let loadingElement, errorElement, infoPanel;
+        let modelStats = {
+            vertices: 0,
+            triangles: 0,
+            materials: 0,
+            fileSize: 0
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof THREE !== 'undefined' && THREE.OrbitControls && THREE.GLTFLoader) {
+                console.log('All Three.js components loaded successfully');
+                initViewer();
+            } else {
+                console.error('Three.js components failed to load');
+                showError('Three.js failed to load. Please refresh the page to try again.');
+            }
+        });
+
+        function initViewer() {
+            loadingElement = document.getElementById('loading');
+            errorElement = document.getElementById('error-message');
+            infoPanel = document.getElementById('info-panel');
+            
+            setupScene();
+            setupCamera();
+            setupRenderer();
+            setupLighting();
+            setupControls();
+            setupEventListeners();
+            loadModel();
+            
+            animate();
+        }
+
+        function setupScene() {
+            scene = new THREE.Scene();
+            
+            const gradientTexture = createGradientTexture();
+            scene.background = gradientTexture;
+            
+            scene.fog = new THREE.Fog(0x667eea, 50, 200);
+        }
+
+        function createGradientTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 2;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 2);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 2, 2);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.magFilter = THREE.LinearFilter;
+            texture.minFilter = THREE.LinearFilter;
+            
+            return texture;
+        }
+
+        function setupCamera() {
+            const canvas = document.getElementById('viewer');
+            camera = new THREE.PerspectiveCamera(
+                50,
+                canvas.clientWidth / canvas.clientHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(5, 3, 5);
+        }
+
+        function setupRenderer() {
+            const canvas = document.getElementById('viewer');
+            renderer = new THREE.WebGLRenderer({
+                canvas: canvas,
+                antialias: true,
+                alpha: true
+            });
+            
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+
+        function setupLighting() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.shadow.camera.near = 0.5;
+            directionalLight.shadow.camera.far = 50;
+            directionalLight.shadow.camera.left = -10;
+            directionalLight.shadow.camera.right = 10;
+            directionalLight.shadow.camera.top = 10;
+            directionalLight.shadow.camera.bottom = -10;
+            scene.add(directionalLight);
+            
+            const fillLight = new THREE.DirectionalLight(0x87ceeb, 0.3);
+            fillLight.position.set(-5, 3, -5);
+            scene.add(fillLight);
+            
+            const rimLight = new THREE.DirectionalLight(0xffc0cb, 0.2);
+            rimLight.position.set(0, 5, -10);
+            scene.add(rimLight);
+        }
+
+        function setupControls() {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.1;
+            controls.screenSpacePanning = false;
+            controls.minDistance = 2;
+            controls.maxDistance = 20;
+            controls.maxPolarAngle = Math.PI;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize);
+            
+            document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+            document.getElementById('toggle-info').addEventListener('click', toggleInfoPanel);
+            
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'r' || event.key === 'R') {
+                    resetCamera();
+                }
+            });
+            
+            renderer.domElement.addEventListener('dblclick', function() {
+                controls.autoRotate = !controls.autoRotate;
+            });
+        }
+
+        function loadModel() {
+            const loader = new THREE.GLTFLoader();
+            const progressBar = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            loader.load(
+                'generated_model.glb',
+                function(gltf) {
+                    model = gltf.scene;
+                    
+                    calculateModelStats(model);
+                    updateInfoPanel();
+                    
+                    const box = new THREE.Box3().setFromObject(model);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 3 / maxDim;
+                    model.scale.setScalar(scale);
+                    
+                    model.position.sub(center.multiplyScalar(scale));
+                    model.position.y = -box.min.y * scale;
+                    
+                    model.traverse(function(child) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                            
+                            if (child.material) {
+                                child.material.envMapIntensity = 0.8;
+                            }
+                        }
+                    });
+                    
+                    scene.add(model);
+                    hideLoading();
+                    
+                    setTimeout(() => {
+                        infoPanel.classList.add('visible');
+                    }, 500);
+                },
+                function(progress) {
+                    if (progress.lengthComputable) {
+                        const percentComplete = (progress.loaded / progress.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                        progressText.textContent = Math.round(percentComplete) + '%';
+                    }
+                },
+                function(error) {
+                    console.error('Error loading model:', error);
+                    hideLoading();
+                    showError('Failed to load the 3D model. Please check if the model file exists.');
+                }
+            );
+        }
+
+        function calculateModelStats(object) {
+            modelStats.vertices = 0;
+            modelStats.triangles = 0;
+            modelStats.materials = new Set();
+            
+            object.traverse(function(child) {
+                if (child.isMesh) {
+                    if (child.geometry) {
+                        const positions = child.geometry.attributes.position;
+                        if (positions) {
+                            modelStats.vertices += positions.count;
+                        }
+                        
+                        if (child.geometry.index) {
+                            modelStats.triangles += child.geometry.index.count / 3;
+                        } else if (positions) {
+                            modelStats.triangles += positions.count / 3;
+                        }
+                    }
+                    
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => modelStats.materials.add(mat.uuid));
+                        } else {
+                            modelStats.materials.add(child.material.uuid);
+                        }
+                    }
+                }
+            });
+            
+            modelStats.materials = modelStats.materials.size;
+            modelStats.triangles = Math.floor(modelStats.triangles);
+        }
+
+        function updateInfoPanel() {
+            document.getElementById('vertex-count').textContent = modelStats.vertices.toLocaleString();
+            document.getElementById('triangle-count').textContent = modelStats.triangles.toLocaleString();
+            document.getElementById('material-count').textContent = modelStats.materials;
+            
+            fetch('generated_model.glb')
+                .then(response => response.blob())
+                .then(blob => {
+                    const sizeInMB = (blob.size / (1024 * 1024)).toFixed(2);
+                    document.getElementById('file-size').textContent = sizeInMB + ' MB';
+                })
+                .catch(() => {
+                    document.getElementById('file-size').textContent = 'Unknown';
+                });
+        }
+
+        function hideLoading() {
+            loadingElement.style.display = 'none';
+        }
+
+        function showError(message) {
+            document.getElementById('error-text').textContent = message;
+            errorElement.style.display = 'block';
+            loadingElement.style.display = 'none';
+        }
+
+        function toggleInfoPanel() {
+            infoPanel.classList.toggle('visible');
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function resetCamera() {
+            camera.position.set(5, 3, 5);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        function onWindowResize() {
+            const canvas = document.getElementById('viewer');
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
