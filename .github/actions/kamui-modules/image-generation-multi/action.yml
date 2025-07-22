@@ -296,7 +296,7 @@ runs:
           
           echo "📄 Generating comparison report..."
           
-          cat > "$REPORT_PATH" << EOF
+          cat > "$REPORT_PATH" << 'EOF'
 # 画像生成比較レポート
 
 ## 生成条件
