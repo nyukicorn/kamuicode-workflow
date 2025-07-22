@@ -1,0 +1,76 @@
+name: Auto Feature Development Simple
+
+on:
+  workflow_dispatch:
+    inputs:
+      requirements_file:
+        description: '要件定義書のパス'
+        required: true
+        default: 'docs/requirements/multi-image-generation-requirements.md'
+        type: string
+      target_module:
+        description: '対象モジュール名'
+        required: true
+        default: 'image-generation-multi'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-development:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install Claude Code SDK
+        run: npm install @anthropic-ai/claude-code
+        
+      - name: Verify Requirements File
+        run: |
+          if [ ! -f "${{ inputs.requirements_file }}" ]; then
+            echo "要件定義書が見つかりません: ${{ inputs.requirements_file }}"
+            exit 1
+          fi
+          echo "要件定義書を確認しました: ${{ inputs.requirements_file }}"
+          
+      - name: Analysis and Implementation
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "自動開発システム開始: ${{ inputs.target_module }}"
+          
+          npx @anthropic-ai/claude-code \
+            --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
+            --max-turns 100 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "Read the requirements file ${{ inputs.requirements_file }} and implement the ${{ inputs.target_module }} module. Create all necessary files in .github/actions/kamui-modules/${{ inputs.target_module }}/ directory."
+          
+      - name: Commit Changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add -A
+          
+          if git diff --cached --quiet; then
+            echo "変更がありません"
+          else
+            git commit -m "Auto-implement ${{ inputs.target_module }} module"
+            echo "コミット完了"
+          fi
+          
+      - name: Summary
+        run: |
+          echo "自動開発完了"
+          echo "対象モジュール: ${{ inputs.target_module }}"
+          echo "要件ファイル: ${{ inputs.requirements_file }}"
