@@ -234,26 +234,23 @@ jobs:
           if git diff --cached --quiet; then
             echo "::notice::📝 コミットする変更がありません"
           else
-            git commit -m "$(cat <<'EOF'
-✨ Auto-implement ${{ inputs.target_module }} module
+            git commit -m "Auto-implement ${{ inputs.target_module }} module
 
-🤖 GitHub Actions自動開発システムによる実装
+GitHub Actions auto-development system implementation
 
-## 実装内容
-- 要件定義書: ${{ inputs.requirements_file }}
-- 対象モジュール: ${{ inputs.target_module }}
-- 開発モード: ${{ inputs.development_mode }}
+Implementation details:
+- Requirements file: ${{ inputs.requirements_file }}
+- Target module: ${{ inputs.target_module }}
+- Development mode: ${{ inputs.development_mode }}
 
-## フェーズ完了状況
+Phase completion status:
 - Phase 1 (Analysis): ${{ steps.analysis.outputs.analysis_completed }}
 - Phase 2 (Implementation): ${{ steps.implementation.outputs.implementation_completed || 'skipped' }}
 - Phase 3 (Testing): ${{ steps.testing.outputs.testing_completed || 'skipped' }}
 
-🚀 Generated with Claude Code SDK Auto-Development System
+Generated with Claude Code SDK Auto-Development System
 
-Co-Authored-By: Claude <noreply@anthropic.com>
-EOF
-)"
+Co-Authored-By: Claude <noreply@anthropic.com>"
             git push origin "$BRANCH_NAME"
             
             # PR作成
