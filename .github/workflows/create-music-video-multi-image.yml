@@ -50,6 +50,7 @@ jobs:
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
 
       - name: Music Analysis
         id: analysis
