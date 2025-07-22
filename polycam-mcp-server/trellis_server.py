@@ -247,12 +247,27 @@ Progress: {job['progress']}%"""
             job = self.job_status[job_id]
             job['status'] = 'running'
             
-            # Import TRELLIS (only when needed to avoid startup overhead)
             logger.info(f"Starting TRELLIS text generation for job {job_id}")
             
-            # TODO: Actual TRELLIS integration
-            # For now, simulate the process
-            await self._simulate_generation(job_id)
+            # Try to use actual TRELLIS implementation
+            from .trellis_integration import is_trellis_available, generate_3d_model
+            
+            if is_trellis_available():
+                prompt = job['prompt']
+                output_format = job['output_format']
+                output_file = self.output_dir / f"{job_id}.{output_format}"
+                
+                try:
+                    # For text-to-3D, we need an intermediate image step
+                    # For now, fall back to simulation until we implement text-to-image
+                    logger.warning("Text-to-3D requires text-to-image preprocessing. Using simulation for now.")
+                    await self._simulate_generation(job_id)
+                except NotImplementedError:
+                    logger.info("Text-to-3D not yet implemented, using simulation")
+                    await self._simulate_generation(job_id)
+            else:
+                logger.info("TRELLIS not available, using simulation mode")
+                await self._simulate_generation(job_id)
             
         except Exception as e:
             logger.error(f"Error in text generation {job_id}: {e}")
@@ -267,9 +282,38 @@ Progress: {job['progress']}%"""
             
             logger.info(f"Starting TRELLIS image generation for job {job_id}")
             
-            # TODO: Actual TRELLIS integration
-            # For now, simulate the process
-            await self._simulate_generation(job_id)
+            # Try to use actual TRELLIS implementation
+            from .trellis_integration import is_trellis_available, generate_3d_model
+            
+            if is_trellis_available():
+                image_url = job['image_url']
+                output_format = job['output_format']
+                output_file = self.output_dir / f"{job_id}.{output_format}"
+                
+                try:
+                    logger.info(f"Using TRELLIS to generate 3D model from image: {image_url}")
+                    
+                    result_file = await generate_3d_model(
+                        input_type='image',
+                        input_data=image_url,
+                        output_path=str(output_file),
+                        output_format=output_format,
+                        seed=job.get('seed', 1),
+                        steps=job.get('steps', 12)
+                    )
+                    
+                    job['status'] = 'completed'
+                    job['output_file'] = result_file
+                    job['progress'] = 100
+                    logger.info(f"TRELLIS generation completed: {result_file}")
+                    
+                except Exception as trellis_error:
+                    logger.error(f"TRELLIS generation failed: {trellis_error}")
+                    logger.info("Falling back to simulation mode")
+                    await self._simulate_generation(job_id)
+            else:
+                logger.info("TRELLIS not available, using simulation mode")
+                await self._simulate_generation(job_id)
             
         except Exception as e:
             logger.error(f"Error in image generation {job_id}: {e}")

@@ -1,0 +1,165 @@
+name: TRELLIS 3D Generation
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_type:
+        description: 'Input type (image or text)'
+        required: true
+        type: choice
+        options:
+          - image
+          - text
+      input_data:
+        description: 'Input data (image URL or text prompt)'
+        required: true
+        type: string
+      output_format:
+        description: 'Output format'
+        required: false
+        type: choice
+        default: 'glb'
+        options:
+          - glb
+          - ply
+          - mesh
+      steps:
+        description: 'Number of diffusion steps'
+        required: false
+        type: number
+        default: 12
+
+jobs:
+  generate-3d:
+    runs-on: [self-hosted, gpu, cuda]  # Requires GPU runner
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Cache TRELLIS dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/huggingface
+          /tmp/extensions
+        key: trellis-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          trellis-${{ runner.os }}-
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
+    
+    - name: Install PyTorch with CUDA
+      run: |
+        pip install torch==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu118
+        
+    - name: Install TRELLIS dependencies
+      working-directory: ./trellis-source
+      run: |
+        # Install basic dependencies
+        pip install pillow imageio imageio-ffmpeg tqdm easydict opencv-python-headless scipy ninja rembg onnxruntime trimesh xatlas pyvista pymeshfix igraph transformers
+        pip install git+https://github.com/EasternJournalist/utils3d.git@9a4eb15e4021b67b12c460c7057d642626897ec8
+        
+        # Install xformers
+        pip install xformers==0.0.27.post2 --index-url https://download.pytorch.org/whl/cu118
+        
+        # Install spconv
+        pip install spconv-cu118
+        
+        # Install other GPU dependencies
+        pip install flash-attn
+        
+        # Install additional extensions
+        mkdir -p /tmp/extensions
+        git clone https://github.com/NVlabs/nvdiffrast.git /tmp/extensions/nvdiffrast
+        pip install /tmp/extensions/nvdiffrast
+        
+        git clone --recurse-submodules https://github.com/JeffreyXiang/diffoctreerast.git /tmp/extensions/diffoctreerast
+        pip install /tmp/extensions/diffoctreerast
+        
+    - name: Install TRELLIS package
+      working-directory: ./trellis-source
+      run: |
+        pip install -e .
+        
+    - name: Install MCP server dependencies
+      working-directory: ./polycam-mcp-server
+      run: |
+        pip install -r requirements.txt
+        
+    - name: Test TRELLIS installation
+      working-directory: ./trellis-source
+      run: |
+        python -c "
+        import os
+        os.environ['SPCONV_ALGO'] = 'native'
+        from trellis.pipelines import TrellisImageTo3DPipeline
+        print('TRELLIS successfully imported!')
+        "
+        
+    - name: Run 3D generation
+      working-directory: ./polycam-mcp-server
+      run: |
+        python3 -c "
+        import asyncio
+        import os
+        import sys
+        
+        # Set environment variables
+        os.environ['SPCONV_ALGO'] = 'native'
+        
+        sys.path.append('.')
+        from trellis_integration import generate_3d_model, is_trellis_available
+        
+        async def main():
+            if not is_trellis_available():
+                print('ERROR: TRELLIS not available')
+                sys.exit(1)
+                
+            print('TRELLIS is available, starting generation...')
+            
+            try:
+                result = await generate_3d_model(
+                    input_type='${{ inputs.input_type }}',
+                    input_data='${{ inputs.input_data }}',
+                    output_path='./outputs/generated_model.${{ inputs.output_format }}',
+                    output_format='${{ inputs.output_format }}',
+                    steps=${{ inputs.steps }}
+                )
+                print(f'Generation completed: {result}')
+                
+            except Exception as e:
+                print(f'Generation failed: {e}')
+                sys.exit(1)
+                
+        asyncio.run(main())
+        "
+        
+    - name: Upload generated 3D model
+      uses: actions/upload-artifact@v3
+      with:
+        name: generated-3d-model
+        path: ./polycam-mcp-server/outputs/generated_model.*
+        retention-days: 7
+        
+    - name: Display generation info
+      run: |
+        echo "🎉 3D Generation Complete!"
+        echo "Input Type: ${{ inputs.input_type }}"
+        echo "Input Data: ${{ inputs.input_data }}"
+        echo "Output Format: ${{ inputs.output_format }}"
+        echo "Steps: ${{ inputs.steps }}"
+        
+        if [ -f "./polycam-mcp-server/outputs/generated_model.${{ inputs.output_format }}" ]; then
+          echo "File size: $(stat -f%z "./polycam-mcp-server/outputs/generated_model.${{ inputs.output_format }}") bytes"
+        fi
