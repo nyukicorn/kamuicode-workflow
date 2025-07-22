@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Video - セクション修正テスト：月夜のセレナーデ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header h2 {
+            font-size: 1.8rem;
+            color: #555;
+            margin-bottom: 15px;
+        }
+        
+        .timestamp {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .status-badge {
+            background: #28a745;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .media-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .media-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .media-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .media-section img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s ease;
+        }
+        
+        .media-section img:hover {
+            transform: scale(1.02);
+        }
+        
+        .media-section audio,
+        .media-section video {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            background: #000;
+        }
+        
+        .media-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .info-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .info-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .info-card li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            transition: color 0.3s ease;
+        }
+        
+        .info-card li:hover {
+            color: #667eea;
+        }
+        
+        .info-card li:last-child {
+            border-bottom: none;
+        }
+        
+        .download-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .download-section h3 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            color: #333;
+        }
+        
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 15px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            color: #666;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        .unavailable {
+            opacity: 0.6;
+            background: #f8f9fa !important;
+        }
+        
+        .unavailable-notice {
+            text-align: center;
+            padding: 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            color: #856404;
+            margin-top: 15px;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .header h2 {
+                font-size: 1.4rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌙 セクション修正テスト：月夜のセレナーデ</h1>
+            <h2>AI Generated Music Video</h2>
+            <div class="timestamp">
+                📅 Generated: 2025-07-22
+                <span class="status-badge">🔬 Test Version</span>
+            </div>
+            <p style="margin-top: 15px; color: #666;">
+                Kamuicode Orchestration - Section Test Implementation
+            </p>
+        </div>
+
+        <div class="media-grid">
+            <!-- Generated Image Section (静止画像のみ) -->
+            <div class="media-section">
+                <h3>🖼️ Generated Image</h3>
+                <img src="images/generated-image.png" alt="Generated Image - 月夜のセレナーデ" 
+                     title="AI Generated Image for 月夜のセレナーデ">
+                <div class="media-info">
+                    <strong>静止画像のみ表示</strong><br>
+                    Imagen4で生成されたロマンチックな月夜の風景<br>
+                    音楽は含まれません
+                </div>
+            </div>
+
+            <!-- Generated Music Section (音楽のみ) -->
+            <div class="media-section">
+                <h3>🎵 Generated Music</h3>
+                <audio controls preload="metadata">
+                    <source src="music/generated-music.wav" type="audio/wav">
+                    <p>お使いのブラウザは音声再生をサポートしていません。</p>
+                </audio>
+                <div class="media-info">
+                    <strong>音楽のみ再生</strong><br>
+                    Google Lyria生成のアコースティックギターとピアノのセレナーデ<br>
+                    画像は含まれません
+                </div>
+            </div>
+
+            <!-- Individual Video Section (ビデオのみ) -->
+            <div class="media-section">
+                <h3>🎬 Individual Video</h3>
+                <video controls preload="metadata" muted>
+                    <source src="videos/segment-1.mp4" type="video/mp4">
+                    <p>お使いのブラウザはビデオ再生をサポートしていません。</p>
+                </video>
+                <div class="media-info">
+                    <strong>ビデオセグメントのみ</strong><br>
+                    Hailuo-02 Pro生成のビデオクリップ（音声なし）<br>
+                    音楽は含まれません
+                </div>
+            </div>
+
+            <!-- Final Music Video Section (音楽付きビデオ) -->
+            <div class="media-section unavailable">
+                <h3>🎥 Final Music Video</h3>
+                <div style="aspect-ratio: 16/9; background: #f5f5f5; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: #999;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 10px;">🎬</div>
+                        <div>Final video not yet generated</div>
+                    </div>
+                </div>
+                <div class="unavailable-notice">
+                    <strong>⚠️ 統合版ビデオは現在生成中です</strong><br>
+                    このセクションでは通常、音楽と映像を統合した最終版が表示されます
+                </div>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>📊 Generation Info</h3>
+                <ul>
+                    <li><strong>🎯 コンセプト:</strong> 月夜のセレナーデ</li>
+                    <li><strong>⚙️ ワークフロー:</strong> Create Music Video (Section Test)</li>
+                    <li><strong>📅 実行日時:</strong> 2025-07-22 16:43</li>
+                    <li><strong>🌿 ブランチ:</strong> music-video/20250722-16432802920</li>
+                    <li><strong>📁 フォルダID:</strong> music-video-20250722-16432802920</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>🎨 Generated Content</h3>
+                <ul>
+                    <li><strong>🎵 音楽:</strong> Google Lyria (WAV)</li>
+                    <li><strong>🖼️ 画像:</strong> Imagen4 Fast (PNG)</li>
+                    <li><strong>🎬 動画:</strong> Hailuo-02 Pro (MP4)</li>
+                    <li><strong>📝 分析:</strong> AI Strategy Reports</li>
+                    <li><strong>🔧 調整:</strong> Video Prompt Adjustments</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>🎼 Music Characteristics</h3>
+                <ul>
+                    <li><strong>主楽器:</strong> アコースティックギター</li>
+                    <li><strong>副楽器:</strong> ソフトピアノ</li>
+                    <li><strong>スタイル:</strong> フィンガーピッキング</li>
+                    <li><strong>雰囲気:</strong> ロマンチック・セレーン</li>
+                    <li><strong>テンポ:</strong> 60-80 BPM</li>
+                </ul>
+            </div>
+
+            <div class="info-card">
+                <h3>📁 File Structure</h3>
+                <ul>
+                    <li><code>music/</code> - Generated music files</li>
+                    <li><code>images/</code> - Generated images</li>
+                    <li><code>videos/</code> - Video segments</li>
+                    <li><code>analysis/</code> - AI analysis reports</li>
+                    <li><code>planning/</code> - Strategy documents</li>
+                    <li><code>video-adjustments/</code> - Prompt adjustments</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <h3>💾 Download Available Assets</h3>
+            <div class="download-grid">
+                <a href="music/generated-music.wav" download class="download-btn">
+                    🎵 Download Music (WAV)
+                </a>
+                <a href="images/generated-image.png" download class="download-btn">
+                    🖼️ Download Image (PNG)
+                </a>
+                <a href="videos/segment-1.mp4" download class="download-btn">
+                    🎬 Download Video (MP4)
+                </a>
+                <a href="planning/music-video-strategy.md" download class="download-btn">
+                    📋 Download Strategy
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🤖 Generated with <a href="https://claude.ai/code">Claude Code</a> & <a href="https://www.kamui.ai/ja">Kamuicode MCP</a></p>
+            <p>Section Test Implementation - Demonstrating 4-Section Media Player Structure</p>
+            <p style="margin-top: 10px; font-size: 0.9rem;">
+                This page demonstrates the required 4-section structure:<br>
+                Generated Image (静止画) | Generated Music (音楽のみ) | Individual Video (映像のみ) | Final Music Video (統合版)
+            </p>
+        </div>
+    </div>
+</body>
+</html>
