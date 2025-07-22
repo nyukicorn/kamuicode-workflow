@@ -75,6 +75,11 @@ jobs:
     needs: setup-branch
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+
       - name: Generate TRELLIS 3D Model
         uses: ./.github/actions/kamui-modules/trellis-3d-generation
         with:
@@ -91,6 +96,11 @@ jobs:
     needs: [setup-branch, generate-3d-model]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+
       - name: Create Three.js 3D Viewer
         uses: ./.github/actions/kamui-modules/threejs-3d-integration
         with:
