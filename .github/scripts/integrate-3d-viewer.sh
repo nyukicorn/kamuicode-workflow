@@ -55,8 +55,12 @@ Requirements:
 10. Include performance optimizations
 
 Technical Requirements:
-- Use Three.js via CDN (latest stable version)
-- Include OrbitControls for camera movement
+- Use Three.js via CDN: https://unpkg.com/three@0.155.0/build/three.min.js
+- OrbitControls: https://unpkg.com/three@0.155.0/examples/js/controls/OrbitControls.js
+- GLTFLoader: https://unpkg.com/three@0.155.0/examples/js/loaders/GLTFLoader.js
+- PLYLoader: https://unpkg.com/three@0.155.0/examples/js/loaders/PLYLoader.js
+- CRITICAL: Load scripts IN ORDER - Three.js first, then controls/loaders
+- Ensure THREE is globally available before using
 - Add proper model loading with progress indication
 - Implement appropriate lighting for the model type
 - Handle GLB/PLY/OBJ formats appropriately
