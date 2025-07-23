@@ -111,16 +111,35 @@ jobs:
       - name: Save image path
         id: save-image
         run: |
-          # Debug: List all files in the folder
-          echo "📁 Contents of immersive-pointcloud-${{ steps.timestamp.outputs.value }}:"
-          find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -type f | head -20
+          # Debug: Show current directory and all contents
+          echo "📂 Current directory: $(pwd)"
+          echo "📁 All directories in current folder:"
+          ls -la | grep "^d"
           
-          # Find the generated image
-          IMAGE_FILE=$(find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.jpg" -o -name "*.png" | head -1)
+          echo "📁 Contents of immersive-pointcloud-${{ steps.timestamp.outputs.value }}:"
+          if [ -d "immersive-pointcloud-${{ steps.timestamp.outputs.value }}" ]; then
+            find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -type f | head -20
+          else
+            echo "❌ Directory immersive-pointcloud-${{ steps.timestamp.outputs.value }} does not exist"
+            echo "Available directories:"
+            ls -la | grep "immersive-pointcloud" || echo "No immersive-pointcloud directories found"
+          fi
+          
+          # Find the generated image (search more broadly)
+          IMAGE_FILE=$(find . -name "*immersive-pointcloud-${{ steps.timestamp.outputs.value }}*" -name "*.jpg" -o -name "*immersive-pointcloud-${{ steps.timestamp.outputs.value }}*" -name "*.png" | head -1)
+          
+          # If not found, search in current directory for any image
           if [ -z "$IMAGE_FILE" ]; then
-            echo "::error::No image file found in immersive-pointcloud-${{ steps.timestamp.outputs.value }}"
-            echo "Available files:"
-            find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -type f || echo "No files found"
+            echo "🔍 Searching for any image files in current directory..."
+            IMAGE_FILE=$(find . -maxdepth 3 -name "*.jpg" -o -name "*.png" | grep -E "(generated|image)" | head -1)
+          fi
+          
+          if [ -z "$IMAGE_FILE" ]; then
+            echo "::error::No image file found anywhere"
+            echo "📋 All files in current directory:"
+            find . -type f -name "*.png" -o -name "*.jpg" | head -10
+            echo "📋 All directories with timestamp:"
+            find . -type d -name "*${{ steps.timestamp.outputs.value }}*"
             exit 1
           fi
           
