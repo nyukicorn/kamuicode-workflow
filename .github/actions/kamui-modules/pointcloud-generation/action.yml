@@ -93,13 +93,12 @@ runs:
         echo "🧠 Step 1: Running synthetic depth estimation..."
         DEPTH_MAP_PATH="$OUTPUT_FOLDER/depth.png"
         
-        echo "Executing: python tools/simple_depth_test.py --input \"$INPUT_IMAGE\" --output \"$DEPTH_MAP_PATH\""
-        python tools/simple_depth_test.py \
+        if ! python tools/simple_depth_test.py \
           --input "$INPUT_IMAGE" \
-          --output "$DEPTH_MAP_PATH" || {
+          --output "$DEPTH_MAP_PATH"; then
           echo "::error::❌ Depth estimation failed"
           exit 1
-        }
+        fi
         
         if [ ! -f "$DEPTH_MAP_PATH" ]; then
           echo "::error::❌ Depth map not generated: $DEPTH_MAP_PATH"
@@ -112,14 +111,13 @@ runs:
         echo "🔄 Step 2: Converting depth map to PLY point cloud..."
         PLY_FILE_PATH="$OUTPUT_FOLDER/pointcloud.ply"
         
-        echo "Executing: node tools/depth2ply.js --input \"$DEPTH_MAP_PATH\" --output \"$PLY_FILE_PATH\" --original-image \"$INPUT_IMAGE\""
-        node tools/depth2ply.js \
+        if ! node tools/depth2ply.js \
           --input "$DEPTH_MAP_PATH" \
           --output "$PLY_FILE_PATH" \
-          --original-image "$INPUT_IMAGE" || {
+          --original-image "$INPUT_IMAGE"; then
           echo "::error::❌ Depth to PLY conversion failed"
           exit 1
-        }
+        fi
         
         if [ ! -f "$PLY_FILE_PATH" ]; then
           echo "::error::❌ PLY file not generated: $PLY_FILE_PATH"
