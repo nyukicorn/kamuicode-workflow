@@ -75,9 +75,27 @@ class EnhancedParticleSystem {
 
     createFlower(type) {
         const configs = {
-            rose: { layers: 8, particlesPerLayer: 1250, colors: [0xff69b4, 0xff1493, 0xdc143c, 0xff91c7, 0xff0080] },
-            sakura: { layers: 6, particlesPerLayer: 1667, colors: [0xffb6c1, 0xffc0cb, 0xffd0e4, 0xff91a4, 0xffd1dc] },
-            lily: { layers: 7, particlesPerLayer: 1429, colors: [0xffffff, 0xfffacd, 0xf0e68c, 0xffefd5, 0xfff8dc] }
+            rose: { 
+                totalParticles: 4800, // Optimized for performance (under 5000)
+                petalCount: 25, // 20-30 petals as requested
+                spiralLayers: 12, // Multi-layer spiral structure
+                colors: {
+                    center: 0xE62850, // Deep red center
+                    edge: 0xFFBED2   // Light pink edge
+                }
+            },
+            sakura: { 
+                totalParticles: 3600, 
+                petalCount: 8, 
+                spiralLayers: 6,
+                colors: { center: 0xffc0cb, edge: 0xffd0e4 }
+            },
+            lily: { 
+                totalParticles: 4200, 
+                petalCount: 12, 
+                spiralLayers: 8,
+                colors: { center: 0xfffacd, edge: 0xfff8dc }
+            }
         };
         
         const config = configs[type] || configs.rose;
@@ -91,86 +109,77 @@ class EnhancedParticleSystem {
 
     createSingleFlower(config, index) {
         const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(config.layers * config.particlesPerLayer * 3);
-        const colors = new Float32Array(config.layers * config.particlesPerLayer * 3);
+        const positions = new Float32Array(config.totalParticles * 3);
+        const colors = new Float32Array(config.totalParticles * 3);
+        const sizes = new Float32Array(config.totalParticles);
         
         const center = new THREE.Vector3((Math.random()-0.5)*100, Math.random()*30-15, (Math.random()-0.5)*100);
         
-        let particleIndex = 0;
-        for (let layer = 0; layer < config.layers; layer++) {
-            for (let i = 0; i < config.particlesPerLayer; i++) {
-                const angle = (i / config.particlesPerLayer) * Math.PI * 2;
-                const spiralAngle = angle + layer * 0.3; // Spiral effect
-                
-                // Simple Flower Shape with Clear Petals
-                const layerNormalized = layer / (config.layers - 1);
-                const numPetals = 5;
-                
-                // Basic petal calculation
-                const petalIndex = Math.floor((angle / (Math.PI * 2)) * numPetals);
-                const petalCenter = (petalIndex + 0.5) / numPetals * Math.PI * 2;
-                
-                // Distance from petal center (0 = center, 1 = edge)
-                const angleDiff = Math.abs(angle - petalCenter);
-                const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
-                const petalDistance = normalizedDiff / (Math.PI / numPetals);
-                
-                // Simple petal shape function
-                const petalStrength = Math.max(0, 1 - petalDistance * 2);
-                
-                // Radius calculation with clear petal shapes
-                const baseRadius = 1.0 + layerNormalized * 1.0; // 1.0 to 2.0
-                const petalRadius = baseRadius * (0.5 + 0.5 * petalStrength);
-                
-                // Add slight layer rotation for depth
-                const layerRotation = layer * 0.1;
-                const finalAngle = angle + layerRotation;
-                
-                // Simple height progression
-                const height = layerNormalized * 1.5;
-                
-                // Clean positioning
-                positions[particleIndex * 3] = center.x + petalRadius * Math.cos(finalAngle);
-                positions[particleIndex * 3 + 1] = center.y + height;
-                positions[particleIndex * 3 + 2] = center.z + petalRadius * Math.sin(finalAngle);
-                
-                // Petal Gradient Coloring for Clear Shape Definition
-                const layerProgress = layer / (config.layers - 1);
-                
-                // Base color from layer progression
-                const colorIndex = Math.floor(layerProgress * (config.colors.length - 1));
-                const nextColorIndex = Math.min(colorIndex + 1, config.colors.length - 1);
-                const layerBlend = (layerProgress * (config.colors.length - 1)) % 1;
-                
-                const baseColor1 = new THREE.Color(config.colors[colorIndex]);
-                const baseColor2 = new THREE.Color(config.colors[nextColorIndex]);
-                const baseColor = baseColor1.clone().lerp(baseColor2, layerBlend);
-                
-                // Petal gradient based on distance from petal center
-                const petalGradient = 1 - petalDistance; // 1 = center, 0 = edge
-                const petalBrightness = 0.3 + 0.7 * petalGradient; // Darker at edges, brighter at center
-                
-                // Apply petal gradient to color
-                const finalColor = baseColor.clone().multiplyScalar(petalBrightness);
-                
-                // Add subtle edge darkening for definition
-                if (petalStrength < 0.1) {
-                    finalColor.multiplyScalar(0.5); // Darken petal edges significantly
-                }
-                
-                colors[particleIndex * 3] = finalColor.r;
-                colors[particleIndex * 3 + 1] = finalColor.g;
-                colors[particleIndex * 3 + 2] = finalColor.b;
-                
-                particleIndex++;
-            }
+        // Golden ratio for natural spiral
+        const goldenAngle = Math.PI * (3.0 - Math.sqrt(5.0));
+        
+        for (let i = 0; i < config.totalParticles; i++) {
+            // Spiral distribution using golden ratio
+            const spiralRadius = Math.sqrt(i / config.totalParticles) * 3.0; // 0 to 3 units
+            const spiralAngle = i * goldenAngle;
+            
+            // Multi-layer spiral structure (12 layers)
+            const layerIndex = Math.floor(i / (config.totalParticles / config.spiralLayers));
+            const layerProgress = layerIndex / (config.spiralLayers - 1);
+            
+            // Petal assignment using Fibonacci spiral
+            const petalPhase = (spiralAngle + layerProgress * Math.PI * 0.3) % (Math.PI * 2);
+            const petalIndex = Math.floor((petalPhase / (Math.PI * 2)) * config.petalCount);
+            const petalCenter = (petalIndex / config.petalCount) * Math.PI * 2;
+            
+            // Distance from petal center for shape definition
+            const petalAngleDiff = Math.abs(petalPhase - petalCenter);
+            const normalizedPetalDiff = Math.min(petalAngleDiff, Math.PI * 2 - petalAngleDiff);
+            const petalDistance = normalizedPetalDiff / (Math.PI / config.petalCount);
+            
+            // Petal strength (1 = center, 0 = edge)
+            const petalStrength = Math.max(0, 1 - petalDistance * 1.5);
+            
+            // 3D positioning with spiral and petal structure
+            const finalRadius = spiralRadius * (0.4 + 0.6 * petalStrength);
+            const finalAngle = spiralAngle + layerProgress * 0.2;
+            
+            // Z-axis thickness (0.2-0.3 as requested)
+            const thickness = 0.25 * (Math.random() - 0.5) + layerProgress * 0.1;
+            
+            // Height with inward curling toward center
+            const curlFactor = Math.pow(1 - spiralRadius / 3.0, 1.5);
+            const height = layerProgress * 2.0 + curlFactor * 0.8;
+            
+            // Final positioning
+            positions[i * 3] = center.x + finalRadius * Math.cos(finalAngle);
+            positions[i * 3 + 1] = center.y + height;
+            positions[i * 3 + 2] = center.z + finalRadius * Math.sin(finalAngle) + thickness;
+            
+            // Radial gradient: center=#E62850, edge=#FFBED2
+            const centerColor = new THREE.Color(config.colors.center);
+            const edgeColor = new THREE.Color(config.colors.edge);
+            const radialDistance = spiralRadius / 3.0; // 0 to 1
+            const finalColor = centerColor.clone().lerp(edgeColor, radialDistance);
+            
+            // Apply petal brightness variation
+            const petalBrightness = 0.6 + 0.4 * petalStrength;
+            finalColor.multiplyScalar(petalBrightness);
+            
+            colors[i * 3] = finalColor.r;
+            colors[i * 3 + 1] = finalColor.g;
+            colors[i * 3 + 2] = finalColor.b;
+            
+            // Size variation: center=1.2, edge=0.6
+            sizes[i] = 1.2 - 0.6 * radialDistance;
         }
         
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
         
         const material = new THREE.PointsMaterial({
-            size: 0.05, vertexColors: true, transparent: true, opacity: 0.95,
+            sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.95,
             blending: THREE.AdditiveBlending, depthWrite: false
         });
         
