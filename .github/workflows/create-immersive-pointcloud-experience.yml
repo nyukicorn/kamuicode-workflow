@@ -241,22 +241,23 @@ jobs:
                     <source src="assets/background-music.wav" type="audio/wav">\
                 </audio>' "$VIEWER_DIR/index.html"
             
-            # Add audio controls
-            sed -i '/<button onclick="resetCamera()">/a\
-                <button onclick="toggleMusic()">🎵 Toggle Music</button>' "$VIEWER_DIR/index.html"
-            
-            # Add toggle function
-            sed -i '/window.updateRotationSpeed = updateRotationSpeed;/a\
-        \
-        function toggleMusic() {\
-            const audio = document.getElementById("backgroundMusic");\
-            if (audio.paused) {\
-                audio.play();\
-            } else {\
-                audio.pause();\
+            # Add audio controls and function
+            # Insert before the closing </body> tag
+            sed -i '/<\/body>/i\
+            <script>\
+            function toggleMusic() {\
+                const audio = document.getElementById("backgroundMusic");\
+                if (audio.paused) {\
+                    audio.play();\
+                } else {\
+                    audio.pause();\
+                }\
             }\
-        }\
-        window.toggleMusic = toggleMusic;' "$VIEWER_DIR/index.html"
+            window.toggleMusic = toggleMusic;\
+            </script>' "$VIEWER_DIR/index.html"
+            
+            # Add toggle button after reset camera button
+            sed -i 's/<button onclick="resetCamera()">📷 Reset View<\/button>/<button onclick="resetCamera()">📷 Reset View<\/button><button onclick="toggleMusic()">🎵 Toggle Music<\/button>/' "$VIEWER_DIR/index.html"
             
             echo "✅ Music integrated into viewer"
           fi
