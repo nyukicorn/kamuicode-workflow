@@ -42,16 +42,17 @@ on:
           - grounded
           - scene
         default: 'floating'
-      color_scheme:
-        description: 'カラースキーム'
+      image_model:
+        description: '背景画像生成モデル（panorama時のみ使用）'
         required: false
         type: choice
         options:
           - auto
-          - warm
-          - cool
-          - vibrant
-          - pastel
+          - imagen4-ultra
+          - imagen4-fast
+          - imagen3
+          - flux-schnell
+          - photo-flux
         default: 'auto'
       effects:
         description: '追加エフェクト'
@@ -136,7 +137,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-generation
         with:
           image-prompt: ${{ steps.translation.outputs.english-prompt }}
-          image-model: auto
+          image-model: ${{ inputs.image_model }}
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ steps.setup.outputs.branch-name }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -163,7 +164,7 @@ jobs:
           background-type: ${{ inputs.background_type }}
           art-style: ${{ inputs.art_style }}
           arrangement: ${{ inputs.arrangement }}
-          color-scheme: ${{ inputs.color_scheme }}
+          color-scheme: auto
           effects: ${{ inputs.effects }}
           include-music: ${{ inputs.include_music }}
           music-url: ${{ inputs.include_music == true && steps.music.outputs.music-url || '' }}
@@ -203,7 +204,7 @@ jobs:
           echo "🎨 Background Type: ${{ inputs.background_type }}"
           echo "🎨 Art Style: ${{ inputs.art_style }}"
           echo "🎯 Arrangement: ${{ inputs.arrangement }}"
-          echo "🌈 Color Scheme: ${{ inputs.color_scheme }}"
+          echo "🖼️ Image Model: ${{ inputs.image_model }}"
           echo ""
           if [ "${{ inputs.background_type }}" == "panorama" ]; then
             echo "🖼️ Used Image Model: ${{ steps.image.outputs.used-model }}"
