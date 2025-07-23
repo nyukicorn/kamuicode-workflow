@@ -73,6 +73,7 @@ jobs:
     outputs:
       viewer-path: ${{ steps.viewer.outputs.viewer-path }}
       viewer-completed: ${{ steps.viewer.outputs.viewer-completed }}
+      timestamp: ${{ needs.generate-pointcloud.outputs.timestamp }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -97,6 +98,7 @@ jobs:
     if: needs.create-viewer.outputs.viewer-completed == 'true'
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
+      timestamp: ${{ needs.create-viewer.outputs.timestamp }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -117,7 +119,7 @@ jobs:
         uses: actions/deploy-pages@v4
       
   cleanup:
-    needs: deploy-pages
+    needs: [generate-pointcloud, create-viewer, deploy-pages]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -132,7 +134,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.deploy-pages.result }}" = "success" ]; then
             echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
-            echo "🚀 **Viewer URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pointcloud-viewer-${{ needs.generate-pointcloud.outputs.timestamp }}/" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 **Viewer URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pointcloud-viewer-${{ needs.deploy-pages.outputs.timestamp }}/" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
           fi
