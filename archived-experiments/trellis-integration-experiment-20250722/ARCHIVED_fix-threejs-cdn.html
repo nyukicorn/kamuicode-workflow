@@ -1,0 +1,31 @@
+<!-- Quick fix for Three.js CDN - Replace old CDN URLs with working ones -->
+<script>
+// Check if THREE is not defined and inject correct CDN
+if (typeof THREE === 'undefined') {
+    console.log('THREE.js not loaded, fixing CDN...');
+    
+    // Remove old script tags
+    document.querySelectorAll('script[src*="three"]').forEach(script => script.remove());
+    
+    // Add correct Three.js CDN
+    const scripts = [
+        'https://unpkg.com/three@0.155.0/build/three.min.js',
+        'https://unpkg.com/three@0.155.0/examples/js/controls/OrbitControls.js', 
+        'https://unpkg.com/three@0.155.0/examples/js/loaders/GLTFLoader.js'
+    ];
+    
+    let loadCount = 0;
+    scripts.forEach((src, index) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            loadCount++;
+            if (loadCount === scripts.length) {
+                console.log('Three.js CDN fixed, reloading page...');
+                location.reload();
+            }
+        };
+        document.head.appendChild(script);
+    });
+}
+</script>

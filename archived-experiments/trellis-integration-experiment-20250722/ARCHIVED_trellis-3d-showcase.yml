@@ -1,0 +1,182 @@
+name: TRELLIS 3D Model Showcase
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_type:
+        description: 'Input type (image or text)'
+        required: true
+        type: choice
+        options:
+          - image
+          - text
+      input_data:
+        description: 'Input data (image URL or text prompt)'
+        required: true
+        type: string
+      model_concept:
+        description: 'Brief description of the 3D model concept'
+        required: true
+        type: string
+      output_format:
+        description: 'Output format'
+        required: false
+        type: choice
+        default: 'glb'
+        options:
+          - glb
+          - ply
+          - mesh
+      steps:
+        description: 'Number of diffusion steps'
+        required: false
+        type: number
+        default: 12
+      viewer_style:
+        description: 'Viewer style'
+        required: false
+        type: choice
+        default: 'interactive'
+        options:
+          - minimal
+          - interactive
+          - showcase
+          - debug
+
+jobs:
+  setup-branch:
+    runs-on: ubuntu-latest
+    outputs:
+      branch-name: ${{ steps.branch.outputs.branch-name }}
+      folder-name: ${{ steps.branch.outputs.folder-name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create unique branch and folder names
+        id: branch
+        run: |
+          TIMESTAMP=$(date +%s%3N)
+          BRANCH_NAME="trellis-3d-showcase-$TIMESTAMP"
+          FOLDER_NAME="trellis-3d-$TIMESTAMP"
+          echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "Generated branch: $BRANCH_NAME"
+          echo "Generated folder: $FOLDER_NAME"
+
+      - name: Create and push new branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b ${{ steps.branch.outputs.branch-name }}
+          git push origin ${{ steps.branch.outputs.branch-name }}
+
+  generate-3d-model:
+    needs: setup-branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+
+      - name: Generate TRELLIS 3D Model
+        uses: ./.github/actions/kamui-modules/trellis-3d-generation
+        with:
+          input-type: ${{ inputs.input_type }}
+          input-data: ${{ inputs.input_data }}
+          output-format: ${{ inputs.output_format }}
+          steps: ${{ inputs.steps }}
+          model-name: 'generated_model'
+          folder-name: ${{ needs.setup-branch.outputs.folder-name }}
+          branch-name: ${{ needs.setup-branch.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  create-3d-viewer:
+    needs: [setup-branch, generate-3d-model]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup-branch.outputs.branch-name }}
+
+      - name: Create Three.js 3D Viewer
+        uses: ./.github/actions/kamui-modules/threejs-3d-integration
+        with:
+          model-concept: ${{ inputs.model_concept }}
+          model-file-name: 'generated_model'
+          model-format: ${{ inputs.output_format }}
+          viewer-style: ${{ inputs.viewer_style }}
+          background-type: 'gradient'
+          lighting-preset: 'studio'
+          camera-controls: 'orbit'
+          folder-name: ${{ needs.setup-branch.outputs.folder-name }}
+          branch-name: ${{ needs.setup-branch.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+  deploy-showcase:
+    needs: [setup-branch, generate-3d-model, create-3d-viewer]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Display showcase information
+        run: |
+          echo "🎉 TRELLIS 3D Model Showcase Complete!"
+          echo ""
+          echo "📊 Showcase Details:"
+          echo "Input Type: ${{ inputs.input_type }}"
+          echo "Input Data: ${{ inputs.input_data }}"
+          echo "Model Concept: ${{ inputs.model_concept }}"
+          echo "Output Format: ${{ inputs.output_format }}"
+          echo "Diffusion Steps: ${{ inputs.steps }}"
+          echo "Viewer Style: ${{ inputs.viewer_style }}"
+          echo ""
+          echo "🌐 GitHub Pages URLs:"
+          echo "Main Gallery: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          echo "3D Model Viewer: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.setup-branch.outputs.folder-name }}/"
+          echo ""
+          echo "📁 Generated Files:"
+          echo "Branch: ${{ needs.setup-branch.outputs.branch-name }}"
+          echo "Folder: ${{ needs.setup-branch.outputs.folder-name }}"
+          echo "Model: generated_model.${{ inputs.output_format }}"
+          echo ""
+          echo "⏱️  Processing Time: Workflow completed"
+          echo "🎯 Status: Ready for viewing on GitHub Pages"
+          echo ""
+          echo "💡 Next Steps:"
+          echo "1. Visit the GitHub Pages URL above to view your 3D model"
+          echo "2. The 3D viewer supports orbit controls (mouse/touch)"
+          echo "3. Model information and generation details are displayed"
+          echo "4. Share the GitHub Pages URL to showcase your 3D model"
+
+      - name: Create summary comment
+        run: |
+          echo "## 🎯 TRELLIS 3D Model Showcase Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Generation Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Input**: ${{ inputs.input_type }} - \`${{ inputs.input_data }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Concept**: ${{ inputs.model_concept }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Format**: ${{ inputs.output_format }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Steps**: ${{ inputs.steps }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Style**: ${{ inputs.viewer_style }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌐 View Your 3D Model" >> $GITHUB_STEP_SUMMARY
+          echo "[**🚀 Open 3D Model Viewer**](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ needs.setup-branch.outputs.folder-name }}/)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Technical Details" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: \`${{ needs.setup-branch.outputs.branch-name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Folder**: \`${{ needs.setup-branch.outputs.folder-name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model File**: \`generated_model.${{ inputs.output_format }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎮 Viewer Controls" >> $GITHUB_STEP_SUMMARY
+          echo "- **Mouse**: Left click + drag to orbit" >> $GITHUB_STEP_SUMMARY
+          echo "- **Wheel**: Zoom in/out" >> $GITHUB_STEP_SUMMARY
+          echo "- **Right click**: Pan" >> $GITHUB_STEP_SUMMARY
+          echo "- **Touch**: Pinch to zoom, drag to orbit" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "*🤖 Generated with TRELLIS integration and Three.js viewer*" >> $GITHUB_STEP_SUMMARY

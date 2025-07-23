@@ -1,0 +1,144 @@
+name: 'TRELLIS 3D Model Generation'
+description: 'Generate 3D models from images or text using TRELLIS'
+author: 'KamuiCode Workflow'
+
+inputs:
+  input-type:
+    description: 'Input type (image or text)'
+    required: true
+    type: choice
+    options:
+      - image
+      - text
+  input-data:
+    description: 'Input data (image URL or text prompt)'
+    required: true
+  output-format:
+    description: 'Output format (glb, ply, mesh)'
+    required: false
+    default: 'glb'
+  steps:
+    description: 'Number of diffusion steps'
+    required: false
+    default: '12'
+  model-name:
+    description: 'Generated model filename (without extension)'
+    required: false
+    default: 'generated_model'
+  folder-name:
+    description: 'Folder name for storing 3D model files'
+    required: true
+  branch-name:
+    description: 'Branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  generation-completed:
+    description: 'Whether 3D model generation was completed successfully'
+    value: ${{ steps.trellis-gen.outputs.completed }}
+  model-file-path:
+    description: 'Path to the generated 3D model file'
+    value: ${{ steps.trellis-gen.outputs.model-file-path }}
+  model-size:
+    description: 'Size of the generated model file'
+    value: ${{ steps.trellis-gen.outputs.model-size }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Setup Node.js for Claude Code SDK
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Cache TRELLIS dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/pip
+          ~/.cache/huggingface
+          /tmp/extensions
+        key: trellis-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          trellis-${{ runner.os }}-
+    
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build
+    
+    - name: Install basic dependencies for CPU simulation
+      shell: bash
+      run: |
+        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+        pip install pillow imageio imageio-ffmpeg requests
+    
+    - name: Install MCP server dependencies
+      shell: bash
+      working-directory: ./polycam-mcp-server
+      run: |
+        pip install -r requirements.txt
+    
+    - name: Create output folder
+      shell: bash
+      run: |
+        mkdir -p ${{ inputs.folder-name }}
+        echo "Created folder: ${{ inputs.folder-name }}"
+    
+    - name: TRELLIS 3D Model Generation Agent
+      id: trellis-gen
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+        INPUT_TYPE: ${{ inputs.input-type }}
+        INPUT_DATA: ${{ inputs.input-data }}
+        OUTPUT_FORMAT: ${{ inputs.output-format }}
+        STEPS: ${{ inputs.steps }}
+        MODEL_NAME: ${{ inputs.model-name }}
+        FOLDER_NAME: ${{ inputs.folder-name }}
+      run: $GITHUB_WORKSPACE/.github/scripts/generate-trellis-3d-model.sh
+    
+    - name: Upload 3D model as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: trellis-3d-model-${{ inputs.folder-name }}
+        path: |
+          ${{ inputs.folder-name }}/${{ inputs.model-name }}.${{ inputs.output-format }}
+          ${{ inputs.folder-name }}/generation-info.json
+        retention-days: 7
+    
+    - name: Commit and push 3D model files
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        git add ${{ inputs.folder-name }}/
+        git add .github/scripts/generate-trellis-3d-model.sh
+        
+        if git diff --cached --quiet; then
+          echo "No 3D model files to commit"
+        else
+          git commit -m "Add TRELLIS 3D model: ${{ inputs.input-data }} [${{ inputs.input-type }}]"
+          git push origin ${{ inputs.branch-name }}
+        fi

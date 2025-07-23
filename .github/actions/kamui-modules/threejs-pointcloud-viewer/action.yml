@@ -243,7 +243,7 @@ runs:
                     document.getElementById('container').appendChild(renderer.domElement);
                     
                     // Controls setup
-                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls = new OrbitControls(camera, renderer.domElement);
                     controls.enableDamping = true;
                     controls.dampingFactor = 0.05;
                     controls.autoRotate = autoRotate;
@@ -271,7 +271,7 @@ runs:
                 }
                 
                 function loadPointCloud() {
-                    const loader = new THREE.PLYLoader();
+                    const loader = new PLYLoader();
                     
                     loader.load('assets/PLY_FILENAME_PLACEHOLDER', function(geometry) {
                         geometry.computeBoundingBox();

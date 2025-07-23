@@ -1,0 +1,246 @@
+name: 'Three.js 3D Model Integration & Viewer'
+description: 'Create Three.js viewer for 3D models (GLB/PLY) and deploy to GitHub Pages'
+author: 'KamuiCode Workflow'
+
+inputs:
+  model-concept:
+    description: 'The 3D model concept description'
+    required: true
+  model-file-name:
+    description: 'Name of the 3D model file (without extension)'
+    required: false
+    default: 'generated_model'
+  model-format:
+    description: 'Model file format (glb, ply, obj)'
+    required: false
+    default: 'glb'
+  viewer-style:
+    description: 'Viewer style (minimal/interactive/showcase/debug)'
+    required: false
+    default: 'interactive'
+  background-type:
+    description: 'Background type (solid_black/solid_white/gradient/environment)'
+    required: false
+    default: 'gradient'
+  lighting-preset:
+    description: 'Lighting preset (studio/outdoor/dramatic/soft)'
+    required: false
+    default: 'studio'
+  camera-controls:
+    description: 'Enable camera controls (orbit/fly/fixed)'
+    required: false
+    default: 'orbit'
+  folder-name:
+    description: 'Folder name containing the 3D model'
+    required: true
+  branch-name:
+    description: 'Branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  integration-completed:
+    description: 'Whether integration was completed successfully'
+    value: ${{ steps.integration.outputs.completed }}
+  viewer-url:
+    description: 'GitHub Pages URL for the 3D viewer'
+    value: ${{ steps.integration.outputs.viewer-url }}
+  package-size:
+    description: 'Size of the final package'
+    value: ${{ steps.integration.outputs.package-size }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Download 3D model artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: trellis-3d-model-${{ inputs.folder-name }}
+        path: .
+    
+    - name: Debug 3D model artifact download
+      shell: bash
+      run: |
+        echo "🔧 デバッグ: 3Dモデルアーティファクトダウンロード後の確認"
+        echo "Current working directory: $(pwd)"
+        echo "Directory contents:"
+        ls -la
+        echo "Looking for folder: ${{ inputs.folder-name }}"
+        if [ -d "${{ inputs.folder-name }}" ]; then
+          echo "✅ 3Dモデルフォルダが見つかりました"
+          ls -la "${{ inputs.folder-name }}/"
+          
+          # Check for model file
+          MODEL_FILE="${{ inputs.folder-name }}/${{ inputs.model-file-name }}.${{ inputs.model-format }}"
+          if [ -f "$MODEL_FILE" ]; then
+            echo "✅ 3Dモデルファイルが見つかりました: $MODEL_FILE"
+            ls -la "$MODEL_FILE"
+          else
+            echo "❌ 3Dモデルファイルが見つかりません: $MODEL_FILE"
+            echo "利用可能なファイル:"
+            find "${{ inputs.folder-name }}" -name "*.${{ inputs.model-format }}" -o -name "*.glb" -o -name "*.ply" -o -name "*.obj" 2>/dev/null || echo "該当するモデルファイルなし"
+          fi
+          
+          # Check for generation info
+          if [ -f "${{ inputs.folder-name }}/generation-info.json" ]; then
+            echo "✅ 生成情報ファイルが見つかりました"
+            cat "${{ inputs.folder-name }}/generation-info.json"
+          fi
+        else
+          echo "❌ 3Dモデルフォルダが見つかりません"
+        fi
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Three.js 3D Model Integration Agent
+      id: integration
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+        MODEL_CONCEPT: ${{ inputs.model-concept }}
+        MODEL_FILE_NAME: ${{ inputs.model-file-name }}
+        MODEL_FORMAT: ${{ inputs.model-format }}
+        VIEWER_STYLE: ${{ inputs.viewer-style }}
+        BACKGROUND_TYPE: ${{ inputs.background-type }}
+        LIGHTING_PRESET: ${{ inputs.lighting-preset }}
+        CAMERA_CONTROLS: ${{ inputs.camera-controls }}
+        FOLDER_NAME: ${{ inputs.folder-name }}
+      run: $GITHUB_WORKSPACE/.github/scripts/integrate-3d-viewer.sh
+    
+    - name: Setup docs folder for GitHub Pages
+      shell: bash
+      run: |
+        echo "::group::📁 Setup 3D viewer docs folder"
+        
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        DOCS_DIR="docs/$FOLDER_NAME"
+        
+        # Create docs folder structure
+        mkdir -p "$DOCS_DIR"
+        
+        # Copy viewer HTML file
+        if [ -f "$FOLDER_NAME/index.html" ]; then
+          cp "$FOLDER_NAME/index.html" "$DOCS_DIR/"
+          echo "✅ Copied 3D viewer HTML to docs"
+        fi
+        
+        # Copy 3D model file
+        MODEL_FILE="$FOLDER_NAME/${{ inputs.model-file-name }}.${{ inputs.model-format }}"
+        if [ -f "$MODEL_FILE" ]; then
+          cp "$MODEL_FILE" "$DOCS_DIR/"
+          echo "✅ Copied 3D model file to docs"
+        fi
+        
+        # Copy generation info
+        if [ -f "$FOLDER_NAME/generation-info.json" ]; then
+          cp "$FOLDER_NAME/generation-info.json" "$DOCS_DIR/"
+          echo "✅ Copied generation info to docs"
+        fi
+        
+        # Update main docs index.html
+        if [ -f "docs/index.html" ]; then
+          # Add 3D model entry to main index
+          VIEWER_ENTRY="<li><a href=\"$FOLDER_NAME/\">3D Model: ${{ inputs.model-concept }}</a> - Generated $(date '+%Y-%m-%d')</li>"
+          
+          # Insert before the closing </ul> tag in the 3D Models section
+          sed -i "/<div class=\"experience\">/,/<\/div>/ { 
+            /<h2>🎯 KamuiCode Creative Outputs<\/h2>/ {
+              a\\
+              <div class=\"experience\">\\
+              <h2>🎨 3D Models</h2>\\
+              <p>Generated 3D models using TRELLIS integration</p>\\
+              <ul>\\
+              $VIEWER_ENTRY\\
+              </ul>\\
+              </div>
+            }
+          }" docs/index.html 2>/dev/null || {
+            # If sed fails, append to the body
+            sed -i "/<\/body>/i\\
+            <div class=\"experience\">\\
+            <h2>🎨 3D Models</h2>\\
+            <p>Generated 3D models using TRELLIS integration</p>\\
+            <ul>\\
+            $VIEWER_ENTRY\\
+            </ul>\\
+            </div>" docs/index.html
+          }
+          echo "✅ Updated main docs index"
+        fi
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push integration files
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Add folder and docs directory
+        git add ${{ inputs.folder-name }}/
+        git add docs/
+        git add .github/scripts/integrate-3d-viewer.sh
+        
+        if git diff --cached --quiet; then
+          echo "No 3D integration files to commit"
+        else
+          git commit -m "Add 3D viewer integration: ${{ inputs.model-concept }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
+        
+        # Push docs to main branch for GitHub Pages
+        echo "::group::📤 Push 3D viewer to main branch"
+        
+        # Save current branch
+        CURRENT_BRANCH=$(git branch --show-current)
+        echo "Current branch: $CURRENT_BRANCH"
+        
+        # Fetch and checkout main
+        git fetch origin main
+        git checkout main
+        git pull origin main
+        
+        # Copy docs from feature branch
+        git checkout $CURRENT_BRANCH -- docs/
+        
+        # Commit docs to main
+        if git diff --cached --quiet; then
+          echo "No docs changes to commit to main"
+        else
+          git commit -m "Update GitHub Pages: 3D Model Viewer - ${{ inputs.model-concept }} [branch: ${{ inputs.branch-name }}, folder: ${{ inputs.folder-name }}]"
+          git push origin main
+        fi
+        
+        # Return to original branch
+        git checkout $CURRENT_BRANCH
+        echo "::endgroup::"
+    
+    - name: Set integration outputs
+      shell: bash
+      run: |
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "viewer-url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ inputs.folder-name }}/" >> $GITHUB_OUTPUT
+        
+        # Calculate package size
+        if [ -d "docs/${{ inputs.folder-name }}" ]; then
+          PACKAGE_SIZE=$(du -sb "docs/${{ inputs.folder-name }}" | cut -f1)
+          echo "package-size=$PACKAGE_SIZE" >> $GITHUB_OUTPUT
+        else
+          echo "package-size=0" >> $GITHUB_OUTPUT
+        fi

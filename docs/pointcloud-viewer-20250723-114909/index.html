@@ -76,7 +76,7 @@
             margin-left: 10px;
         }
     </style>
-</head>
+    </head>
 <body>
     <div id="container">
         <div id="loading">🔄 Loading Point Cloud...</div>
@@ -161,7 +161,7 @@
         function loadPointCloud() {
             const loader = new THREE.PLYLoader();
             
-            loader.load('assets/pointcloud.ply', function(geometry) {
+            loader.load('../assets/test-pointcloud.ply', function(geometry) {
                 geometry.computeBoundingBox();
                 geometry.center();
                 

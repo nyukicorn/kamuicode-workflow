@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Immersive 3D Point Cloud Experience</title>
+    <title>Test Point Cloud Viewer</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: #000000;
+            background: #1a1a1a;
             font-family: 'Arial', sans-serif;
         }
         
@@ -88,7 +88,7 @@
                 <button onclick="resetCamera()">📷 Reset View</button>
             </div>
             <div class="control-item">
-                Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="1.5" onchange="updatePointSize(this.value)">
+                Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="1.0" onchange="updatePointSize(this.value)">
             </div>
             <div class="control-item">
                 Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="1.0" onchange="updateRotationSpeed(this.value)">
@@ -101,28 +101,28 @@
         </div>
     </div>
 
-    <!-- Three.js ES Modules - Direct URLs -->
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.162.0/build/three.module.js';
-        import { OrbitControls } from 'https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js';
-        import { PLYLoader } from 'https://unpkg.com/three@0.162.0/examples/jsm/loaders/PLYLoader.js';
-        
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r162/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/loaders/PLYLoader.js"></script>
+
+    <script>
         // Global variables
         let scene, camera, renderer, controls;
         let pointCloud = null;
         let autoRotate = true;
         let rotationSpeed = 1.0;
-        let pointSize = 1.5;
+        let pointSize = 1.0;
         
         // Initialize the viewer
         function init() {
             // Scene setup
             scene = new THREE.Scene();
-            scene.background = new THREE.Color('#000000');
+            scene.background = new THREE.Color('#1a1a1a');
             
             // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-            camera.position.set(0, 0, 150);
+            camera.position.set(0, 0, 100);
             
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -131,7 +131,7 @@
             document.getElementById('container').appendChild(renderer.domElement);
             
             // Controls setup
-            controls = new OrbitControls(camera, renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.autoRotate = autoRotate;
@@ -159,9 +159,9 @@
         }
         
         function loadPointCloud() {
-            const loader = new PLYLoader();
+            const loader = new THREE.PLYLoader();
             
-            loader.load('assets/pointcloud.ply', function(geometry) {
+            loader.load('assets/test-pointcloud.ply', function(geometry) {
                 geometry.computeBoundingBox();
                 geometry.center();
                 
@@ -267,12 +267,6 @@
             rotationSpeed = parseFloat(value);
             controls.autoRotateSpeed = rotationSpeed;
         }
-        
-        // Make functions globally accessible for HTML events
-        window.toggleAutoRotate = toggleAutoRotate;
-        window.resetCamera = resetCamera;
-        window.updatePointSize = updatePointSize;
-        window.updateRotationSpeed = updateRotationSpeed;
         
         // Start the application
         init();

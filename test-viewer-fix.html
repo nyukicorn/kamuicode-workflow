@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Immersive 3D Point Cloud Experience</title>
+    <title>Fixed 3D Pointcloud Viewer</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background: #000000;
+            background: #000522;
             font-family: 'Arial', sans-serif;
         }
         
@@ -88,7 +88,7 @@
                 <button onclick="resetCamera()">📷 Reset View</button>
             </div>
             <div class="control-item">
-                Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="1.5" onchange="updatePointSize(this.value)">
+                Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="1.8" onchange="updatePointSize(this.value)">
             </div>
             <div class="control-item">
                 Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="1.0" onchange="updateRotationSpeed(this.value)">
@@ -101,28 +101,28 @@
         </div>
     </div>
 
-    <!-- Three.js ES Modules - Direct URLs -->
-    <script type="module">
-        import * as THREE from 'https://unpkg.com/three@0.162.0/build/three.module.js';
-        import { OrbitControls } from 'https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js';
-        import { PLYLoader } from 'https://unpkg.com/three@0.162.0/examples/jsm/loaders/PLYLoader.js';
-        
+    <!-- Three.js from reliable CDN -->
+    <script src="https://unpkg.com/three@0.162.0/build/three.min.js"></script>
+    <script src="https://unpkg.com/three@0.162.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://unpkg.com/three@0.162.0/examples/js/loaders/PLYLoader.js"></script>
+
+    <script>
         // Global variables
         let scene, camera, renderer, controls;
         let pointCloud = null;
         let autoRotate = true;
         let rotationSpeed = 1.0;
-        let pointSize = 1.5;
+        let pointSize = 1.8;
         
         // Initialize the viewer
         function init() {
             // Scene setup
             scene = new THREE.Scene();
-            scene.background = new THREE.Color('#000000');
+            scene.background = new THREE.Color('#000522');
             
             // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-            camera.position.set(0, 0, 150);
+            camera.position.set(0, 0, 100);
             
             // Renderer setup
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -131,7 +131,7 @@
             document.getElementById('container').appendChild(renderer.domElement);
             
             // Controls setup
-            controls = new OrbitControls(camera, renderer.domElement);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.autoRotate = autoRotate;
@@ -145,7 +145,7 @@
             directionalLight.position.set(1, 1, 1);
             scene.add(directionalLight);
             
-            // Load PLY file
+            // Load PLY file - using test file path
             loadPointCloud();
             
             // Start animation loop
@@ -159,9 +159,10 @@
         }
         
         function loadPointCloud() {
-            const loader = new PLYLoader();
+            const loader = new THREE.PLYLoader();
             
-            loader.load('assets/pointcloud.ply', function(geometry) {
+            // Use local test PLY file
+            loader.load('test-20250723-122448/pointcloud.ply', function(geometry) {
                 geometry.computeBoundingBox();
                 geometry.center();
                 
@@ -198,20 +199,15 @@
         
         function fitCameraToObject(object) {
             const box = new THREE.Box3().setFromObject(object);
-            const size = box.getSize(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3()).length();
             const center = box.getCenter(new THREE.Vector3());
             
-            const maxSize = Math.max(size.x, size.y, size.z);
-            const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
-            const fitWidthDistance = fitHeightDistance / camera.aspect;
-            const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.5;
-            
-            camera.near = distance / 100;
-            camera.far = distance * 100;
-            camera.updateProjectionMatrix();
-            
             controls.target.copy(center);
-            controls.update();
+            camera.position.copy(center);
+            camera.position.x += size / 2.0;
+            camera.position.y += size / 5.0;
+            camera.position.z += size / 2.0;
+            camera.lookAt(center);
         }
         
         function animate() {
@@ -220,38 +216,15 @@
             renderer.render(scene, camera);
         }
         
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
-        function onKeyDown(event) {
-            const moveSpeed = 10;
-            switch(event.code) {
-                case 'KeyW':
-                    camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
-                    break;
-                case 'KeyS':
-                    camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-moveSpeed));
-                    break;
-                case 'KeyA':
-                    camera.position.add(new THREE.Vector3().crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).multiplyScalar(moveSpeed));
-                    break;
-                case 'KeyD':
-                    camera.position.add(new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).multiplyScalar(moveSpeed));
-                    break;
+        function toggleAutoRotate() {
+            if (controls) {
+                autoRotate = !autoRotate;
+                controls.autoRotate = autoRotate;
             }
         }
         
-        // Control functions
-        function toggleAutoRotate() {
-            autoRotate = !autoRotate;
-            controls.autoRotate = autoRotate;
-        }
-        
         function resetCamera() {
-            if (pointCloud) {
+            if (pointCloud && controls) {
                 fitCameraToObject(pointCloud);
             }
         }
@@ -265,17 +238,37 @@
         
         function updateRotationSpeed(value) {
             rotationSpeed = parseFloat(value);
-            controls.autoRotateSpeed = rotationSpeed;
+            if (controls) {
+                controls.autoRotateSpeed = rotationSpeed;
+            }
         }
         
-        // Make functions globally accessible for HTML events
-        window.toggleAutoRotate = toggleAutoRotate;
-        window.resetCamera = resetCamera;
-        window.updatePointSize = updatePointSize;
-        window.updateRotationSpeed = updateRotationSpeed;
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
         
-        // Start the application
-        init();
+        function onKeyDown(event) {
+            const moveDistance = 5;
+            switch(event.code) {
+                case 'KeyW':
+                    camera.position.z -= moveDistance;
+                    break;
+                case 'KeyS':
+                    camera.position.z += moveDistance;
+                    break;
+                case 'KeyA':
+                    camera.position.x -= moveDistance;
+                    break;
+                case 'KeyD':
+                    camera.position.x += moveDistance;
+                    break;
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
     </script>
 </body>
 </html>
