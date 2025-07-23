@@ -116,8 +116,8 @@ jobs:
         if: inputs.enable-music == true
         uses: ./.github/actions/kamui-modules/music-generation
         with:
+          music-concept: ${{ inputs.music-prompt }}
           music-prompt: ${{ inputs.music-prompt }}
-          music-duration: '60'
           folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
