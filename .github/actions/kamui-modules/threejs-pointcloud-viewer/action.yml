@@ -213,20 +213,11 @@ runs:
                 </div>
             </div>
 
-            <!-- Three.js ES Modules with Import Map -->
-            <script type="importmap">
-            {
-              "imports": {
-                "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
-              }
-            }
-            </script>
-
+            <!-- Three.js ES Modules - Direct URLs -->
             <script type="module">
-                import * as THREE from 'three';
-                import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-                import { PLYLoader } from 'three/addons/loaders/PLYLoader.js';
+                import * as THREE from 'https://unpkg.com/three@0.162.0/build/three.module.js';
+                import { OrbitControls } from 'https://unpkg.com/three@0.162.0/examples/jsm/controls/OrbitControls.js';
+                import { PLYLoader } from 'https://unpkg.com/three@0.162.0/examples/jsm/loaders/PLYLoader.js';
                 
                 // Global variables
                 let scene, camera, renderer, controls;
