@@ -390,10 +390,10 @@ jobs:
             exit 1
           fi
           
-          # 絶対パスの取得
-          ABS_MUSIC_FILE=$(realpath "$MUSIC_FILE")
-          ABS_VIDEOS_DIR=$(realpath "$VIDEOS_DIR")
-          ABS_OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
+          # 絶対パスの取得（環境依存性を排除）
+          ABS_MUSIC_FILE=$(readlink -f "$MUSIC_FILE" 2>/dev/null || echo "$(cd "$(dirname "$MUSIC_FILE")" && pwd)/$(basename "$MUSIC_FILE")")
+          ABS_VIDEOS_DIR=$(readlink -f "$VIDEOS_DIR" 2>/dev/null || echo "$(cd "$VIDEOS_DIR" && pwd)")
+          ABS_OUTPUT_DIR=$(readlink -f "$OUTPUT_DIR" 2>/dev/null || echo "$(cd "$OUTPUT_DIR" && pwd)")
           ABS_FINAL_VIDEO="$ABS_OUTPUT_DIR/final-music-video.mp4"
           
           echo "Absolute paths:"
