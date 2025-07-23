@@ -1,0 +1,434 @@
+name: 'Three.js Pointcloud Viewer'
+description: 'Generate interactive Three.js viewer for PLY point clouds with GaussianSplats3D'
+author: 'KamuiCode Workflow'
+
+inputs:
+  ply-file-path:
+    description: 'Path to the PLY point cloud file'
+    required: true
+  output-folder:
+    description: 'Output folder for the viewer HTML and assets'
+    required: true
+  viewer-title:
+    description: 'Title for the viewer page'
+    required: false
+    default: '3D Point Cloud Viewer'
+  camera-position:
+    description: 'Initial camera position (x,y,z format e.g., "0,0,100")'
+    required: false
+    default: '0,0,100'
+  auto-rotate:
+    description: 'Enable automatic rotation'
+    required: false
+    default: 'true'
+  background-color:
+    description: 'Background color (hex format e.g., "#000000")'
+    required: false
+    default: '#1a1a1a'
+  point-size:
+    description: 'Point cloud render size multiplier'
+    required: false
+    default: '1.0'
+  animation-speed:
+    description: 'Animation speed multiplier'
+    required: false
+    default: '1.0'
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+
+outputs:
+  viewer-completed:
+    description: 'Whether viewer generation was completed successfully'
+    value: ${{ steps.generate.outputs.completed }}
+  viewer-path:
+    description: 'Path to the generated viewer HTML file'
+    value: ${{ steps.generate.outputs.viewer-path }}
+  assets-count:
+    description: 'Number of asset files created'
+    value: ${{ steps.generate.outputs.assets-count }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Generate Three.js Pointcloud Viewer
+      id: generate
+      shell: bash
+      run: |
+        echo "::group::🎮 Three.js Pointcloud Viewer Generation"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        PLY_FILE="${{ inputs.ply-file-path }}"
+        OUTPUT_FOLDER="${{ inputs.output-folder }}"
+        VIEWER_TITLE="${{ inputs.viewer-title }}"
+        CAMERA_POS="${{ inputs.camera-position }}"
+        AUTO_ROTATE="${{ inputs.auto-rotate }}"
+        BG_COLOR="${{ inputs.background-color }}"
+        POINT_SIZE="${{ inputs.point-size }}"
+        ANIMATION_SPEED="${{ inputs.animation-speed }}"
+        
+        echo "PLY file: $PLY_FILE"
+        echo "Output folder: $OUTPUT_FOLDER"
+        echo "Viewer title: $VIEWER_TITLE"
+        echo "Camera position: $CAMERA_POS"
+        echo "Auto rotate: $AUTO_ROTATE"
+        echo "Background: $BG_COLOR"
+        echo "Point size: $POINT_SIZE"
+        echo "Animation speed: $ANIMATION_SPEED"
+        
+        # PLYファイルの存在確認
+        if [ ! -f "$PLY_FILE" ]; then
+          echo "::error::❌ PLY file not found: $PLY_FILE"
+          exit 1
+        fi
+        
+        # 出力フォルダの作成
+        mkdir -p "$OUTPUT_FOLDER"
+        mkdir -p "$OUTPUT_FOLDER/assets"
+        
+        # PLYファイルを出力フォルダにコピー
+        PLY_FILENAME=$(basename "$PLY_FILE")
+        cp "$PLY_FILE" "$OUTPUT_FOLDER/assets/$PLY_FILENAME"
+        echo "✅ PLY file copied to viewer assets"
+        
+        # カメラ位置をパース
+        IFS=',' read -ra CAM_ARRAY <<< "$CAMERA_POS"
+        CAM_X=${CAM_ARRAY[0]:-0}
+        CAM_Y=${CAM_ARRAY[1]:-0}
+        CAM_Z=${CAM_ARRAY[2]:-100}
+        
+        # Three.js ビューワHTML生成
+        cat > "$OUTPUT_FOLDER/index.html" << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>VIEWER_TITLE_PLACEHOLDER</title>
+            <style>
+                body {
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                    background: BACKGROUND_COLOR_PLACEHOLDER;
+                    font-family: 'Arial', sans-serif;
+                }
+                
+                #container {
+                    width: 100vw;
+                    height: 100vh;
+                    position: relative;
+                }
+                
+                #loading {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    color: white;
+                    font-size: 18px;
+                    z-index: 100;
+                }
+                
+                #controls {
+                    position: absolute;
+                    top: 20px;
+                    left: 20px;
+                    color: white;
+                    z-index: 200;
+                    background: rgba(0,0,0,0.7);
+                    padding: 15px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+                
+                #info {
+                    position: absolute;
+                    bottom: 20px;
+                    left: 20px;
+                    color: white;
+                    z-index: 200;
+                    background: rgba(0,0,0,0.7);
+                    padding: 10px;
+                    border-radius: 8px;
+                    font-size: 12px;
+                }
+                
+                .control-item {
+                    margin: 8px 0;
+                }
+                
+                button {
+                    background: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 8px 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin: 0 5px 5px 0;
+                }
+                
+                button:hover {
+                    background: #45a049;
+                }
+                
+                input[type="range"] {
+                    width: 120px;
+                    margin-left: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div id="container">
+                <div id="loading">🔄 Loading Point Cloud...</div>
+                
+                <div id="controls">
+                    <h3>📐 Controls</h3>
+                    <div class="control-item">
+                        <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
+                        <button onclick="resetCamera()">📷 Reset View</button>
+                    </div>
+                    <div class="control-item">
+                        Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="POINT_SIZE_PLACEHOLDER" onchange="updatePointSize(this.value)">
+                    </div>
+                    <div class="control-item">
+                        Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="ANIMATION_SPEED_PLACEHOLDER" onchange="updateRotationSpeed(this.value)">
+                    </div>
+                </div>
+                
+                <div id="info">
+                    <div>🎮 Mouse: Orbit | Wheel: Zoom | WASD: Move</div>
+                    <div id="stats">Points: Loading...</div>
+                </div>
+            </div>
+
+            <!-- Three.js CDN -->
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r162/three.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/controls/OrbitControls.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/three@0.162.0/examples/js/loaders/PLYLoader.js"></script>
+
+            <script>
+                // Global variables
+                let scene, camera, renderer, controls;
+                let pointCloud = null;
+                let autoRotate = AUTO_ROTATE_PLACEHOLDER;
+                let rotationSpeed = ANIMATION_SPEED_PLACEHOLDER;
+                let pointSize = POINT_SIZE_PLACEHOLDER;
+                
+                // Initialize the viewer
+                function init() {
+                    // Scene setup
+                    scene = new THREE.Scene();
+                    scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
+                    
+                    // Camera setup
+                    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+                    camera.position.set(CAM_X_PLACEHOLDER, CAM_Y_PLACEHOLDER, CAM_Z_PLACEHOLDER);
+                    
+                    // Renderer setup
+                    renderer = new THREE.WebGLRenderer({ antialias: true });
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    renderer.setPixelRatio(window.devicePixelRatio);
+                    document.getElementById('container').appendChild(renderer.domElement);
+                    
+                    // Controls setup
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                    controls.autoRotate = autoRotate;
+                    controls.autoRotateSpeed = rotationSpeed;
+                    
+                    // Lighting
+                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                    scene.add(ambientLight);
+                    
+                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    directionalLight.position.set(1, 1, 1);
+                    scene.add(directionalLight);
+                    
+                    // Load PLY file
+                    loadPointCloud();
+                    
+                    // Start animation loop
+                    animate();
+                    
+                    // Handle window resize
+                    window.addEventListener('resize', onWindowResize);
+                    
+                    // Keyboard controls
+                    document.addEventListener('keydown', onKeyDown);
+                }
+                
+                function loadPointCloud() {
+                    const loader = new THREE.PLYLoader();
+                    
+                    loader.load('assets/PLY_FILENAME_PLACEHOLDER', function(geometry) {
+                        geometry.computeBoundingBox();
+                        geometry.center();
+                        
+                        // Create point cloud material
+                        const material = new THREE.PointsMaterial({
+                            vertexColors: true,
+                            size: pointSize,
+                            sizeAttenuation: true
+                        });
+                        
+                        // Create point cloud
+                        pointCloud = new THREE.Points(geometry, material);
+                        scene.add(pointCloud);
+                        
+                        // Update info
+                        const pointCount = geometry.attributes.position.count;
+                        document.getElementById('stats').textContent = `Points: ${pointCount.toLocaleString()}`;
+                        document.getElementById('loading').style.display = 'none';
+                        
+                        // Auto-fit camera
+                        fitCameraToObject(pointCloud);
+                        
+                        console.log('✅ Point cloud loaded:', pointCount, 'points');
+                    }, 
+                    function(progress) {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        document.getElementById('loading').textContent = `🔄 Loading: ${percent}%`;
+                    },
+                    function(error) {
+                        console.error('❌ Error loading PLY file:', error);
+                        document.getElementById('loading').textContent = '❌ Failed to load point cloud';
+                    });
+                }
+                
+                function fitCameraToObject(object) {
+                    const box = new THREE.Box3().setFromObject(object);
+                    const size = box.getSize(new THREE.Vector3());
+                    const center = box.getCenter(new THREE.Vector3());
+                    
+                    const maxSize = Math.max(size.x, size.y, size.z);
+                    const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
+                    const fitWidthDistance = fitHeightDistance / camera.aspect;
+                    const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.5;
+                    
+                    camera.near = distance / 100;
+                    camera.far = distance * 100;
+                    camera.updateProjectionMatrix();
+                    
+                    controls.target.copy(center);
+                    controls.update();
+                }
+                
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                
+                function onWindowResize() {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                }
+                
+                function onKeyDown(event) {
+                    const moveSpeed = 10;
+                    switch(event.code) {
+                        case 'KeyW':
+                            camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
+                            break;
+                        case 'KeyS':
+                            camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-moveSpeed));
+                            break;
+                        case 'KeyA':
+                            camera.position.add(new THREE.Vector3().crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).multiplyScalar(moveSpeed));
+                            break;
+                        case 'KeyD':
+                            camera.position.add(new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).multiplyScalar(moveSpeed));
+                            break;
+                    }
+                }
+                
+                // Control functions
+                function toggleAutoRotate() {
+                    autoRotate = !autoRotate;
+                    controls.autoRotate = autoRotate;
+                }
+                
+                function resetCamera() {
+                    if (pointCloud) {
+                        fitCameraToObject(pointCloud);
+                    }
+                }
+                
+                function updatePointSize(value) {
+                    pointSize = parseFloat(value);
+                    if (pointCloud) {
+                        pointCloud.material.size = pointSize;
+                    }
+                }
+                
+                function updateRotationSpeed(value) {
+                    rotationSpeed = parseFloat(value);
+                    controls.autoRotateSpeed = rotationSpeed;
+                }
+                
+                // Start the application
+                init();
+            </script>
+        </body>
+        </html>
+        EOF
+        
+        # HTMLファイル内のプレースホルダーを置換
+        sed -i.bak "s/VIEWER_TITLE_PLACEHOLDER/$VIEWER_TITLE/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/BACKGROUND_COLOR_PLACEHOLDER/$BG_COLOR/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/POINT_SIZE_PLACEHOLDER/$POINT_SIZE/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/ANIMATION_SPEED_PLACEHOLDER/$ANIMATION_SPEED/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/AUTO_ROTATE_PLACEHOLDER/$AUTO_ROTATE/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/CAM_X_PLACEHOLDER/$CAM_X/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/CAM_Y_PLACEHOLDER/$CAM_Y/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/CAM_Z_PLACEHOLDER/$CAM_Z/g" "$OUTPUT_FOLDER/index.html"
+        sed -i.bak "s/PLY_FILENAME_PLACEHOLDER/$PLY_FILENAME/g" "$OUTPUT_FOLDER/index.html"
+        
+        # バックアップファイルを削除
+        rm -f "$OUTPUT_FOLDER/index.html.bak"
+        
+        # 生成されたファイルの確認
+        VIEWER_PATH="$OUTPUT_FOLDER/index.html"
+        ASSETS_COUNT=$(find "$OUTPUT_FOLDER/assets" -type f | wc -l)
+        
+        echo "📊 Viewer Generation Summary:"
+        echo "   - Viewer HTML: $VIEWER_PATH"
+        echo "   - Assets: $ASSETS_COUNT files"
+        echo "   - PLY file: $PLY_FILENAME"
+        
+        # Set outputs
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "viewer-path=$VIEWER_PATH" >> $GITHUB_OUTPUT
+        echo "assets-count=$ASSETS_COUNT" >> $GITHUB_OUTPUT
+        
+        echo "✅ Three.js Pointcloud Viewer generated successfully"
+        echo "::endgroup::"
+    
+    - name: Commit generated viewer
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.output-folder }}/
+        if git diff --cached --quiet; then
+          echo "No viewer files to commit"
+        else
+          git commit -m "Add Three.js pointcloud viewer: ${{ inputs.viewer-title }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
