@@ -1,0 +1,158 @@
+name: 'Pointcloud Generation'
+description: 'Generate 3D point clouds from 2D images using MiDaS depth estimation'
+author: 'KamuiCode Workflow'
+
+inputs:
+  input-image-path:
+    description: 'Path to the input 2D image (relative to repository root)'
+    required: true
+  output-folder:
+    description: 'Output folder for generated files (depth map and PLY)'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  depth-model:
+    description: 'MiDaS depth estimation model (midas_v21/midas_v21_small)'
+    required: false
+    default: 'midas_v21_small'
+
+outputs:
+  pointcloud-completed:
+    description: 'Whether pointcloud generation was completed successfully'
+    value: ${{ steps.generate.outputs.completed }}
+  depth-map-path:
+    description: 'Path to the generated depth map'
+    value: ${{ steps.generate.outputs.depth-map-path }}
+  ply-file-path:
+    description: 'Path to the generated PLY point cloud file'
+    value: ${{ steps.generate.outputs.ply-file-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install dependencies
+      shell: bash
+      run: |
+        echo "::group::📦 Installing dependencies"
+        
+        # Python dependencies for MiDaS
+        if [ -f "tools/requirements.txt" ]; then
+          pip install -r tools/requirements.txt
+        else
+          echo "⚠️ tools/requirements.txt not found, installing default MiDaS dependencies"
+          pip install torch torchvision opencv-python pillow numpy
+        fi
+        
+        # Node.js dependencies for PLY conversion
+        npm install
+        
+        echo "::endgroup::"
+    
+    - name: Generate pointcloud from image
+      id: generate
+      shell: bash
+      run: |
+        echo "::group::🔍 Pointcloud Generation Pipeline"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        INPUT_IMAGE="${{ inputs.input-image-path }}"
+        OUTPUT_FOLDER="${{ inputs.output-folder }}"
+        DEPTH_MODEL="${{ inputs.depth-model }}"
+        
+        echo "Input image: $INPUT_IMAGE"
+        echo "Output folder: $OUTPUT_FOLDER"
+        echo "Depth model: $DEPTH_MODEL"
+        
+        # 入力画像の存在確認
+        if [ ! -f "$INPUT_IMAGE" ]; then
+          echo "::error::❌ Input image not found: $INPUT_IMAGE"
+          exit 1
+        fi
+        
+        # 出力フォルダの作成
+        mkdir -p "$OUTPUT_FOLDER"
+        
+        # Step 1: MiDaS depth estimation
+        echo "🧠 Step 1: Running MiDaS depth estimation..."
+        DEPTH_MAP_PATH="$OUTPUT_FOLDER/depth.png"
+        
+        python tools/run_midas.py \
+          --input "$INPUT_IMAGE" \
+          --output "$DEPTH_MAP_PATH" \
+          --model "$DEPTH_MODEL" || {
+          echo "::error::❌ MiDaS depth estimation failed"
+          exit 1
+        }
+        
+        if [ ! -f "$DEPTH_MAP_PATH" ]; then
+          echo "::error::❌ Depth map not generated: $DEPTH_MAP_PATH"
+          exit 1
+        fi
+        
+        echo "✅ Depth map generated: $DEPTH_MAP_PATH"
+        
+        # Step 2: Depth to PLY conversion
+        echo "🔄 Step 2: Converting depth map to PLY point cloud..."
+        PLY_FILE_PATH="$OUTPUT_FOLDER/pointcloud.ply"
+        
+        node tools/depth2ply.js \
+          --input "$DEPTH_MAP_PATH" \
+          --output "$PLY_FILE_PATH" \
+          --original-image "$INPUT_IMAGE" || {
+          echo "::error::❌ Depth to PLY conversion failed"
+          exit 1
+        }
+        
+        if [ ! -f "$PLY_FILE_PATH" ]; then
+          echo "::error::❌ PLY file not generated: $PLY_FILE_PATH"
+          exit 1
+        fi
+        
+        echo "✅ PLY file generated: $PLY_FILE_PATH"
+        
+        # Output verification
+        DEPTH_SIZE=$(stat -f%z "$DEPTH_MAP_PATH" 2>/dev/null || stat -c%s "$DEPTH_MAP_PATH" 2>/dev/null || echo "0")
+        PLY_SIZE=$(stat -f%z "$PLY_FILE_PATH" 2>/dev/null || stat -c%s "$PLY_FILE_PATH" 2>/dev/null || echo "0")
+        
+        echo "📊 Generation Summary:"
+        echo "   - Depth map: $DEPTH_MAP_PATH (${DEPTH_SIZE} bytes)"
+        echo "   - PLY file: $PLY_FILE_PATH (${PLY_SIZE} bytes)"
+        
+        # Set outputs
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "depth-map-path=$DEPTH_MAP_PATH" >> $GITHUB_OUTPUT
+        echo "ply-file-path=$PLY_FILE_PATH" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit generated files
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.output-folder }}/
+        if git diff --cached --quiet; then
+          echo "No pointcloud files to commit"
+        else
+          git commit -m "Add generated pointcloud from ${{ inputs.input-image-path }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
