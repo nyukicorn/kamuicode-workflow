@@ -48,7 +48,7 @@ jobs:
     outputs:
       ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
       pointcloud-completed: ${{ steps.pointcloud.outputs.pointcloud-completed }}
-      branch-name: ${{ steps.branch.outputs.name }}
+      timestamp: ${{ steps.timestamp.outputs.value }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -57,25 +57,13 @@ jobs:
         id: timestamp
         run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
       
-      - name: Set branch name
-        id: branch
-        run: echo "name=pointcloud-viewer-${{ steps.timestamp.outputs.value }}" >> $GITHUB_OUTPUT
-      
-      - name: Create branch
-        uses: peterjgrainger/action-create-branch@v3.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          branch: ${{ steps.branch.outputs.name }}
-          sha: ${{ github.sha }}
-      
       - name: Generate 3D Point Cloud
         id: pointcloud
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
           input-image-path: ${{ inputs.input-image-path }}
           output-folder: 'pointcloud-${{ steps.timestamp.outputs.value }}'
-          branch-name: ${{ steps.branch.outputs.name }}
+          branch-name: 'main'
           depth-model: ${{ inputs.depth-model }}
 
   create-viewer:
@@ -88,22 +76,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.generate-pointcloud.outputs.branch-name }}
       
       - name: Create Three.js Pointcloud Viewer
         id: viewer
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
           ply-file-path: ${{ needs.generate-pointcloud.outputs.ply-file-path }}
-          output-folder: 'docs/pointcloud-viewer-${{ needs.generate-pointcloud.outputs.branch-name }}'
+          output-folder: 'docs/pointcloud-viewer-${{ needs.generate-pointcloud.outputs.timestamp }}'
           viewer-title: ${{ inputs.viewer-title }}
           camera-position: '0,0,100'
           auto-rotate: ${{ inputs.auto-rotate }}
           background-color: ${{ inputs.background-color }}
           point-size: ${{ inputs.point-size }}
           animation-speed: '1.0'
-          branch-name: ${{ needs.generate-pointcloud.outputs.branch-name }}
+          branch-name: 'main'
 
   deploy-pages:
     needs: [generate-pointcloud, create-viewer]
@@ -113,18 +99,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Generate timestamp
-        id: timestamp
-        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
-      
-      - name: Set branch name
-        id: branch
-        run: echo "name=pointcloud-viewer-${{ steps.timestamp.outputs.value }}" >> $GITHUB_OUTPUT
-      
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.branch.outputs.name }}
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -138,63 +114,18 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       
-      - name: Create Pull Request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Create PR for the generated content
-          gh pr create \
-            --head "${{ steps.branch.outputs.name }}" \
-            --base "main" \
-            --title "🎮 Add 3D Pointcloud Viewer: ${{ inputs.viewer-title }}" \
-            --body "$(cat <<'EOF'
-          ## 🎮 3D Pointcloud Viewer Generated
-          
-          **Input Image**: \`${{ inputs.input-image-path }}\`
-          **Viewer URL**: ${{ steps.deployment.outputs.page_url }}
-          
-          ### Generated Content:
-          - ✅ MiDaS depth estimation 
-          - ✅ PLY point cloud conversion
-          - ✅ Interactive Three.js viewer
-          - ✅ GitHub Pages deployment
-          
-          ### Features:
-          - 🎮 Interactive controls (orbit, zoom, WASD movement)
-          - 🔄 Auto-rotation: ${{ inputs.auto-rotate }}
-          - 📐 Point size: ${{ inputs.point-size }}
-          - 🎨 Background: ${{ inputs.background-color }}
-          
-          ### Technical Details:
-          - Depth Model: ${{ inputs.depth-model }}
-          - PLY File: ${{ needs.generate-pointcloud.outputs.ply-file-path }}
-          - Viewer Path: ${{ needs.create-viewer.outputs.viewer-path }}
-          
-          🤖 Generated with [Claude Code](https://claude.ai/code)
-          
-          Co-Authored-By: Claude <noreply@anthropic.com>
-          EOF
-          )" || echo "PR already exists or creation failed"
 
   cleanup:
     needs: [generate-pointcloud, create-viewer, deploy-pages]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Generate timestamp
-        id: timestamp
-        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
-      
-      - name: Set branch name  
-        id: branch
-        run: echo "name=pointcloud-viewer-${{ steps.timestamp.outputs.value }}" >> $GITHUB_OUTPUT
-      
       - name: Workflow Summary
         run: |
           echo "## 🎮 3D Pointcloud Viewer Pipeline Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Input**: \`${{ inputs.input-image-path }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch**: \`${{ steps.branch.outputs.name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: \`${{ needs.generate-pointcloud.outputs.timestamp }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Pointcloud Generated**: ${{ needs.generate-pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "**Viewer Created**: ${{ needs.create-viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
