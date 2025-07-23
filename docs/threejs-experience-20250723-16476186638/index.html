@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>美しいホルゴールが鳴るバラ園</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+            min-width: 300px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ff69b4;
+            font-weight: bold;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #ff69b4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #ff69b4;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            min-width: 40px;
+            text-align: right;
+            color: #ccc;
+        }
+        
+        #music-button {
+            background: linear-gradient(45deg, #ff69b4, #ff1493);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        #music-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
+        }
+        
+        #music-button:active {
+            transform: scale(0.95);
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 105, 180, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #ff69b4;
+        }
+        
+        .instructions h3 {
+            color: #ff69b4;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .instructions li:before {
+            content: "🌹";
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="ui-container">
+            <h2 style="color: #ff69b4; margin-bottom: 20px; text-align: center;">🌹 バラ園コントロール 🌹</h2>
+            
+            <div class="control-group">
+                <label>アニメーション速度</label>
+                <div class="slider-container">
+                    <input type="range" id="animationSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+                    <span class="value-display" id="animationSpeedValue">1.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>回転速度</label>
+                <div class="slider-container">
+                    <input type="range" id="rotationSpeed" min="0.1" max="5.0" step="0.1" value="1.0">
+                    <span class="value-display" id="rotationSpeedValue">1.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>花びらの幅</label>
+                <div class="slider-container">
+                    <input type="range" id="petalWidth" min="0.05" max="0.3" step="0.01" value="0.05">
+                    <span class="value-display" id="petalWidthValue">0.05</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>花びらのカール</label>
+                <div class="slider-container">
+                    <input type="range" id="petalCurl" min="0.0" max="1.0" step="0.1" value="0.5">
+                    <span class="value-display" id="petalCurlValue">0.5</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>バラの透明度</label>
+                <div class="slider-container">
+                    <input type="range" id="roseOpacity" min="0.1" max="1.0" step="0.1" value="0.9">
+                    <span class="value-display" id="roseOpacityValue">0.9</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>茎の透明度</label>
+                <div class="slider-container">
+                    <input type="range" id="stemOpacity" min="0.0" max="1.0" step="0.1" value="1.0">
+                    <span class="value-display" id="stemOpacityValue">1.0</span>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>環境パーティクル透明度</label>
+                <div class="slider-container">
+                    <input type="range" id="ambientOpacity" min="0.0" max="1.0" step="0.1" value="0.4">
+                    <span class="value-display" id="ambientOpacityValue">0.4</span>
+                </div>
+            </div>
+            
+            <button id="music-button">🎵 オルゴール音楽を再生 🎵</button>
+            
+            <div class="instructions">
+                <h3>操作方法</h3>
+                <ul>
+                    <li>マウスドラッグ: カメラ回転</li>
+                    <li>マウスホイール: ズーム</li>
+                    <li>ダブルクリック: 自動回転ON/OFF</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas'), antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // Set camera position for proper bouquet framing
+        camera.position.set(0, 0.1, 18);
+        camera.lookAt(0, 0.15, 0);
+        
+        // Lighting setup (CRITICAL for MeshStandardMaterial)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(10, 10, 5);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        scene.add(directionalLight);
+        
+        // Add subtle point lights for rose illumination
+        const pointLight1 = new THREE.PointLight(0xff69b4, 0.5, 20);
+        pointLight1.position.set(-5, 5, 5);
+        scene.add(pointLight1);
+        
+        const pointLight2 = new THREE.PointLight(0xffc0cb, 0.3, 20);
+        pointLight2.position.set(5, 3, -5);
+        scene.add(pointLight2);
+        
+        // Panorama background
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load('assets/panorama.jpg', (texture) => {
+            const sphereGeometry = new THREE.SphereGeometry(500, 60, 40);
+            sphereGeometry.scale(-1, 1, 1);
+            const sphereMaterial = new THREE.MeshBasicMaterial({ map: texture });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            scene.add(sphere);
+        }, undefined, (error) => {
+            console.log('Panorama not found, using gradient background');
+            scene.background = new THREE.Color(0x87CEEB);
+        });
+
+        // RoseBouquetSystem class implementation
+        class RoseBouquetSystem {
+            constructor(scene, config = {}) {
+                this.scene = scene;
+                this.artStyle = config.artStyle || 'flower:rose';
+                this.time = 0;
+                this.animationSpeed = 1.0;
+                this.rotationSpeed = 1.0;
+                this.isRotating = false;
+                this.systems = [];
+                this.petalWidth = 0.05;
+                this.petalCurl = 0.5;
+                this.init();
+            }
+
+            init() {
+                const [category, type] = this.artStyle.split(':');
+                if (category === 'flower') this.createRoseBouquet(type);
+                this.createAmbientParticles();
+                this.createFloatingParticles();
+            }
+
+            createRoseBouquet(type) {
+                const roseHeadGeometry = this.createRoseHeadGeometry();
+                const roseMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xE62850,
+                    metalness: 0.1,
+                    roughness: 0.8,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const bouquetPositions = [
+                    new THREE.Vector3(-2, 2, 0.15),
+                    new THREE.Vector3(2, 2, -0.15),
+                    new THREE.Vector3(-3, 0, -0.15),
+                    new THREE.Vector3(3, 0, 0.15),
+                    new THREE.Vector3(0, 1, 0)
+                ];
+                
+                bouquetPositions.forEach((position, index) => {
+                    let roseHead;
+                    if (roseHeadGeometry instanceof THREE.Group) {
+                        roseHead = roseHeadGeometry.clone();
+                        roseHead.children.forEach(child => {
+                            child.material = child.material.clone();
+                        });
+                    } else {
+                        roseHead = new THREE.Mesh(roseHeadGeometry, roseMaterial.clone());
+                    }
+                    
+                    roseHead.position.copy(position);
+                    roseHead.rotation.y = (Math.PI * 2 / 5) * index;
+                    roseHead.userData = { type: 'rose', index: index };
+                    this.systems.push(roseHead);
+                    this.scene.add(roseHead);
+                });
+                
+                this.createStems(bouquetPositions);
+            }
+
+            createRoseHeadGeometry() {
+                const group = new THREE.Group();
+                const petalCount = 20;
+                const goldenAngle = Math.PI * (3.0 - Math.sqrt(5.0));
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 1;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 256, 0);
+                gradient.addColorStop(0, '#E62850');
+                gradient.addColorStop(0.5, '#FF8FB3');
+                gradient.addColorStop(1, '#FFBED2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 256, 1);
+                
+                const gradientTexture = new THREE.CanvasTexture(canvas);
+                gradientTexture.wrapS = THREE.ClampToEdgeWrapping;
+                gradientTexture.wrapT = THREE.ClampToEdgeWrapping;
+                
+                for (let i = 0; i < petalCount; i++) {
+                    const spiralRadius = Math.sqrt(i / petalCount) * 1.5;
+                    const spiralAngle = i * goldenAngle;
+                    const layerHeight = (i / petalCount) * 0.8;
+                    
+                    const petalGeometry = new THREE.PlaneGeometry(this.petalWidth * 2, this.petalWidth * 3, 4, 8);
+                    
+                    const positions = petalGeometry.attributes.position.array;
+                    const uvs = petalGeometry.attributes.uv.array;
+                    
+                    for (let j = 0; j < positions.length / 3; j++) {
+                        const x = positions[j * 3];
+                        const y = positions[j * 3 + 1];
+                        
+                        const curlIntensity = this.petalCurl * 0.04;
+                        positions[j * 3 + 2] = Math.sin(x / this.petalWidth) * curlIntensity + Math.cos(y / this.petalWidth) * (curlIntensity * 0.5);
+                        
+                        const distFromCenter = Math.sqrt(x * x + y * y) / (this.petalWidth * 1.5);
+                        uvs[j * 2] = Math.min(1, distFromCenter);
+                        uvs[j * 2 + 1] = 0.5;
+                    }
+                    
+                    petalGeometry.attributes.position.needsUpdate = true;
+                    petalGeometry.attributes.uv.needsUpdate = true;
+                    petalGeometry.computeVertexNormals();
+                    
+                    const petal = new THREE.Mesh(petalGeometry, new THREE.MeshStandardMaterial({
+                        map: gradientTexture,
+                        roughness: 0.6,
+                        metalness: 0,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.9
+                    }));
+                    
+                    petal.position.set(
+                        spiralRadius * Math.cos(spiralAngle),
+                        layerHeight,
+                        spiralRadius * Math.sin(spiralAngle)
+                    );
+                    petal.rotation.z = spiralAngle + Math.PI / 2;
+                    petal.rotation.x = -Math.PI / 6 + (spiralRadius / 1.5) * Math.PI / 4;
+                    
+                    group.add(petal);
+                }
+                
+                return group;
+            }
+            
+            createStems(positions) {
+                const stemGroup = new THREE.Group();
+                
+                positions.forEach((position, index) => {
+                    const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.25, 8);
+                    const stemMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2d5016,
+                        roughness: 0.9
+                    });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    
+                    stem.position.set(position.x, position.y - 0.125, position.z);
+                    stem.userData = { type: 'stem', index: index };
+                    stemGroup.add(stem);
+                });
+                
+                stemGroup.position.set(0, -0.5, 0);
+                stemGroup.userData = { type: 'stemBundle' };
+                this.systems.push(stemGroup);
+                this.scene.add(stemGroup);
+            }
+
+            createAmbientParticles() {
+                const particleCount = 3000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = Math.random() * 40 - 20;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2, 
+                    vertexColors: true, 
+                    transparent: true, 
+                    opacity: 0.4,
+                    blending: THREE.AdditiveBlending, 
+                    depthWrite: false
+                });
+
+                const ambient = new THREE.Points(geometry, material);
+                ambient.userData = { type: 'ambient' };
+                this.systems.push(ambient);
+                this.scene.add(ambient);
+            }
+
+            createFloatingParticles() {
+                const particleCount = 1000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                
+                // Create heart shape texture
+                const canvas = document.createElement('canvas');
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext('2d');
+                
+                // Clear with transparent background
+                ctx.clearRect(0, 0, 32, 32);
+                ctx.globalCompositeOperation = 'source-over';
+                
+                // Draw heart shape
+                ctx.fillStyle = '#ff69b4';
+                ctx.beginPath();
+                const x = 16, y = 16, size = 8;
+                ctx.moveTo(x, y + size/4);
+                ctx.bezierCurveTo(x, y, x - size/2, y, x - size/2, y + size/4);
+                ctx.bezierCurveTo(x - size/2, y + size/2, x, y + size*3/4, x, y + size);
+                ctx.bezierCurveTo(x, y + size*3/4, x + size/2, y + size/2, x + size/2, y + size/4);
+                ctx.bezierCurveTo(x + size/2, y, x, y, x, y + size/4);
+                ctx.fill();
+                
+                const heartTexture = new THREE.CanvasTexture(canvas);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 80;
+                    positions[i * 3 + 1] = Math.random() * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                    
+                    velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+                    velocities[i * 3 + 1] = Math.random() * 0.05;
+                    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                    
+                    const color = new THREE.Color(0xff69b4);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.8,
+                    map: heartTexture,
+                    vertexColors: true, 
+                    transparent: true, 
+                    opacity: 0.6,
+                    alphaTest: 0.1,
+                    blending: THREE.NormalBlending, 
+                    depthWrite: false
+                });
+
+                const floating = new THREE.Points(geometry, material);
+                floating.userData = { type: 'floating', velocities: velocities };
+                this.systems.push(floating);
+                this.scene.add(floating);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime * this.animationSpeed;
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'floating') {
+                        const positions = system.geometry.attributes.position.array;
+                        const velocities = system.userData.velocities;
+                        
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i] += velocities[i] * deltaTime * 60 * this.animationSpeed;
+                            positions[i + 1] += velocities[i + 1] * deltaTime * 60 * this.animationSpeed;
+                            positions[i + 2] += velocities[i + 2] * deltaTime * 60 * this.animationSpeed;
+                            
+                            if (positions[i + 1] > 40) {
+                                positions[i + 1] = -20;
+                                positions[i] = (Math.random() - 0.5) * 80;
+                                positions[i + 2] = (Math.random() - 0.5) * 80;
+                            }
+                        }
+                        system.geometry.attributes.position.needsUpdate = true;
+                    } else if (system.userData && system.userData.type === 'rose') {
+                        system.position.y += Math.sin(this.time + system.userData.index) * 0.002;
+                    }
+                });
+            }
+
+            updateControls(controls) {
+                this.animationSpeed = controls.animationSpeed;
+                this.rotationSpeed = controls.rotationSpeed || 1.0;
+                
+                if (controls.petalWidth !== undefined) {
+                    this.petalWidth = controls.petalWidth;
+                }
+                
+                if (controls.petalCurl !== undefined) {
+                    this.petalCurl = Math.max(0.0, Math.min(1.0, controls.petalCurl));
+                }
+                
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'rose') {
+                        if (system.material) {
+                            system.material.opacity = controls.roseOpacity || 0.9;
+                            if (controls.roseColor) {
+                                system.material.color.setHex(controls.roseColor);
+                            }
+                        }
+                        if (system.children) {
+                            system.children.forEach(child => {
+                                if (child.material) {
+                                    child.material.opacity = controls.roseOpacity || 0.9;
+                                }
+                            });
+                        }
+                    } else if (system.userData && system.userData.type === 'stemBundle') {
+                        system.children.forEach(stem => {
+                            if (stem.material) {
+                                stem.material.opacity = controls.stemOpacity || 1.0;
+                            }
+                        });
+                    } else if (system.userData && system.userData.type === 'ambient') {
+                        system.material.opacity = controls.ambientOpacity || 0.4;
+                    }
+                });
+            }
+
+            toggleRotation() {
+                this.isRotating = !this.isRotating;
+            }
+            
+            updateCameraRotation(camera, deltaTime) {
+                if (this.isRotating) {
+                    const radius = Math.sqrt(camera.position.x * camera.position.x + camera.position.z * camera.position.z);
+                    const currentAngle = Math.atan2(camera.position.z, camera.position.x);
+                    const newAngle = currentAngle + this.rotationSpeed * deltaTime;
+                    
+                    camera.position.x = radius * Math.cos(newAngle);
+                    camera.position.z = radius * Math.sin(newAngle);
+                    camera.lookAt(0, 0.15, 0);
+                }
+            }
+        }
+
+        // Initialize rose bouquet system
+        const bouquetSystem = new RoseBouquetSystem(scene, { artStyle: 'flower:rose' });
+
+        // Mouse controls
+        let mouseDown = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        let rotationX = 0;
+        let rotationY = 0;
+
+        const canvas = document.getElementById('canvas');
+
+        canvas.addEventListener('mousedown', (event) => {
+            mouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            if (!mouseDown) return;
+
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        canvas.addEventListener('wheel', (event) => {
+            event.preventDefault();
+            const zoomSpeed = 0.001;
+            camera.position.multiplyScalar(1 + event.deltaY * zoomSpeed);
+            
+            // Limit zoom
+            const distance = camera.position.length();
+            if (distance < 5) camera.position.normalize().multiplyScalar(5);
+            if (distance > 50) camera.position.normalize().multiplyScalar(50);
+        });
+
+        canvas.addEventListener('dblclick', () => {
+            bouquetSystem.toggleRotation();
+        });
+
+        // UI Controls
+        const controls = {
+            animationSpeed: 1.0,
+            rotationSpeed: 1.0,
+            petalWidth: 0.05,
+            petalCurl: 0.5,
+            roseOpacity: 0.9,
+            stemOpacity: 1.0,
+            ambientOpacity: 0.4
+        };
+
+        function updateControlValues() {
+            document.getElementById('animationSpeedValue').textContent = controls.animationSpeed.toFixed(1);
+            document.getElementById('rotationSpeedValue').textContent = controls.rotationSpeed.toFixed(1);
+            document.getElementById('petalWidthValue').textContent = controls.petalWidth.toFixed(2);
+            document.getElementById('petalCurlValue').textContent = controls.petalCurl.toFixed(1);
+            document.getElementById('roseOpacityValue').textContent = controls.roseOpacity.toFixed(1);
+            document.getElementById('stemOpacityValue').textContent = controls.stemOpacity.toFixed(1);
+            document.getElementById('ambientOpacityValue').textContent = controls.ambientOpacity.toFixed(1);
+        }
+
+        // Event listeners for controls
+        Object.keys(controls).forEach(key => {
+            const slider = document.getElementById(key);
+            if (slider) {
+                slider.addEventListener('input', (e) => {
+                    controls[key] = parseFloat(e.target.value);
+                    updateControlValues();
+                    bouquetSystem.updateControls(controls);
+                });
+            }
+        });
+
+        updateControlValues();
+
+        // Music setup
+        let audio = null;
+        const musicButton = document.getElementById('music-button');
+
+        musicButton.addEventListener('click', () => {
+            if (!audio) {
+                audio = new Audio('generated-music.wav');
+                audio.loop = true;
+                audio.volume = 0.7;
+            }
+
+            if (audio.paused) {
+                audio.play().catch(console.error);
+                musicButton.textContent = '🎵 音楽を停止 🎵';
+                musicButton.style.background = 'linear-gradient(45deg, #ff1493, #dc143c)';
+            } else {
+                audio.pause();
+                musicButton.textContent = '🎵 オルゴール音楽を再生 🎵';
+                musicButton.style.background = 'linear-gradient(45deg, #ff69b4, #ff1493)';
+            }
+        });
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = clock.getDelta();
+            
+            // Update bouquet system
+            bouquetSystem.update(deltaTime);
+            bouquetSystem.updateCameraRotation(camera, deltaTime);
+            
+            // Smooth mouse rotation
+            rotationX += (targetRotationX - rotationX) * 0.05;
+            rotationY += (targetRotationY - rotationY) * 0.05;
+            
+            if (!bouquetSystem.isRotating) {
+                // Apply mouse rotation when not auto-rotating
+                const spherical = new THREE.Spherical();
+                spherical.setFromVector3(camera.position);
+                spherical.theta = targetRotationY;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, Math.PI / 2 - targetRotationX));
+                camera.position.setFromSpherical(spherical);
+                camera.lookAt(0, 0.15, 0);
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html>
