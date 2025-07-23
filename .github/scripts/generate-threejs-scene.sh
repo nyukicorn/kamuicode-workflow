@@ -63,7 +63,7 @@ class RoseBouquetSystem {
         this.isRotating = false;
         this.systems = [];
         this.petalWidth = 0.05; // Controllable via UI (0.05-0.3)
-        this.particleSize = 0.01; // Much smaller default (0.005-0.02 range)
+        this.petalCurl = 0.5; // Controllable via UI (0.0-1.0) for Z offset curl
         this.init();
     }
 
@@ -85,13 +85,13 @@ class RoseBouquetSystem {
             opacity: 0.9
         });
         
-        // Create 5 rose heads in bouquet arrangement
+        // Create 5 rose heads in bouquet arrangement with Z offset for depth
         const bouquetPositions = [
-            new THREE.Vector3(-2, 2, 0),   // Left top
-            new THREE.Vector3(2, 2, 0),    // Right top  
-            new THREE.Vector3(-3, 0, 0),   // Left middle
-            new THREE.Vector3(3, 0, 0),    // Right middle
-            new THREE.Vector3(0, 1, 0)     // Center
+            new THREE.Vector3(-2, 2, 0.15),   // Left top (front)
+            new THREE.Vector3(2, 2, -0.15),   // Right top (back)
+            new THREE.Vector3(-3, 0, -0.15),  // Left middle (back)
+            new THREE.Vector3(3, 0, 0.15),    // Right middle (front)
+            new THREE.Vector3(0, 1, 0)        // Center (middle)
         ];
         
         bouquetPositions.forEach((position, index) => {
@@ -123,32 +123,57 @@ class RoseBouquetSystem {
         const petalCount = 20; // 15-25 petals
         const goldenAngle = Math.PI * (3.0 - Math.sqrt(5.0));
         
+        // Create 1x256 gradient texture for petals
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 256, 0);
+        gradient.addColorStop(0, '#E62850');    // Center red
+        gradient.addColorStop(0.5, '#FF8FB3');  // Middle pink  
+        gradient.addColorStop(1, '#FFBED2');    // Edge light pink
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 256, 1);
+        
+        const gradientTexture = new THREE.CanvasTexture(canvas);
+        gradientTexture.wrapS = THREE.ClampToEdgeWrapping;
+        gradientTexture.wrapT = THREE.ClampToEdgeWrapping;
+        
         for (let i = 0; i < petalCount; i++) {
             // Spiral positioning using golden ratio
             const spiralRadius = Math.sqrt(i / petalCount) * 1.5;
             const spiralAngle = i * goldenAngle;
             const layerHeight = (i / petalCount) * 0.8;
             
-            // Create curved plate petal geometry
-            const petalGeometry = new THREE.PlaneGeometry(this.petalWidth * 2, this.petalWidth * 3, 4, 6);
+            // Create curved plate petal geometry with increased subdivision
+            const petalGeometry = new THREE.PlaneGeometry(this.petalWidth * 2, this.petalWidth * 3, 4, 8);
             
-            // Apply curvature to petal
+            // Apply curvature and radial UV mapping
             const positions = petalGeometry.attributes.position.array;
-            for (let j = 0; j < positions.length; j += 3) {
-                const x = positions[j];
-                const y = positions[j + 1];
-                // Add curvature: more curve at edges
-                positions[j + 2] = Math.sin(x / this.petalWidth) * 0.02 + Math.cos(y / this.petalWidth) * 0.01;
+            const uvs = petalGeometry.attributes.uv.array;
+            
+            for (let j = 0; j < positions.length / 3; j++) {
+                const x = positions[j * 3];
+                const y = positions[j * 3 + 1];
+                
+                // Add curvature with controllable curl factor
+                const curlIntensity = this.petalCurl * 0.04; // Scale curl from 0 to 0.04
+                positions[j * 3 + 2] = Math.sin(x / this.petalWidth) * curlIntensity + Math.cos(y / this.petalWidth) * (curlIntensity * 0.5);
+                
+                // Radial UV mapping: center(U=0) to edge(U=1)
+                const distFromCenter = Math.sqrt(x * x + y * y) / (this.petalWidth * 1.5);
+                uvs[j * 2] = Math.min(1, distFromCenter); // U coordinate (radial distance)
+                uvs[j * 2 + 1] = 0.5; // V coordinate (fixed at center)
             }
+            
             petalGeometry.attributes.position.needsUpdate = true;
+            petalGeometry.attributes.uv.needsUpdate = true;
             petalGeometry.computeVertexNormals();
             
             const petal = new THREE.Mesh(petalGeometry, new THREE.MeshStandardMaterial({
-                color: new THREE.Color().lerpColors(
-                    new THREE.Color(0xE62850), 
-                    new THREE.Color(0xFFBED2), 
-                    spiralRadius / 1.5
-                ),
+                map: gradientTexture,
+                roughness: 0.6,
+                metalness: 0,
                 side: THREE.DoubleSide,
                 transparent: true,
                 opacity: 0.9
@@ -188,18 +213,28 @@ class RoseBouquetSystem {
     }
     
     createStems(positions) {
+        // Create a group to hold all stems and bundle them at the root
+        const stemGroup = new THREE.Group();
+        
         positions.forEach((position, index) => {
-            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 4, 8);
+            const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.25, 8); // Unified 0.25m length
             const stemMaterial = new THREE.MeshStandardMaterial({
                 color: 0x2d5016,
                 roughness: 0.9
             });
             const stem = new THREE.Mesh(stemGeometry, stemMaterial);
-            stem.position.set(position.x, position.y - 2, position.z);
+            
+            // Position stem to connect to rose head
+            stem.position.set(position.x, position.y - 0.125, position.z); // Center stem below rose
             stem.userData = { type: 'stem', index: index };
-            this.systems.push(stem);
-            this.scene.add(stem);
+            stemGroup.add(stem);
         });
+        
+        // Bundle stems at root (origin)
+        stemGroup.position.set(0, -0.5, 0); // Lower the entire stem group
+        stemGroup.userData = { type: 'stemBundle' };
+        this.systems.push(stemGroup);
+        this.scene.add(stemGroup);
     }
 
     createAmbientParticles() {
@@ -304,9 +339,9 @@ class RoseBouquetSystem {
             this.petalWidth = controls.petalWidth;
         }
         
-        // Update particle size for ambient particles
-        if (controls.particleSize !== undefined) {
-            this.particleSize = Math.max(0.005, Math.min(0.02, controls.particleSize));
+        // Update petal curl if provided
+        if (controls.petalCurl !== undefined) {
+            this.petalCurl = Math.max(0.0, Math.min(1.0, controls.petalCurl));
         }
         
         this.systems.forEach(system => {
@@ -346,15 +381,16 @@ IMPLEMENTATION REQUIREMENTS:
 - Initialize with: new RoseBouquetSystem(scene, { artStyle: '$ART_STYLE' })
 - In animation loop: call bouquetSystem.update(deltaTime) AND bouquetSystem.updateCameraRotation(camera, deltaTime)
 - Double-click canvas calls: bouquetSystem.toggleRotation()
-- CRITICAL: Set camera position further back to show entire bouquet (position: [0, 0, 15] or more distant)
+- CRITICAL: Set camera position to (0, 0.1, 18) and controls target to (0, 0.15, 0) for proper bouquet framing
 - CRITICAL LIGHTING: Add DirectionalLight and AmbientLight for MeshStandardMaterial rendering
-  * const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambientLight);
-  * const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(10, 10, 5); scene.add(directionalLight);
+  * const ambientLight = new THREE.AmbientLight(0xffffff, 0.2); scene.add(ambientLight);
+  * const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2); directionalLight.position.set(10, 10, 5); scene.add(directionalLight);
 - 5 rose heads arranged in bouquet formation with individual stems
 - Each rose head: 20 curved plate petals using PlaneGeometry with applied curvature
 - MeshStandardMaterial for realistic lighting and depth (requires proper lighting setup)
 - Performance optimized: merged geometries when possible, under 8000 vertices total  
-- UI Controls include: Petal Width (0.05-0.3), Particle Size (0.005-0.02), Rose Opacity, Stem Opacity"
+- UI Controls include: Petal Width (0.05-0.3), Petal Curl (0.0-1.0), Rose Opacity, Stem Opacity
+- REMOVED: Particle Size slider (roses now use fixed-size petals with gradient textures)"
 
 # 音楽・操作（圧縮版）
 [ "$INCLUDE_MUSIC" = "true" ] && PROMPT="$PROMPT
@@ -384,11 +420,11 @@ CRITICAL FEATURES:
    - Individual flowers should only float up/down subtly
 
 4. UI CONTROLS:
-   - Particle Size (0.005-0.02): Controls ambient particle size (MUCH SMALLER range)
    - Animation Speed, Rotation Speed, Rose Opacity, Ambient Opacity
    - Petal Width (0.05-0.3): Controls width of individual rose petals
+   - Petal Curl (0.0-1.0): Controls curvature/curl intensity of petals
    - Stem Opacity (0.0-1.0): Controls visibility of flower stems
-   - Rose Color: Primary color of rose petals (default: #E62850)
+   - REMOVED: Particle Size (roses use fixed gradient textures now)
 
 IMPLEMENTATION REQUIREMENTS:
 - ESSENTIAL: Mouse drag for camera control must work
