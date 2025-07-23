@@ -100,7 +100,7 @@ runs:
         if [ ! -f "$DEPTH_MAP_PATH" ]; then
           echo "::error::❌ Depth map not generated: $DEPTH_MAP_PATH"
           exit 1
-        }
+        fi
         
         echo "✅ Depth map generated: $DEPTH_MAP_PATH"
         
@@ -117,9 +117,9 @@ runs:
         fi
         
         if [ ! -f "$PLY_FILE_PATH" ]; then
-    echo "::error::❌ PLY file not generated: $PLY_FILE_PATH"
-    exit 1
-  fi
+          echo "::error::❌ PLY file not generated: $PLY_FILE_PATH"
+          exit 1
+        fi
         
         echo "✅ PLY file generated: $PLY_FILE_PATH"
         
