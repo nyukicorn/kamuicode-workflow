@@ -134,15 +134,29 @@ class EnhancedParticleSystem {
                 positions[particleIndex * 3 + 1] = center.y + height;
                 positions[particleIndex * 3 + 2] = center.z + petalRadius * Math.sin(finalAngle);
                 
-                // Enhanced color gradients for depth
+                // Petal Gradient Coloring for Clear Shape Definition
                 const layerProgress = layer / (config.layers - 1);
+                
+                // Base color from layer progression
                 const colorIndex = Math.floor(layerProgress * (config.colors.length - 1));
                 const nextColorIndex = Math.min(colorIndex + 1, config.colors.length - 1);
-                const blend = (layerProgress * (config.colors.length - 1)) % 1;
+                const layerBlend = (layerProgress * (config.colors.length - 1)) % 1;
                 
-                const color1 = new THREE.Color(config.colors[colorIndex]);
-                const color2 = new THREE.Color(config.colors[nextColorIndex]);
-                const finalColor = color1.clone().lerp(color2, blend);
+                const baseColor1 = new THREE.Color(config.colors[colorIndex]);
+                const baseColor2 = new THREE.Color(config.colors[nextColorIndex]);
+                const baseColor = baseColor1.clone().lerp(baseColor2, layerBlend);
+                
+                // Petal gradient based on distance from petal center
+                const petalGradient = 1 - petalDistance; // 1 = center, 0 = edge
+                const petalBrightness = 0.3 + 0.7 * petalGradient; // Darker at edges, brighter at center
+                
+                // Apply petal gradient to color
+                const finalColor = baseColor.clone().multiplyScalar(petalBrightness);
+                
+                // Add subtle edge darkening for definition
+                if (petalStrength < 0.1) {
+                    finalColor.multiplyScalar(0.5); // Darken petal edges significantly
+                }
                 
                 colors[particleIndex * 3] = finalColor.r;
                 colors[particleIndex * 3 + 1] = finalColor.g;
