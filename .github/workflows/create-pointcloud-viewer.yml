@@ -48,7 +48,11 @@ jobs:
     outputs:
       ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
       pointcloud-completed: ${{ steps.pointcloud.outputs.pointcloud-completed }}
+      branch-name: ${{ steps.branch.outputs.name }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
       - name: Generate timestamp
         id: timestamp
         run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
@@ -82,27 +86,24 @@ jobs:
       viewer-path: ${{ steps.viewer.outputs.viewer-path }}
       viewer-completed: ${{ steps.viewer.outputs.viewer-completed }}
     steps:
-      - name: Generate timestamp
-        id: timestamp
-        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
-      
-      - name: Set branch name
-        id: branch
-        run: echo "name=pointcloud-viewer-${{ steps.timestamp.outputs.value }}" >> $GITHUB_OUTPUT
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.generate-pointcloud.outputs.branch-name }}
       
       - name: Create Three.js Pointcloud Viewer
         id: viewer
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
           ply-file-path: ${{ needs.generate-pointcloud.outputs.ply-file-path }}
-          output-folder: 'docs/pointcloud-viewer-${{ steps.timestamp.outputs.value }}'
+          output-folder: 'docs/pointcloud-viewer-${{ needs.generate-pointcloud.outputs.branch-name }}'
           viewer-title: ${{ inputs.viewer-title }}
           camera-position: '0,0,100'
           auto-rotate: ${{ inputs.auto-rotate }}
           background-color: ${{ inputs.background-color }}
           point-size: ${{ inputs.point-size }}
           animation-speed: '1.0'
-          branch-name: ${{ steps.branch.outputs.name }}
+          branch-name: ${{ needs.generate-pointcloud.outputs.branch-name }}
 
   deploy-pages:
     needs: [generate-pointcloud, create-viewer]
