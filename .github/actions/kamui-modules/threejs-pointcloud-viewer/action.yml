@@ -213,9 +213,11 @@ runs:
                 </div>
             </div>
 
-            <!-- Three.js Global Script - Same as working threejs-experience -->
+            <!-- Three.js Global Script -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.js"></script>
+            <!-- OrbitControls and PLYLoader for r128 -->
+            <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
             <script>
                 
                 // Global variables
