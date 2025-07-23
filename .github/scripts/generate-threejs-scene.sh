@@ -398,7 +398,7 @@ Music: 'generated-music.wav', user-click play, loop
 CRITICAL MUSIC PATH FIX: 
 - Music file path must be EXACTLY 'generated-music.wav' (same directory as index.html)
 - DO NOT use '../music/generated-music.wav' or any other path
-- Panorama image path must be 'assets/panorama.jpg' (in assets subdirectory)
+- Panorama image path must be 'panorama.jpg' (same directory as index.html)
 - Ensure assets folder exists and panorama is copied during integration"
 
 PROMPT="$PROMPT
