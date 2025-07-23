@@ -416,15 +416,6 @@ jobs:
           - 音楽統合: ffmpeg -i video-concatenated.mp4 -i \"$MUSIC_FILE\" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest '$OUTPUT_DIR/final-music-video.mp4'
           - 音声確認: ffmpeg -i '$OUTPUT_DIR/final-music-video.mp4' -show_streams -select_streams a
           
-          **詳細な作業手順**:
-          1. cd $VIDEOS_DIR でディレクトリ移動
-          2. ls -la で利用可能なセグメント確認
-          3. 音楽ファイルのパス確認: \"../$MUSIC_FILE\"
-          4. 動画が1つの場合: segment-1.mp4を音楽の長さまで延長
-          5. 動画が複数の場合: 全セグメントを連結してから音楽統合
-          6. 最終出力: '../$OUTPUT_DIR/final-music-video.mp4'への保存
-          7. 音声ストリーム存在確認で成功判定
-          
           **重要事項**:
           - 必ず音楽ファイル（$MUSIC_FILE）が存在することを確認
           - 最終動画は音声ストリームを含む必要がある
