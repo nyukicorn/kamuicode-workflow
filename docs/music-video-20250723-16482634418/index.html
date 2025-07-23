@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Video - バラの花をイメージした美しいオルゴールの曲</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .generation-info {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .media-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .media-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .media-section h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+            position: relative;
+        }
+
+        .media-section h2:after {
+            content: '';
+            display: block;
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        .image-container img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .image-container img:hover {
+            transform: scale(1.05);
+        }
+
+        .audio-container audio,
+        .video-container video {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .video-container video {
+            max-height: 300px;
+            object-fit: cover;
+        }
+
+        .section-description {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+
+        .download-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .download-section h2 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .download-item {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-decoration: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: block;
+        }
+
+        .download-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .download-item strong {
+            display: block;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .download-item span {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .metadata {
+            margin-top: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .metadata h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .metadata-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .metadata-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .media-section {
+                padding: 20px;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .error {
+            background: rgba(255, 107, 107, 0.1);
+            color: #ff6b6b;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 10px 0;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🌹 バラの花をイメージした美しいオルゴールの曲</h1>
+            <p>優雅で繊細な音楽体験をお楽しみください</p>
+            <div class="generation-info">
+                生成ID: music-video-20250723-16482634418 | 生成日時: 2025-01-23
+            </div>
+        </header>
+
+        <div class="media-grid">
+            <!-- Generated Image Section -->
+            <section class="media-section">
+                <h2>🖼️ Generated Image</h2>
+                <p class="section-description">生成された静止画像（音楽なし）</p>
+                <div class="image-container">
+                    <img src="images/generated-image.png" alt="Generated Image" 
+                         onerror="this.parentElement.innerHTML='<div class=error>画像の読み込みに失敗しました</div>'" />
+                </div>
+            </section>
+
+            <!-- Generated Music Section -->
+            <section class="media-section">
+                <h2>🎵 Generated Music</h2>
+                <p class="section-description">生成された音楽のみ（画像なし）</p>
+                <div class="audio-container">
+                    <audio controls preload="metadata">
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        <div class="error">お使いのブラウザは音声再生に対応していません</div>
+                    </audio>
+                </div>
+            </section>
+
+            <!-- Individual Video Section -->
+            <section class="media-section">
+                <h2>🎬 Individual Video</h2>
+                <p class="section-description">ビデオセグメントのみ（音楽なし）</p>
+                <div class="video-container">
+                    <video controls preload="metadata" muted>
+                        <source src="videos/segment-1.mp4" type="video/mp4">
+                        <div class="error">お使いのブラウザは動画再生に対応していません</div>
+                    </video>
+                </div>
+            </section>
+
+            <!-- Final Music Video Section -->
+            <section class="media-section">
+                <h2>🎭 Final Music Video</h2>
+                <p class="section-description">統合された音楽付きビデオ</p>
+                <div class="video-container">
+                    <video controls preload="metadata">
+                        <source src="final/final-music-video.mp4" type="video/mp4">
+                        <div class="loading">最終動画は生成中です...</div>
+                    </video>
+                </div>
+            </section>
+        </div>
+
+        <!-- Download Section -->
+        <section class="download-section">
+            <h2>📥 ダウンロード</h2>
+            <p>生成されたコンテンツをダウンロードできます</p>
+            
+            <div class="download-grid">
+                <a href="images/generated-image.png" download class="download-item">
+                    <strong>🖼️ 画像</strong>
+                    <span>PNG形式</span>
+                </a>
+                <a href="music/generated-music.wav" download class="download-item">
+                    <strong>🎵 音楽</strong>
+                    <span>WAV形式</span>
+                </a>
+                <a href="videos/segment-1.mp4" download class="download-item">
+                    <strong>🎬 ビデオ</strong>
+                    <span>MP4形式</span>
+                </a>
+                <a href="final/final-music-video.mp4" download class="download-item">
+                    <strong>🎭 最終動画</strong>
+                    <span>MP4形式</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Metadata Section -->
+        <section class="metadata">
+            <h3>📋 生成情報</h3>
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <strong>音楽コンセプト</strong>
+                    バラの花をイメージした美しいオルゴールの曲
+                </div>
+                <div class="metadata-item">
+                    <strong>生成ID</strong>
+                    music-video-20250723-16482634418
+                </div>
+                <div class="metadata-item">
+                    <strong>ブランチ名</strong>
+                    music-video/20250723-16482634418
+                </div>
+                <div class="metadata-item">
+                    <strong>生成日時</strong>
+                    2025年1月23日
+                </div>
+                <div class="metadata-item">
+                    <strong>技術仕様</strong>
+                    レスポンシブデザイン・モバイル対応
+                </div>
+                <div class="metadata-item">
+                    <strong>GitHub Pages</strong>
+                    最適化済み
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // プログレッシブ読み込みとエラーハンドリング
+        document.addEventListener('DOMContentLoaded', function() {
+            // 画像の読み込み状態を監視
+            const images = document.querySelectorAll('img');
+            images.forEach(img => {
+                img.addEventListener('load', function() {
+                    this.style.opacity = '1';
+                });
+            });
+
+            // メディア要素の読み込み状態を監視
+            const mediaElements = document.querySelectorAll('audio, video');
+            mediaElements.forEach(media => {
+                media.addEventListener('loadedmetadata', function() {
+                    console.log(`メディアファイルが読み込まれました: ${this.src}`);
+                });
+                
+                media.addEventListener('error', function() {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'error';
+                    errorDiv.textContent = 'メディアファイルの読み込みに失敗しました';
+                    this.parentElement.appendChild(errorDiv);
+                    this.style.display = 'none';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
