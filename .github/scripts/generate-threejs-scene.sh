@@ -144,8 +144,10 @@ class EnhancedParticleSystem {
             const finalRadius = spiralRadius * (0.4 + 0.6 * petalStrength);
             const finalAngle = spiralAngle + layerProgress * 0.2;
             
-            // Z-axis thickness (0.2-0.3 as requested)
-            const thickness = 0.25 * (Math.random() - 0.5) + layerProgress * 0.1;
+            // Enhanced Z-axis thickness for petal width (adjustable via UI: 0.05-0.3 range)
+            const basePetalWidth = 0.15; // Default petal width (can be controlled by UI)
+            const petalWidth = basePetalWidth + basePetalWidth * petalStrength; 
+            const thickness = petalWidth * (Math.random() - 0.5) + layerProgress * 0.05;
             
             // Height with inward curling toward center
             const curlFactor = Math.pow(1 - spiralRadius / 3.0, 1.5);
@@ -156,11 +158,25 @@ class EnhancedParticleSystem {
             positions[i * 3 + 1] = center.y + height;
             positions[i * 3 + 2] = center.z + finalRadius * Math.sin(finalAngle) + thickness;
             
-            // Radial gradient: center=#E62850, edge=#FFBED2
-            const centerColor = new THREE.Color(config.colors.center);
-            const edgeColor = new THREE.Color(config.colors.edge);
+            // 3-color radial gradient: center=#E62850 → middle=#FF8FB3 → edge=#FFBED2
+            const centerColor = new THREE.Color(0xE62850);
+            const middleColor = new THREE.Color(0xFF8FB3);
+            const edgeColor = new THREE.Color(0xFFBED2);
             const radialDistance = spiralRadius / 3.0; // 0 to 1
-            const finalColor = centerColor.clone().lerp(edgeColor, radialDistance);
+            
+            // Adjustable mid color position (default 0.5, UI range: 0.2-0.8)
+            const midColorPosition = 0.5; // Can be controlled by UI slider
+            
+            let finalColor;
+            if (radialDistance < midColorPosition) {
+                // Center to middle transition
+                const t = radialDistance / midColorPosition; // 0 to 1
+                finalColor = centerColor.clone().lerp(middleColor, t);
+            } else {
+                // Middle to edge transition
+                const t = (radialDistance - midColorPosition) / (1 - midColorPosition); // 0 to 1
+                finalColor = middleColor.clone().lerp(edgeColor, t);
+            }
             
             // Apply petal brightness variation
             const petalBrightness = 0.6 + 0.4 * petalStrength;
@@ -170,8 +186,8 @@ class EnhancedParticleSystem {
             colors[i * 3 + 1] = finalColor.g;
             colors[i * 3 + 2] = finalColor.b;
             
-            // Size variation: center=1.2, edge=0.6
-            sizes[i] = 1.2 - 0.6 * radialDistance;
+            // Size variation: center=0.02, edge=0.005 (much smaller range)
+            sizes[i] = 0.02 - 0.015 * radialDistance;
         }
         
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -348,6 +364,8 @@ CRITICAL FEATURES:
 
 4. UI CONTROLS:
    - Particle Size, Animation Speed, Rotation Speed, Rose Opacity, Ambient Opacity
+   - Petal Width (0.05-0.3): Controls Z-axis thickness of petals
+   - Mid Color Position (0.2-0.8): Controls where middle gradient color appears
 
 IMPLEMENTATION REQUIREMENTS:
 - ESSENTIAL: Mouse drag for camera control must work
