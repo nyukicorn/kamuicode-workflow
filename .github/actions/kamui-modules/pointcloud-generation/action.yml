@@ -31,10 +31,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.branch-name }}
+    
     
     - name: Setup Python
       uses: actions/setup-python@v4
