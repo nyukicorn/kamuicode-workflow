@@ -111,12 +111,28 @@ jobs:
       - name: Save image path
         id: save-image
         run: |
+          # Debug: List all files in the folder
+          echo "📁 Contents of immersive-pointcloud-${{ steps.timestamp.outputs.value }}:"
+          find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -type f | head -20
+          
           # Find the generated image
           IMAGE_FILE=$(find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.jpg" -o -name "*.png" | head -1)
           if [ -z "$IMAGE_FILE" ]; then
-            echo "::error::No image file found"
+            echo "::error::No image file found in immersive-pointcloud-${{ steps.timestamp.outputs.value }}"
+            echo "Available files:"
+            find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -type f || echo "No files found"
             exit 1
           fi
+          
+          # Ensure the image is in the expected path for pointcloud generation
+          EXPECTED_PATH="immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images/generated-image.png"
+          if [ "$IMAGE_FILE" != "$EXPECTED_PATH" ]; then
+            mkdir -p "immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images"
+            cp "$IMAGE_FILE" "$EXPECTED_PATH"
+            echo "📋 Copied image from $IMAGE_FILE to $EXPECTED_PATH"
+            IMAGE_FILE="$EXPECTED_PATH"
+          fi
+          
           echo "image-path=$IMAGE_FILE" >> $GITHUB_OUTPUT
           echo "✅ Generated image: $IMAGE_FILE"
 
