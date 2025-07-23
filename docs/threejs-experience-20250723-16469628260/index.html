@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Panorama Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 250px;
+            z-index: 100;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        .control-value {
+            font-size: 12px;
+            color: #ccc;
+        }
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>Rose Bouquet Controls</h3>
+        <div class="control-group">
+            <label for="animationSpeed">Animation Speed</label>
+            <input type="range" id="animationSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+            <div class="control-value">1.0</div>
+        </div>
+        <div class="control-group">
+            <label for="rotationSpeed">Rotation Speed</label>
+            <input type="range" id="rotationSpeed" min="0.1" max="5.0" step="0.1" value="1.0">
+            <div class="control-value">1.0</div>
+        </div>
+        <div class="control-group">
+            <label for="petalWidth">Petal Width</label>
+            <input type="range" id="petalWidth" min="0.05" max="0.3" step="0.01" value="0.05">
+            <div class="control-value">0.05</div>
+        </div>
+        <div class="control-group">
+            <label for="petalCurl">Petal Curl</label>
+            <input type="range" id="petalCurl" min="0.0" max="1.0" step="0.1" value="0.5">
+            <div class="control-value">0.5</div>
+        </div>
+        <div class="control-group">
+            <label for="roseOpacity">Rose Opacity</label>
+            <input type="range" id="roseOpacity" min="0.0" max="1.0" step="0.1" value="0.9">
+            <div class="control-value">0.9</div>
+        </div>
+        <div class="control-group">
+            <label for="stemOpacity">Stem Opacity</label>
+            <input type="range" id="stemOpacity" min="0.0" max="1.0" step="0.1" value="1.0">
+            <div class="control-value">1.0</div>
+        </div>
+        <div class="control-group">
+            <label for="ambientOpacity">Ambient Opacity</label>
+            <input type="range" id="ambientOpacity" min="0.0" max="1.0" step="0.1" value="0.4">
+            <div class="control-value">0.4</div>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <strong>Controls:</strong><br>
+        • Mouse: Drag to rotate, wheel to zoom<br>
+        • Double-click: Toggle camera rotation
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // RoseBouquetSystem class implementation
+        class RoseBouquetSystem {
+            constructor(scene, config = {}) {
+                this.scene = scene;
+                this.artStyle = config.artStyle || 'simple:particles';
+                this.time = 0;
+                this.animationSpeed = 1.0;
+                this.rotationSpeed = 1.0;
+                this.isRotating = false;
+                this.systems = [];
+                this.petalWidth = 0.05;
+                this.petalCurl = 0.5;
+                this.init();
+            }
+
+            init() {
+                const [category, type] = this.artStyle.split(':');
+                if (category === 'flower') this.createRoseBouquet(type);
+                else this.createRoseBouquet('particles');
+                this.createAmbientParticles();
+                this.createFloatingParticles();
+            }
+
+            createRoseBouquet(type) {
+                const roseHeadGeometry = this.createRoseHeadGeometry();
+                const roseMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xE62850,
+                    metalness: 0.1,
+                    roughness: 0.8,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const bouquetPositions = [
+                    new THREE.Vector3(-2, 2, 0.15),
+                    new THREE.Vector3(2, 2, -0.15),
+                    new THREE.Vector3(-3, 0, -0.15),
+                    new THREE.Vector3(3, 0, 0.15),
+                    new THREE.Vector3(0, 1, 0)
+                ];
+                
+                bouquetPositions.forEach((position, index) => {
+                    let roseHead;
+                    if (roseHeadGeometry instanceof THREE.Group) {
+                        roseHead = roseHeadGeometry.clone();
+                        roseHead.children.forEach(child => {
+                            child.material = child.material.clone();
+                        });
+                    } else {
+                        roseHead = new THREE.Mesh(roseHeadGeometry, roseMaterial.clone());
+                    }
+                    
+                    roseHead.position.copy(position);
+                    roseHead.rotation.y = (Math.PI * 2 / 5) * index;
+                    roseHead.userData = { type: 'rose', index: index };
+                    this.systems.push(roseHead);
+                    this.scene.add(roseHead);
+                });
+                
+                this.createStems(bouquetPositions);
+            }
+
+            createRoseHeadGeometry() {
+                const group = new THREE.Group();
+                const petalCount = 20;
+                const goldenAngle = Math.PI * (3.0 - Math.sqrt(5.0));
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 1;
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 256, 0);
+                gradient.addColorStop(0, '#E62850');
+                gradient.addColorStop(0.5, '#FF8FB3');
+                gradient.addColorStop(1, '#FFBED2');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 256, 1);
+                
+                const gradientTexture = new THREE.CanvasTexture(canvas);
+                gradientTexture.wrapS = THREE.ClampToEdgeWrapping;
+                gradientTexture.wrapT = THREE.ClampToEdgeWrapping;
+                
+                for (let i = 0; i < petalCount; i++) {
+                    const spiralRadius = Math.sqrt(i / petalCount) * 1.5;
+                    const spiralAngle = i * goldenAngle;
+                    const layerHeight = (i / petalCount) * 0.8;
+                    
+                    const petalGeometry = new THREE.PlaneGeometry(this.petalWidth * 2, this.petalWidth * 3, 4, 8);
+                    
+                    const positions = petalGeometry.attributes.position.array;
+                    const uvs = petalGeometry.attributes.uv.array;
+                    
+                    for (let j = 0; j < positions.length / 3; j++) {
+                        const x = positions[j * 3];
+                        const y = positions[j * 3 + 1];
+                        
+                        const curlIntensity = this.petalCurl * 0.04;
+                        positions[j * 3 + 2] = Math.sin(x / this.petalWidth) * curlIntensity + Math.cos(y / this.petalWidth) * (curlIntensity * 0.5);
+                        
+                        const distFromCenter = Math.sqrt(x * x + y * y) / (this.petalWidth * 1.5);
+                        uvs[j * 2] = Math.min(1, distFromCenter);
+                        uvs[j * 2 + 1] = 0.5;
+                    }
+                    
+                    petalGeometry.attributes.position.needsUpdate = true;
+                    petalGeometry.attributes.uv.needsUpdate = true;
+                    petalGeometry.computeVertexNormals();
+                    
+                    const petal = new THREE.Mesh(petalGeometry, new THREE.MeshStandardMaterial({
+                        map: gradientTexture,
+                        roughness: 0.6,
+                        metalness: 0,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.9
+                    }));
+                    
+                    petal.position.set(
+                        spiralRadius * Math.cos(spiralAngle),
+                        layerHeight,
+                        spiralRadius * Math.sin(spiralAngle)
+                    );
+                    petal.rotation.z = spiralAngle + Math.PI / 2;
+                    petal.rotation.x = -Math.PI / 6 + (spiralRadius / 1.5) * Math.PI / 4;
+                    
+                    group.add(petal);
+                }
+                
+                return group;
+            }
+            
+            createStems(positions) {
+                const stemGroup = new THREE.Group();
+                
+                positions.forEach((position, index) => {
+                    const stemGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.25, 8);
+                    const stemMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x2d5016,
+                        roughness: 0.9
+                    });
+                    const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+                    
+                    stem.position.set(position.x, position.y - 0.125, position.z);
+                    stem.userData = { type: 'stem', index: index };
+                    stemGroup.add(stem);
+                });
+                
+                stemGroup.position.set(0, -0.5, 0);
+                stemGroup.userData = { type: 'stemBundle' };
+                this.systems.push(stemGroup);
+                this.scene.add(stemGroup);
+            }
+
+            createAmbientParticles() {
+                const particleCount = 3000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 100;
+                    positions[i * 3 + 1] = Math.random() * 40 - 20;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                    
+                    const color = new THREE.Color();
+                    color.setHSL(0.1 + Math.random() * 0.1, 0.3, 0.8);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.2, vertexColors: true, transparent: true, opacity: 0.4,
+                    blending: THREE.AdditiveBlending, depthWrite: false
+                });
+
+                const ambient = new THREE.Points(geometry, material);
+                ambient.userData = { type: 'ambient' };
+                this.systems.push(ambient);
+                this.scene.add(ambient);
+            }
+
+            createFloatingParticles() {
+                const particleCount = 1000;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] = (Math.random() - 0.5) * 80;
+                    positions[i * 3 + 1] = Math.random() * 30;
+                    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+                    
+                    velocities[i * 3] = (Math.random() - 0.5) * 0.1;
+                    velocities[i * 3 + 1] = Math.random() * 0.05;
+                    velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.1;
+                    
+                    const color = new THREE.Color(0xff69b4);
+                    colors[i * 3] = color.r;
+                    colors[i * 3 + 1] = color.g;
+                    colors[i * 3 + 2] = color.b;
+                }
+
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const material = new THREE.PointsMaterial({
+                    size: 0.8, vertexColors: true, transparent: true, opacity: 0.6,
+                    blending: THREE.NormalBlending, depthWrite: false
+                });
+
+                const floating = new THREE.Points(geometry, material);
+                floating.userData = { type: 'floating', velocities: velocities };
+                this.systems.push(floating);
+                this.scene.add(floating);
+            }
+
+            update(deltaTime) {
+                this.time += deltaTime * this.animationSpeed;
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'floating') {
+                        const positions = system.geometry.attributes.position.array;
+                        const velocities = system.userData.velocities;
+                        
+                        for (let i = 0; i < positions.length; i += 3) {
+                            positions[i] += velocities[i] * deltaTime * 60 * this.animationSpeed;
+                            positions[i + 1] += velocities[i + 1] * deltaTime * 60 * this.animationSpeed;
+                            positions[i + 2] += velocities[i + 2] * deltaTime * 60 * this.animationSpeed;
+                            
+                            if (positions[i + 1] > 40) {
+                                positions[i + 1] = -20;
+                                positions[i] = (Math.random() - 0.5) * 80;
+                                positions[i + 2] = (Math.random() - 0.5) * 80;
+                            }
+                        }
+                        system.geometry.attributes.position.needsUpdate = true;
+                    } else if (system.userData && system.userData.type === 'rose') {
+                        system.position.y = system.position.y + Math.sin(this.time + system.userData.index) * 0.01;
+                    }
+                });
+            }
+
+            updateControls(controls) {
+                this.animationSpeed = controls.animationSpeed;
+                this.rotationSpeed = controls.rotationSpeed || 1.0;
+                
+                if (controls.petalWidth !== undefined) {
+                    this.petalWidth = controls.petalWidth;
+                }
+                
+                if (controls.petalCurl !== undefined) {
+                    this.petalCurl = Math.max(0.0, Math.min(1.0, controls.petalCurl));
+                }
+                
+                this.systems.forEach(system => {
+                    if (system.userData && system.userData.type === 'rose') {
+                        system.material.opacity = controls.roseOpacity || 0.9;
+                        if (controls.roseColor) {
+                            system.material.color.setHex(controls.roseColor);
+                        }
+                    } else if (system.userData && system.userData.type === 'stem') {
+                        system.material.opacity = controls.stemOpacity || 1.0;
+                    } else if (system.userData && system.userData.type === 'ambient') {
+                        system.material.opacity = controls.ambientOpacity || 0.4;
+                    }
+                });
+            }
+
+            toggleRotation() {
+                this.isRotating = !this.isRotating;
+            }
+            
+            updateCameraRotation(camera, deltaTime) {
+                if (this.isRotating) {
+                    const radius = Math.sqrt(camera.position.x * camera.position.x + camera.position.z * camera.position.z);
+                    const currentAngle = Math.atan2(camera.position.z, camera.position.x);
+                    const newAngle = currentAngle + this.rotationSpeed * deltaTime;
+                    
+                    camera.position.x = radius * Math.cos(newAngle);
+                    camera.position.z = radius * Math.sin(newAngle);
+                    camera.lookAt(0, 0, 0);
+                }
+            }
+        }
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000000);
+        document.body.appendChild(renderer.domElement);
+
+        // Camera position for proper bouquet framing
+        camera.position.set(0, 0.1, 18);
+        camera.lookAt(0, 0.15, 0);
+
+        // Essential lighting for MeshStandardMaterial
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        directionalLight.position.set(10, 10, 5);
+        scene.add(directionalLight);
+
+        // Panorama background
+        const panoramaGeometry = new THREE.SphereGeometry(500, 60, 40);
+        panoramaGeometry.scale(-1, 1, 1);
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 1024;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(0.7, '#E0F6FF');
+        gradient.addColorStop(1, '#98FB98');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 1024, 512);
+        
+        const panoramaTexture = new THREE.CanvasTexture(canvas);
+        const panoramaMaterial = new THREE.MeshBasicMaterial({ map: panoramaTexture });
+        const panorama = new THREE.Mesh(panoramaGeometry, panoramaMaterial);
+        scene.add(panorama);
+
+        // Initialize RoseBouquetSystem
+        const bouquetSystem = new RoseBouquetSystem(scene, { artStyle: 'simple:particles' });
+
+        // Mouse controls
+        let isMouseDown = false;
+        let previousMousePosition = { x: 0, y: 0 };
+
+        renderer.domElement.addEventListener('mousedown', (event) => {
+            isMouseDown = true;
+            previousMousePosition = { x: event.clientX, y: event.clientY };
+        });
+
+        renderer.domElement.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        renderer.domElement.addEventListener('mousemove', (event) => {
+            if (isMouseDown) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                const deltaRotationQuaternion = new THREE.Quaternion()
+                    .setFromEuler(new THREE.Euler(
+                        deltaMove.y * 0.01,
+                        deltaMove.x * 0.01,
+                        0,
+                        'XYZ'
+                    ));
+
+                camera.quaternion.multiplyQuaternions(deltaRotationQuaternion, camera.quaternion);
+                previousMousePosition = { x: event.clientX, y: event.clientY };
+            }
+        });
+
+        renderer.domElement.addEventListener('wheel', (event) => {
+            const fov = camera.fov + event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(100, fov));
+            camera.updateProjectionMatrix();
+        });
+
+        // Double-click for camera rotation toggle
+        renderer.domElement.addEventListener('dblclick', () => {
+            bouquetSystem.toggleRotation();
+        });
+
+        // UI Controls
+        const controls = {
+            animationSpeed: 1.0,
+            rotationSpeed: 1.0,
+            petalWidth: 0.05,
+            petalCurl: 0.5,
+            roseOpacity: 0.9,
+            stemOpacity: 1.0,
+            ambientOpacity: 0.4
+        };
+
+        function setupControls() {
+            Object.keys(controls).forEach(key => {
+                const slider = document.getElementById(key);
+                const valueDisplay = slider.nextElementSibling;
+                
+                slider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    controls[key] = value;
+                    valueDisplay.textContent = value.toFixed(1);
+                    bouquetSystem.updateControls(controls);
+                });
+            });
+        }
+
+        setupControls();
+
+        // Animation loop
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const deltaTime = clock.getDelta();
+            bouquetSystem.update(deltaTime);
+            bouquetSystem.updateCameraRotation(camera, deltaTime);
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
