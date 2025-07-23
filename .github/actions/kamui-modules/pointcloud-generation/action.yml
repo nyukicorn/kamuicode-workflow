@@ -89,15 +89,14 @@ runs:
         # 出力フォルダの作成
         mkdir -p "$OUTPUT_FOLDER"
         
-        # Step 1: MiDaS depth estimation
-        echo "🧠 Step 1: Running MiDaS depth estimation..."
+        # Step 1: Synthetic depth estimation (PyTorch compatibility safe)
+        echo "🧠 Step 1: Running synthetic depth estimation..."
         DEPTH_MAP_PATH="$OUTPUT_FOLDER/depth.png"
         
-        python tools/run_midas.py \
+        python tools/simple_depth_test.py \
           --input "$INPUT_IMAGE" \
-          --output "$DEPTH_MAP_PATH" \
-          --model "$DEPTH_MODEL" || {
-          echo "::error::❌ MiDaS depth estimation failed"
+          --output "$DEPTH_MAP_PATH" || {
+          echo "::error::❌ Depth estimation failed"
           exit 1
         }
         
