@@ -1,0 +1,314 @@
+name: 'Create Immersive Pointcloud Experience'
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-prompt:
+        description: '生成する画像の詳細なプロンプト'
+        required: true
+        type: string
+        default: 'A beautiful Japanese garden with cherry blossoms, serene pond with koi fish, traditional stone lantern'
+      
+      image-model:
+        description: '画像生成モデル'
+        required: false
+        type: choice
+        options:
+          - 'auto'
+          - 'imagen4-ultra'
+          - 'imagen4-fast'
+          - 'imagen3'
+          - 'flux-schnell'
+          - 'photo-flux'
+        default: 'imagen4-ultra'
+      
+      music-prompt:
+        description: '背景音楽のプロンプト（オプション）'
+        required: false
+        type: string
+        default: 'Ambient, peaceful, zen garden atmosphere, soft piano and nature sounds'
+      
+      enable-music:
+        description: '背景音楽を生成する'
+        required: false
+        type: boolean
+        default: true
+      
+      viewer-title:
+        description: 'ビューアのタイトル'
+        required: false
+        type: string
+        default: 'Immersive 3D Point Cloud Experience'
+      
+      background-style:
+        description: '背景スタイル'
+        required: false
+        type: choice
+        options:
+          - 'solid-black'
+          - 'solid-dark-gray'
+          - 'dark-blue'
+          - 'gradient-dark'
+          - 'gradient-cosmic'
+        default: 'solid-black'
+      
+      depth-model:
+        description: '深度推定モデル'
+        required: false
+        type: choice
+        options:
+          - 'midas_v21_small'
+          - 'midas_v21'
+        default: 'midas_v21'
+      
+      point-size:
+        description: 'ポイントクラウドのサイズ'
+        required: false
+        type: string
+        default: '1.5'
+      
+      auto-rotate:
+        description: '自動回転を有効にする'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "immersive-pointcloud"
+  cancel-in-progress: false
+
+jobs:
+  generate-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image-path: ${{ steps.save-image.outputs.image-path }}
+      image-completed: ${{ steps.image.outputs.image-completed }}
+      timestamp: ${{ steps.timestamp.outputs.value }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate timestamp
+        id: timestamp
+        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Generate Image with AI
+        id: image
+        uses: ./.github/actions/kamui-modules/image-generation
+        with:
+          image-prompt: ${{ inputs.image-prompt }}
+          image-model: ${{ inputs.image-model }}
+          folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          branch-name: 'main'
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Save image path
+        id: save-image
+        run: |
+          # Find the generated image
+          IMAGE_FILE=$(find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.jpg" -o -name "*.png" | head -1)
+          if [ -z "$IMAGE_FILE" ]; then
+            echo "::error::No image file found"
+            exit 1
+          fi
+          echo "image-path=$IMAGE_FILE" >> $GITHUB_OUTPUT
+          echo "✅ Generated image: $IMAGE_FILE"
+
+  generate-music:
+    needs: generate-image
+    runs-on: ubuntu-latest
+    if: inputs.enable-music == true
+    outputs:
+      music-path: ${{ steps.save-music.outputs.music-path }}
+      music-completed: ${{ steps.save-music.outputs.music-completed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate Background Music
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-prompt: ${{ inputs.music-prompt }}
+          music-duration: '60'
+          folder-name: 'immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }}'
+          branch-name: 'main'
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Save music path
+        id: save-music
+        run: |
+          # Find the generated music
+          MUSIC_FILE=$(find immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }} -name "*.wav" -o -name "*.mp3" | head -1)
+          if [ -n "$MUSIC_FILE" ]; then
+            echo "music-path=$MUSIC_FILE" >> $GITHUB_OUTPUT
+            echo "music-completed=true" >> $GITHUB_OUTPUT
+            echo "✅ Generated music: $MUSIC_FILE"
+          else
+            echo "music-completed=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Music generation skipped or failed"
+          fi
+
+  generate-pointcloud:
+    needs: [generate-image, generate-music]
+    if: always() && needs.generate-image.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
+      pointcloud-completed: ${{ steps.pointcloud.outputs.pointcloud-completed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate 3D Point Cloud
+        id: pointcloud
+        uses: ./.github/actions/kamui-modules/pointcloud-generation
+        with:
+          input-image-path: ${{ needs.generate-image.outputs.image-path }}
+          output-folder: 'immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }}'
+          branch-name: 'main'
+          depth-model: ${{ inputs.depth-model }}
+
+  create-immersive-viewer:
+    needs: [generate-image, generate-music, generate-pointcloud]
+    if: always() && needs.generate-pointcloud.result == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      viewer-path: ${{ steps.viewer.outputs.viewer-path }}
+      viewer-completed: ${{ steps.viewer.outputs.viewer-completed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set background color
+        id: bg-color
+        run: |
+          case "${{ inputs.background-style }}" in
+            "solid-black")
+              echo "color=#000000" >> $GITHUB_OUTPUT
+              ;;
+            "solid-dark-gray")
+              echo "color=#222222" >> $GITHUB_OUTPUT
+              ;;
+            "dark-blue")
+              echo "color=#0a0a2a" >> $GITHUB_OUTPUT
+              ;;
+            "gradient-dark")
+              echo "color=#1a1a1a" >> $GITHUB_OUTPUT
+              ;;
+            "gradient-cosmic")
+              echo "color=#0a0a2a" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "color=#000000" >> $GITHUB_OUTPUT
+              ;;
+          esac
+      
+      - name: Create Enhanced Three.js Viewer
+        id: viewer
+        uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
+        with:
+          ply-file-path: ${{ needs.generate-pointcloud.outputs.ply-file-path }}
+          output-folder: 'docs/immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }}'
+          viewer-title: ${{ inputs.viewer-title }}
+          camera-position: '0,0,150'
+          auto-rotate: ${{ inputs.auto-rotate }}
+          background-color: ${{ steps.bg-color.outputs.color }}
+          point-size: ${{ inputs.point-size }}
+          animation-speed: '1.0'
+          branch-name: 'main'
+      
+      - name: Add music to viewer if available
+        if: needs.generate-music.outputs.music-completed == 'true'
+        run: |
+          VIEWER_DIR="docs/immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }}"
+          MUSIC_FILE="${{ needs.generate-music.outputs.music-path }}"
+          
+          # Copy music file to viewer assets
+          if [ -f "$MUSIC_FILE" ]; then
+            cp "$MUSIC_FILE" "$VIEWER_DIR/assets/background-music.wav"
+            
+            # Add audio element to viewer HTML
+            sed -i '/<div id="container">/a\
+                <audio id="backgroundMusic" loop autoplay>\
+                    <source src="assets/background-music.wav" type="audio/wav">\
+                </audio>' "$VIEWER_DIR/index.html"
+            
+            # Add audio controls
+            sed -i '/<button onclick="resetCamera()">/a\
+                <button onclick="toggleMusic()">🎵 Toggle Music</button>' "$VIEWER_DIR/index.html"
+            
+            # Add toggle function
+            sed -i '/window.updateRotationSpeed = updateRotationSpeed;/a\
+        \
+        function toggleMusic() {\
+            const audio = document.getElementById("backgroundMusic");\
+            if (audio.paused) {\
+                audio.play();\
+            } else {\
+                audio.pause();\
+            }\
+        }\
+        window.toggleMusic = toggleMusic;' "$VIEWER_DIR/index.html"
+            
+            echo "✅ Music integrated into viewer"
+          fi
+
+  deploy-pages:
+    needs: [generate-image, create-immersive-viewer]
+    runs-on: ubuntu-latest
+    if: needs.create-immersive-viewer.outputs.viewer-completed == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  summary:
+    needs: [generate-image, generate-music, generate-pointcloud, create-immersive-viewer, deploy-pages]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Experience Summary
+        run: |
+          echo "## 🎨 Immersive Pointcloud Experience Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Prompt**: ${{ inputs.image-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Model**: ${{ inputs.image-model }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Music Enabled**: ${{ inputs.enable-music }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Background Style**: ${{ inputs.background-style }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Generated**: ${{ needs.generate-image.outputs.image-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Music Generated**: ${{ needs.generate-music.outputs.music-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pointcloud Generated**: ${{ needs.generate-pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Viewer Created**: ${{ needs.create-immersive-viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.deploy-pages.result }}" = "success" ]; then
+            echo "### 🚀 Live Experience" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 **Experience URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/immersive-pointcloud-${{ needs.generate-image.outputs.timestamp }}/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
+          fi
