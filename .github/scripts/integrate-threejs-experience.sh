@@ -60,9 +60,9 @@ Tasks:
    - This ensures music works on GitHub Pages
 
 2. Copy panorama image if exists:
-   - If $FOLDER_NAME/assets/panorama.jpg exists, copy to $SRC_DIR/assets/panorama.jpg
-   - Create assets directory: mkdir -p $SRC_DIR/assets
-   - This fixes 404 error for panorama background
+   - If $FOLDER_NAME/images/generated-image.png exists, copy to $SRC_DIR/panorama.jpg
+   - OR if $FOLDER_NAME/assets/panorama.jpg exists, copy to $SRC_DIR/panorama.jpg
+   - This fixes panorama background path to be same directory as index.html
 
 3. Create README.md in $FOLDER_NAME/ with:
    - Experience concept: $EXPERIENCE_CONCEPT
