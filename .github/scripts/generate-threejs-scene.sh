@@ -102,42 +102,37 @@ class EnhancedParticleSystem {
                 const angle = (i / config.particlesPerLayer) * Math.PI * 2;
                 const spiralAngle = angle + layer * 0.3; // Spiral effect
                 
-                // Detailed Petal Structure with Fine Particles
+                // Simple Flower Shape with Clear Petals
                 const layerNormalized = layer / (config.layers - 1);
-                const numPetals = 5; // Standard rose petal count
+                const numPetals = 5;
                 
-                // Calculate which petal this particle belongs to
+                // Basic petal calculation
                 const petalIndex = Math.floor((angle / (Math.PI * 2)) * numPetals);
-                const petalCenterAngle = (petalIndex / numPetals) * Math.PI * 2 + Math.PI * 0.2;
+                const petalCenter = (petalIndex + 0.5) / numPetals * Math.PI * 2;
                 
-                // Position within the petal (0 = edge, 1 = center)
-                const angleWithinPetal = ((angle / (Math.PI * 2)) * numPetals) % 1;
-                const petalPosition = Math.abs(angleWithinPetal - 0.5) * 2; // 0 at center, 1 at edges
+                // Distance from petal center (0 = center, 1 = edge)
+                const angleDiff = Math.abs(angle - petalCenter);
+                const normalizedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+                const petalDistance = normalizedDiff / (Math.PI / numPetals);
                 
-                // Layer-based rotation for natural spiral
-                const layerRotation = layer * 0.15;
-                const finalAngle = petalCenterAngle + layerRotation + (angleWithinPetal - 0.5) * 0.8;
+                // Simple petal shape function
+                const petalStrength = Math.max(0, 1 - petalDistance * 2);
                 
-                // Create dense petal edges with particles
-                const petalEdgeDensity = 1 - Math.pow(petalPosition, 2); // More particles at petal center
-                const radiusVariation = (Math.random() - 0.5) * 0.1 * petalEdgeDensity;
+                // Radius calculation with clear petal shapes
+                const baseRadius = 1.0 + layerNormalized * 1.0; // 1.0 to 2.0
+                const petalRadius = baseRadius * (0.5 + 0.5 * petalStrength);
                 
-                // Petal shape - narrow at base, wide at top
-                const petalBaseWidth = 0.3 + layerNormalized * 0.5;
-                const petalShape = Math.sin(petalPosition * Math.PI) * petalBaseWidth;
+                // Add slight layer rotation for depth
+                const layerRotation = layer * 0.1;
+                const finalAngle = angle + layerRotation;
                 
-                // Distance from center with petal shape
-                const baseRadius = 0.5 + layerNormalized * 1.8;
-                const radialDistance = baseRadius + petalShape + radiusVariation;
+                // Simple height progression
+                const height = layerNormalized * 1.5;
                 
-                // Height with natural curve - petals curl upward
-                const petalCurl = Math.pow(layerNormalized, 0.7) * 0.8;
-                const height = layerNormalized * 2.5 + petalCurl * (1 - petalPosition) + (Math.random() - 0.5) * 0.05;
-                
-                // Final positioning with slight randomness for organic look
-                positions[particleIndex * 3] = center.x + radialDistance * Math.cos(finalAngle) + (Math.random() - 0.5) * 0.02;
+                // Clean positioning
+                positions[particleIndex * 3] = center.x + petalRadius * Math.cos(finalAngle);
                 positions[particleIndex * 3 + 1] = center.y + height;
-                positions[particleIndex * 3 + 2] = center.z + radialDistance * Math.sin(finalAngle) + (Math.random() - 0.5) * 0.02;
+                positions[particleIndex * 3 + 2] = center.z + petalRadius * Math.sin(finalAngle);
                 
                 // Enhanced color gradients for depth
                 const layerProgress = layer / (config.layers - 1);
