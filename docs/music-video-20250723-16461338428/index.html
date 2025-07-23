@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Video Player - バラの花をイメージした美しいオルゴールの曲</title>
+    <style>
+        :root {
+            --primary-color: #d4af37;
+            --secondary-color: #8b0000;
+            --background-gradient: linear-gradient(135deg, #faf0e6 0%, #f5deb3 50%, #dda0dd 100%);
+            --card-shadow: 0 10px 30px rgba(139, 0, 0, 0.3);
+            --text-color: #2c1810;
+            --border-radius: 15px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: var(--background-gradient);
+            min-height: 100vh;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: var(--secondary-color);
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: var(--primary-color);
+            font-style: italic;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .media-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .media-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(139, 0, 0, 0.4);
+        }
+
+        .media-card h3 {
+            font-size: 1.4rem;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .media-content {
+            margin-bottom: 20px;
+        }
+
+        .image-display {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: block;
+            margin: 0 auto;
+        }
+
+        .audio-player, .video-player {
+            width: 100%;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .audio-player {
+            height: 60px;
+        }
+
+        .video-player {
+            height: 250px;
+        }
+
+        .media-info {
+            background: rgba(212, 175, 55, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .media-info p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .download-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+        }
+
+        .download-section h2 {
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+
+        .download-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, var(--primary-color), #b8860b);
+            color: white;
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
+            background: linear-gradient(135deg, #b8860b, var(--primary-color));
+        }
+
+        .metadata {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .metadata h3 {
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .metadata-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 8px;
+        }
+
+        .metadata-label {
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+
+        .metadata-value {
+            color: var(--text-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .media-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .download-links {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .download-btn {
+                width: 200px;
+            }
+        }
+
+        .rose-decoration {
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #ff69b4, #dc143c);
+            border-radius: 50%;
+            opacity: 0.1;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(180deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="rose-decoration"></div>
+            <h1>🌹 Music Video Player</h1>
+            <p>バラの花をイメージした美しいオルゴールの曲</p>
+        </header>
+
+        <div class="media-grid">
+            <!-- Generated Image Section -->
+            <div class="media-card">
+                <h3>🖼️ Generated Image</h3>
+                <div class="media-content">
+                    <img src="images/generated-image.png" alt="Generated Image" class="image-display" loading="lazy">
+                </div>
+                <div class="media-info">
+                    <p><strong>タイプ:</strong> 静止画像</p>
+                    <p><strong>説明:</strong> バラの花をイメージした美しい画像</p>
+                    <p><strong>フォーマット:</strong> PNG</p>
+                </div>
+            </div>
+
+            <!-- Generated Music Section -->
+            <div class="media-card">
+                <h3>🎵 Generated Music</h3>
+                <div class="media-content">
+                    <audio controls class="audio-player" preload="metadata">
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+                <div class="media-info">
+                    <p><strong>タイプ:</strong> 音楽のみ</p>
+                    <p><strong>説明:</strong> オルゴールの美しい旋律</p>
+                    <p><strong>フォーマット:</strong> WAV</p>
+                </div>
+            </div>
+
+            <!-- Individual Video Section -->
+            <div class="media-card">
+                <h3>🎬 Individual Video</h3>
+                <div class="media-content">
+                    <video controls class="video-player" preload="metadata">
+                        <source src="videos/segment-1.mp4" type="video/mp4">
+                        Your browser does not support the video element.
+                    </video>
+                </div>
+                <div class="media-info">
+                    <p><strong>タイプ:</strong> ビデオセグメント（音楽なし）</p>
+                    <p><strong>説明:</strong> 映像のみのセグメント</p>
+                    <p><strong>フォーマット:</strong> MP4</p>
+                </div>
+            </div>
+
+            <!-- Final Music Video Section -->
+            <div class="media-card">
+                <h3>🎭 Final Music Video</h3>
+                <div class="media-content">
+                    <video controls class="video-player" preload="metadata">
+                        <source src="final/final-music-video.mp4" type="video/mp4">
+                        Your browser does not support the video element.
+                    </video>
+                </div>
+                <div class="media-info">
+                    <p><strong>タイプ:</strong> 完成した音楽ビデオ</p>
+                    <p><strong>説明:</strong> 音楽と映像を統合した最終版</p>
+                    <p><strong>フォーマット:</strong> MP4 with Audio</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Section -->
+        <section class="download-section">
+            <h2>📥 ダウンロード</h2>
+            <div class="download-links">
+                <a href="images/generated-image.png" download class="download-btn">🖼️ 画像をダウンロード</a>
+                <a href="music/generated-music.wav" download class="download-btn">🎵 音楽をダウンロード</a>
+                <a href="videos/segment-1.mp4" download class="download-btn">🎬 ビデオをダウンロード</a>
+                <a href="final/final-music-video.mp4" download class="download-btn">🎭 完成版をダウンロード</a>
+            </div>
+        </section>
+
+        <!-- Metadata Section -->
+        <section class="metadata">
+            <h3>📋 生成情報</h3>
+            <div class="metadata-grid">
+                <div class="metadata-item">
+                    <span class="metadata-label">音楽コンセプト:</span>
+                    <span class="metadata-value">バラの花をイメージした美しいオルゴールの曲</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">フォルダ名:</span>
+                    <span class="metadata-value">music-video-20250723-16461338428</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">ブランチ名:</span>
+                    <span class="metadata-value">music-video/20250723-16461338428</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">生成日時:</span>
+                    <span class="metadata-value" id="generation-time">2025-07-23T16:46:13.380Z</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">音楽ファイル:</span>
+                    <span class="metadata-value">music/generated-music.wav</span>
+                </div>
+                <div class="metadata-item">
+                    <span class="metadata-label">画像ファイル:</span>
+                    <span class="metadata-value">images/generated-image.png</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Update generation time with current timestamp
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            const timestamp = now.toISOString();
+            document.getElementById('generation-time').textContent = timestamp;
+            
+            // Add loading states for media elements
+            const mediaElements = document.querySelectorAll('audio, video, img');
+            mediaElements.forEach(element => {
+                element.addEventListener('loadstart', function() {
+                    this.style.opacity = '0.7';
+                });
+                element.addEventListener('loadeddata', function() {
+                    this.style.opacity = '1';
+                });
+                element.addEventListener('error', function() {
+                    console.warn('Media loading error:', this.src);
+                    const parent = this.closest('.media-content');
+                    if (parent) {
+                        parent.innerHTML = '<p style="text-align: center; color: #888;">メディアファイルが見つかりません</p>';
+                    }
+                });
+            });
+        });
+
+        // Add smooth scroll behavior for better UX
+        document.documentElement.style.scrollBehavior = 'smooth';
+    </script>
+</body>
+</html>
