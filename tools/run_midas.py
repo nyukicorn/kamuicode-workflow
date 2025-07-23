@@ -55,11 +55,33 @@ class MiDaSDepthEstimator:
             logger.info(f"Downloading {self.model_name} from {config['url']}")
             
             os.makedirs(os.path.dirname(model_path), exist_ok=True)
-            urllib.request.urlretrieve(config['url'], model_path)
             
-            logger.info(f"Model downloaded successfully: {model_path}")
+            # Create opener that handles redirects properly
+            opener = urllib.request.build_opener(urllib.request.HTTPRedirectHandler)
+            urllib.request.install_opener(opener)
+            
+            # Add headers to mimic browser request
+            req = urllib.request.Request(
+                config['url'],
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            )
+            
+            # Download with proper redirect handling
+            with urllib.request.urlopen(req) as response, open(model_path, 'wb') as out_file:
+                out_file.write(response.read())
+            
+            # Verify file was downloaded
+            if os.path.getsize(model_path) < 1000:  # Less than 1KB suggests failed download
+                raise RuntimeError(f"Downloaded file is too small: {os.path.getsize(model_path)} bytes")
+            
+            logger.info(f"Model downloaded successfully: {model_path} ({os.path.getsize(model_path)} bytes)")
             return True
             
+        except urllib.error.HTTPError as e:
+            logger.error(f"HTTP Error {e.code}: {e.reason}")
+            return False
         except Exception as e:
             logger.error(f"Failed to download model: {e}")
             return False
