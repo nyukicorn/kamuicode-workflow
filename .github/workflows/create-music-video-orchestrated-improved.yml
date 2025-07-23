@@ -390,75 +390,37 @@ jobs:
             exit 1
           fi
           
-          # 絶対パスの取得（環境依存性を排除）
-          ABS_MUSIC_FILE=$(readlink -f "$MUSIC_FILE" 2>/dev/null || echo "$(cd "$(dirname "$MUSIC_FILE")" && pwd)/$(basename "$MUSIC_FILE")")
-          ABS_VIDEOS_DIR=$(readlink -f "$VIDEOS_DIR" 2>/dev/null || echo "$(cd "$VIDEOS_DIR" && pwd)")
-          ABS_OUTPUT_DIR=$(readlink -f "$OUTPUT_DIR" 2>/dev/null || echo "$(cd "$OUTPUT_DIR" && pwd)")
-          ABS_FINAL_VIDEO="$ABS_OUTPUT_DIR/final-music-video.mp4"
+          # プロンプトの構築
+          PROMPT="ffmpegで動画セグメントを連結し音楽と統合してミュージックビデオを作成してください。
+          **最重要**: 最終動画に音楽を必ず結合（音声なしは失敗）
           
-          echo "Absolute paths:"
-          echo "Music file: $ABS_MUSIC_FILE"
-          echo "Videos dir: $ABS_VIDEOS_DIR"
-          echo "Output dir: $ABS_OUTPUT_DIR"
-          echo "Final video: $ABS_FINAL_VIDEO"
+          **現在の状況**:
+          - フォルダ: $FOLDER_NAME
+          - 動画ディレクトリ: $VIDEOS_DIR (セグメント数: $VIDEO_COUNT)
+          - 音楽ディレクトリ: $MUSIC_DIR
+          - 出力ディレクトリ: $OUTPUT_DIR
+          - 音楽ファイル: $MUSIC_FILE
           
-          # プロンプトの構築（絶対パス使用）
-          PROMPT="音楽と動画を統合して最終的な音楽ビデオを作成してください。
-
-          **重要**: 全てのパスは以下の絶対パスを使用し、各ステップでエラーチェックを行ってください。
-
-          **ファイル情報（絶対パス）**:
-          - 音楽ファイル: $ABS_MUSIC_FILE
-          - 動画ディレクトリ: $ABS_VIDEOS_DIR
-          - 最終出力ファイル: $ABS_FINAL_VIDEO
-
-          **必須実行手順（エラーチェック付き）**:
-          1. 現在のディレクトリを確認: pwd
-          2. 音楽ファイルの存在と形式を確認:
-             - ls -la \"$ABS_MUSIC_FILE\"
-             - ffprobe -v quiet -show_format \"$ABS_MUSIC_FILE\" || echo \"音楽ファイル形式チェック失敗\"
-          3. 動画ファイルの確認:
-             - ls -la \"$ABS_VIDEOS_DIR\"/*.mp4
-             - VIDEO_COUNT=\$(find \"$ABS_VIDEOS_DIR\" -name \"segment-*.mp4\" | wc -l)
-             - echo \"動画セグメント数: \$VIDEO_COUNT\"
-          4. 出力ディレクトリの確認:
-             - mkdir -p \"$ABS_OUTPUT_DIR\"
-             - test -w \"$ABS_OUTPUT_DIR\" || echo \"出力ディレクトリ書き込み権限なし\"
-          5. ffmpeg実行（絶対パス使用、エラーハンドリング付き）:
-
-          **1つの動画セグメントの場合**:
-          \`\`\`bash
-          cd \"$ABS_VIDEOS_DIR\"
-          if ffmpeg -stream_loop -1 -i segment-1.mp4 -i \"$ABS_MUSIC_FILE\" \\
-            -c:v libx264 -c:a aac -shortest -y \"$ABS_FINAL_VIDEO\"; then
-            echo \"動画作成成功\"
-          else
-            echo \"動画作成失敗: \$?\"
-          fi
-          \`\`\`
-
-          **複数の動画セグメントの場合**:
-          \`\`\`bash
-          cd \"$ABS_VIDEOS_DIR\"
-          ls -1 *.mp4 | sed 's/^/file /' > filelist.txt
-          if ffmpeg -f concat -safe 0 -i filelist.txt -c copy concatenated.mp4; then
-            if ffmpeg -stream_loop -1 -i concatenated.mp4 -i \"$ABS_MUSIC_FILE\" \\
-              -c:v libx264 -c:a aac -shortest -y \"$ABS_FINAL_VIDEO\"; then
-              echo \"動画作成成功\"
-            else
-              echo \"音楽結合失敗: \$?\"
-            fi
-          else
-            echo \"動画連結失敗: \$?\"
-          fi
-          \`\`\`
-
-          6. 結果の詳細検証:
-             - ls -la \"$ABS_FINAL_VIDEO\"
-             - ffprobe -v quiet -show_streams \"$ABS_FINAL_VIDEO\"
-             - echo \"最終動画作成完了\"
-
-          **エラー時の対応**: 各ステップで失敗した場合は詳細なエラーメッセージを出力し、次のステップに進まないでください。"
+          **実行手順**:
+          1. 利用可能な動画セグメントファイルを確認
+          2. 音楽ファイル（$MUSIC_FILE）の長さを確認
+          3. ffmpegで動画を音楽の長さに合わせて調整・延長
+          4. 複数セグメントがある場合は連結、1つの場合はループで延長
+          5. ffmpegで動画と音楽を統合
+          6. **必須**: '$OUTPUT_DIR/final-music-video.mp4'に保存
+          7. 最終動画の音声ストリーム確認
+          
+          **ffmpegコマンド例**:
+          - 動画延長: ffmpeg -i segment-1.mp4 -filter_complex 'loop=loop=7:size=150:start=0' segment-1-extended.mp4
+          - 複数セグメント連結: ffmpeg -i seg1.mp4 -i seg2.mp4 -i seg3.mp4 -filter_complex '[0:v][1:v][2:v]concat=n=3:v=1:a=0[outv]' -map '[outv]' video-concatenated.mp4
+          - 音楽統合: ffmpeg -i video-concatenated.mp4 -i \"$MUSIC_FILE\" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest '$OUTPUT_DIR/final-music-video.mp4'
+          - 音声確認: ffmpeg -i '$OUTPUT_DIR/final-music-video.mp4' -show_streams -select_streams a
+          
+          **重要事項**:
+          - 必ず音楽ファイル（$MUSIC_FILE）が存在することを確認
+          - 最終動画は音声ストリームを含む必要がある
+          - 動画の長さは音楽の長さに合わせる
+          - 最終ファイルは '$OUTPUT_DIR/final-music-video.mp4' に保存"
           
           # 必要なツールのインストール
           echo "🔧 Installing required tools..."
@@ -487,7 +449,7 @@ jobs:
           # 最終動画の確認
           echo ""
           echo "🎬 Checking final music video..."
-          FINAL_VIDEO="$ABS_OUTPUT_DIR/final-music-video.mp4"
+          FINAL_VIDEO="$OUTPUT_DIR/final-music-video.mp4"
           
           if [ -f "$FINAL_VIDEO" ]; then
             echo "✅ Final music video created: $FINAL_VIDEO"
