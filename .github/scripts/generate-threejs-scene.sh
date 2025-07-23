@@ -170,7 +170,7 @@ class EnhancedParticleSystem {
         geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
         
         const material = new THREE.PointsMaterial({
-            size: 0.1, vertexColors: true, transparent: true, opacity: 0.9,
+            size: 0.05, vertexColors: true, transparent: true, opacity: 0.95,
             blending: THREE.AdditiveBlending, depthWrite: false
         });
         
