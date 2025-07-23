@@ -104,10 +104,14 @@ runs:
           echo "✅ Copied index.html to docs"
         fi
         
-        # パノラマ画像をコピー
-        if [ -f "$FOLDER_NAME/src/panorama.jpg" ]; then
+        # パノラマ画像をコピー（assetsフォルダ対応）
+        if [ -f "$FOLDER_NAME/src/assets/panorama.jpg" ]; then
+          mkdir -p "$DOCS_DIR/assets"
+          cp "$FOLDER_NAME/src/assets/panorama.jpg" "$DOCS_DIR/assets/"
+          echo "✅ Copied panorama.jpg to docs/assets/"
+        elif [ -f "$FOLDER_NAME/src/panorama.jpg" ]; then  
           cp "$FOLDER_NAME/src/panorama.jpg" "$DOCS_DIR/"
-          echo "✅ Copied panorama.jpg to docs"
+          echo "✅ Copied panorama.jpg to docs (legacy path)"
         fi
         
         # 音楽ファイルがあればコピー
@@ -211,10 +215,14 @@ runs:
           echo "✅ Copied index.html to docs"
         fi
         
-        # パノラマ画像をコピー
-        if [ -f "$FOLDER_NAME/src/panorama.jpg" ]; then
+        # パノラマ画像をコピー（assetsフォルダ対応）
+        if [ -f "$FOLDER_NAME/src/assets/panorama.jpg" ]; then
+          mkdir -p "$DOCS_DIR/assets"
+          cp "$FOLDER_NAME/src/assets/panorama.jpg" "$DOCS_DIR/assets/"
+          echo "✅ Copied panorama.jpg to docs/assets/"
+        elif [ -f "$FOLDER_NAME/src/panorama.jpg" ]; then  
           cp "$FOLDER_NAME/src/panorama.jpg" "$DOCS_DIR/"
-          echo "✅ Copied panorama.jpg to docs"
+          echo "✅ Copied panorama.jpg to docs (legacy path)"
         fi
         
         # 音楽ファイルがあればコピー
