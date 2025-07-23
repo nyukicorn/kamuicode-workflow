@@ -33,12 +33,12 @@ class MiDaSDepthEstimator:
         # Model URLs and configurations
         self.model_configs = {
             'midas_v21_small': {
-                'url': 'https://github.com/isl-org/MiDaS/releases/download/v2_1/model-small.pt',
+                'url': 'https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_small_256.pt',
                 'input_size': 256,
                 'memory_efficient': True
             },
             'midas_v21': {
-                'url': 'https://github.com/isl-org/MiDaS/releases/download/v2_1/model.pt', 
+                'url': 'https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_384.pt', 
                 'input_size': 384,
                 'memory_efficient': False
             }
