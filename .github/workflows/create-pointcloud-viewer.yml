@@ -92,9 +92,11 @@ jobs:
           branch-name: 'main'
 
   deploy-pages:
-    needs: [generate-pointcloud, create-viewer]
+    needs: create-viewer
     runs-on: ubuntu-latest
     if: needs.create-viewer.outputs.viewer-completed == 'true'
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -114,9 +116,8 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
       
-
   cleanup:
-    needs: [generate-pointcloud, create-viewer, deploy-pages]
+    needs: deploy-pages
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -124,13 +125,14 @@ jobs:
         run: |
           echo "## 🎮 3D Pointcloud Viewer Pipeline Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Input**: \`${{ inputs.input-image-path }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Timestamp**: \`${{ needs.generate-pointcloud.outputs.timestamp }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Input**: `${{ inputs.input-image-path }}`" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp**: `${{ needs.generate-pointcloud.outputs.timestamp }}`" >> $GITHUB_STEP_SUMMARY
           echo "**Pointcloud Generated**: ${{ needs.generate-pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "**Viewer Created**: ${{ needs.create-viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.deploy-pages.result }}" = "success" ]; then
             echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 **Viewer URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pointcloud-viewer-${{ needs.generate-pointcloud.outputs.timestamp }}/" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ **Status**: Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
           fi
