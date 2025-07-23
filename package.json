@@ -1,5 +1,9 @@
 {
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.57"
+    "@anthropic-ai/claude-code": "^1.0.57",
+    "pngjs": "^7.0.0"
+  },
+  "scripts": {
+    "depth2ply": "node tools/depth2ply.js"
   }
 }
