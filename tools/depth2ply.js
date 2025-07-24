@@ -16,7 +16,8 @@ class DepthToPLYConverter {
             depthScale: 100,        // Depth scaling factor
             invertDepth: true,      // Invert depth values
             useOriginalColors: true, // Use original image colors
-            maxPoints: 100000       // Maximum points to prevent memory issues
+            maxPoints: 100000,      // Maximum points to prevent memory issues
+            colorMode: 'color'      // 'color', 'monochrome', 'sepia'
         };
     }
 
@@ -37,6 +38,30 @@ class DepthToPLYConverter {
             
             stream.on('error', reject);
         });
+    }
+
+    /**
+     * Apply color mode transformation to RGB values
+     */
+    applyColorMode(r, g, b, colorMode) {
+        switch (colorMode) {
+            case 'monochrome':
+                // Convert to grayscale using luminance formula
+                const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                return { r: gray, g: gray, b: gray };
+                
+            case 'sepia':
+                // Apply sepia tone transformation
+                const sepiaR = Math.min(255, Math.round(0.393 * r + 0.769 * g + 0.189 * b));
+                const sepiaG = Math.min(255, Math.round(0.349 * r + 0.686 * g + 0.168 * b));
+                const sepiaB = Math.min(255, Math.round(0.272 * r + 0.534 * g + 0.131 * b));
+                return { r: sepiaR, g: sepiaG, b: sepiaB };
+                
+            case 'color':
+            default:
+                // Return original colors
+                return { r, g, b };
+        }
     }
 
     /**
@@ -130,13 +155,16 @@ class DepthToPLYConverter {
                     b = intensity;
                 }
 
+                // Apply color mode transformation
+                const colorTransformed = this.applyColorMode(r, g, b, opts.colorMode);
+
                 points.push({
                     x: worldX,
                     y: worldY,
                     z: worldZ,
-                    r: r,
-                    g: g,
-                    b: b
+                    r: colorTransformed.r,
+                    g: colorTransformed.g,
+                    b: colorTransformed.b
                 });
             }
         }
@@ -282,11 +310,12 @@ Options:
   --point-spacing     Distance between points (default: 1)
   --depth-scale       Depth scaling factor (default: 100)
   --max-points        Maximum points (default: 100000)
+  --color-mode        Color mode: color, monochrome, sepia (default: color)
   --no-invert-depth   Don't invert depth values
   --no-colors         Don't use original image colors
 
 Example:
-  node depth2ply.js --input depth.png --output pointcloud.ply --original-image photo.png
+  node depth2ply.js --input depth.png --output pointcloud.ply --original-image photo.png --color-mode sepia
         `);
         process.exit(1);
     }
@@ -314,6 +343,15 @@ Example:
                 break;
             case '--max-points':
                 options.maxPoints = parseInt(args[++i]);
+                break;
+            case '--color-mode':
+                const colorMode = args[++i];
+                if (['color', 'monochrome', 'sepia'].includes(colorMode)) {
+                    options.colorMode = colorMode;
+                } else {
+                    console.error('❌ Invalid color mode. Use: color, monochrome, sepia');
+                    process.exit(1);
+                }
                 break;
             case '--no-invert-depth':
                 options.invertDepth = false;

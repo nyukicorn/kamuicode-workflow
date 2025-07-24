@@ -16,6 +16,10 @@ inputs:
     description: 'MiDaS depth estimation model (midas_v21/midas_v21_small)'
     required: false
     default: 'midas_v21_small'
+  color-mode:
+    description: 'Color mode for point cloud (color/monochrome/sepia)'
+    required: false
+    default: 'color'
 
 outputs:
   pointcloud-completed:
@@ -111,7 +115,8 @@ runs:
         if ! node tools/depth2ply.js \
           --input "$DEPTH_MAP_PATH" \
           --output "$PLY_FILE_PATH" \
-          --original-image "$INPUT_IMAGE"; then
+          --original-image "$INPUT_IMAGE" \
+          --color-mode "${{ inputs.color-mode }}"; then
           echo "::error::❌ Depth to PLY conversion failed"
           exit 1
         fi

@@ -227,10 +227,14 @@ runs:
                     <div class="control-item">
                         <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
                         <button onclick="resetCamera()">📷 Reset View</button>
+                        <button onclick="toggleDarkMode()" id="darkModeToggle">🌙 Light Mode</button>
                     </div>
                     MUSIC_BUTTON_PLACEHOLDER
                     <div class="control-item">
                         Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="POINT_SIZE_PLACEHOLDER" onchange="updatePointSize(this.value)">
+                    </div>
+                    <div class="control-item">
+                        Glow Intensity: <input type="range" id="glowIntensity" min="0" max="100" step="5" value="0" onchange="updateGlowIntensity(this.value)">
                     </div>
                     <div class="control-item" style="font-size: 0.8em; opacity: 0.8;">
                         🖱️ ダブルクリック: 回転ON/OFF | スペース: 回転切替
@@ -262,11 +266,20 @@ runs:
                 let audioElement = null;
                 let musicPlaying = false;
                 
+                // Lighting and appearance
+                let ambientLight;
+                let isDarkMode = true;  // Default to dark mode
+                let glowIntensity = 0.0;  // Default no glow
+                
                 // Initialize the viewer
                 function init() {
                     // Scene setup
                     scene = new THREE.Scene();
                     scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
+                    
+                    // Lighting setup
+                    ambientLight = new THREE.AmbientLight(0xffffff, isDarkMode ? 0.3 : 0.45);
+                    scene.add(ambientLight);
                     
                     // Camera setup
                     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
@@ -326,7 +339,9 @@ runs:
                         const material = new THREE.PointsMaterial({
                             vertexColors: true,
                             size: pointSize,
-                            sizeAttenuation: true
+                            sizeAttenuation: true,
+                            emissive: new THREE.Color(0x000000), // Initial no glow
+                            transparent: false
                         });
                         
                         // Create point cloud
@@ -425,6 +440,34 @@ runs:
                     controls.autoRotateSpeed = rotationSpeed;
                 }
                 
+                function toggleDarkMode() {
+                    isDarkMode = !isDarkMode;
+                    const button = document.getElementById('darkModeToggle');
+                    
+                    if (isDarkMode) {
+                        // Switch to dark mode
+                        ambientLight.intensity = 0.3;
+                        button.innerHTML = '🌙 Light Mode';
+                        button.title = 'Switch to light mode';
+                    } else {
+                        // Switch to light mode  
+                        ambientLight.intensity = 0.45;
+                        button.innerHTML = '☀️ Dark Mode';
+                        button.title = 'Switch to dark mode';
+                    }
+                }
+                
+                function updateGlowIntensity(value) {
+                    glowIntensity = parseFloat(value) / 100.0 * 0.8; // 0-100% to 0-0.8
+                    
+                    if (pointCloud && pointCloud.material) {
+                        // Convert glow intensity to emissive color
+                        const emissiveIntensity = glowIntensity;
+                        pointCloud.material.emissive = new THREE.Color(emissiveIntensity, emissiveIntensity, emissiveIntensity);
+                        pointCloud.material.needsUpdate = true;
+                    }
+                }
+                
                 MUSIC_FUNCTIONS_PLACEHOLDER
                 
                 // Make functions globally accessible for HTML events
@@ -432,6 +475,8 @@ runs:
                 window.resetCamera = resetCamera;
                 window.updatePointSize = updatePointSize;
                 window.updateRotationSpeed = updateRotationSpeed;
+                window.toggleDarkMode = toggleDarkMode;
+                window.updateGlowIntensity = updateGlowIntensity;
                 MUSIC_WINDOW_PLACEHOLDER
                 
                 // Start the application

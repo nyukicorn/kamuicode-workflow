@@ -49,11 +49,15 @@ on:
         type: boolean
         default: true
       
-      viewer-title:
-        description: 'ビューアのタイトル'
+      color-mode:
+        description: 'カラーモード'
         required: false
-        type: string
-        default: 'Immersive 3D Point Cloud Experience'
+        type: choice
+        options:
+          - 'color'
+          - 'monochrome'
+          - 'sepia'
+        default: 'color'
       
       background-style:
         description: '背景スタイル'
@@ -204,6 +208,7 @@ jobs:
           output-folder: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           depth-model: ${{ inputs.depth-model }}
+          color-mode: ${{ inputs.color-mode }}
       
       - name: Set background color
         id: bg-color
@@ -235,7 +240,7 @@ jobs:
         with:
           ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
           output-folder: 'docs/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
-          viewer-title: ${{ inputs.viewer-title }}
+          viewer-title: 'Immersive 3D Point Cloud Experience'
           camera-position: '0,0,150'
           background-color: ${{ steps.bg-color.outputs.color }}
           point-size: ${{ inputs.point-size }}
@@ -273,6 +278,7 @@ jobs:
             echo "- **Music Prompt (Original)**: ${{ inputs.music-prompt }}" >> $GITHUB_STEP_SUMMARY
             echo "- **Music Prompt (English)**: ${{ steps.music-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "- **Color Mode**: ${{ inputs.color-mode }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Background Style**: ${{ inputs.background-style }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🎯 Results" >> $GITHUB_STEP_SUMMARY
