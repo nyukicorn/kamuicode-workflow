@@ -445,11 +445,15 @@ runs:
         
         # 音楽機能の処理
         if [ "$MUSIC_AVAILABLE" = "true" ]; then
-          # 音楽ボタンを追加
-          MUSIC_BUTTON='                    <div class="control-item">
+          # 音楽ボタンを追加（一時ファイルを使用）
+          cat > /tmp/music_button.html << 'EOF'
+                    <div class="control-item">
                         <button id="musicToggle" class="music-button">🎵 音楽を再生</button>
-                    </div>'
-          sed -i.bak "s|MUSIC_BUTTON_PLACEHOLDER|$MUSIC_BUTTON|g" "$OUTPUT_FOLDER/index.html"
+                    </div>
+EOF
+          sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/r /tmp/music_button.html" "$OUTPUT_FOLDER/index.html"
+          sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/d" "$OUTPUT_FOLDER/index.html"
+          rm -f /tmp/music_button.html
           
           # 音楽初期化処理を追加
           MUSIC_INIT="setupMusic();"
