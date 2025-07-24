@@ -450,7 +450,7 @@ runs:
                     <div class="control-item">
                         <button id="musicToggle" class="music-button">🎵 音楽を再生</button>
                     </div>
-EOF
+        EOF
           sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/r /tmp/music_button.html" "$OUTPUT_FOLDER/index.html"
           sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/d" "$OUTPUT_FOLDER/index.html"
           rm -f /tmp/music_button.html
