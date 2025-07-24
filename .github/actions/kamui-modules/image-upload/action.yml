@@ -147,6 +147,9 @@ runs:
         # 最終的な画像パス（常にPNGに統一）
         FINAL_IMAGE_PATH="$OUTPUT_FOLDER/images/uploaded-image.png"
         
+        # 出力ディレクトリを確実に作成
+        mkdir -p "$(dirname "$FINAL_IMAGE_PATH")"
+        
         # ffmpegでPNGに変換（色情報完全保持）
         echo "🔄 Converting to PNG format..."
         echo "  Input: $TEMP_IMAGE"
