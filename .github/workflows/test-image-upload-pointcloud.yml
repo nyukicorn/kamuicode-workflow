@@ -1,0 +1,113 @@
+name: 'Test Image Upload to Pointcloud'
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-url:
+        description: 'Issue添付画像のURL（テスト用）'
+        required: true
+        type: string
+        default: ''
+      
+      test-name:
+        description: 'テスト名（識別用）'
+        required: false
+        type: string
+        default: 'upload-test'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "test-image-upload"
+  cancel-in-progress: false
+
+jobs:
+  test-image-upload-flow:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate timestamp
+        id: timestamp
+        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Test Image Upload
+        id: upload
+        uses: ./.github/actions/kamui-modules/image-upload
+        with:
+          image-url: ${{ inputs.image-url }}
+          output-folder: 'test-upload-${{ steps.timestamp.outputs.value }}'
+          branch-name: 'main'
+      
+      - name: Test Pointcloud Generation
+        id: pointcloud
+        uses: ./.github/actions/kamui-modules/pointcloud-generation
+        with:
+          input-image-path: ${{ steps.upload.outputs.image-path }}
+          output-folder: 'test-upload-${{ steps.timestamp.outputs.value }}'
+          branch-name: 'main'
+          depth-model: 'midas_v21_small'  # 高速化のため軽量モデル
+      
+      - name: Test Three.js Viewer Creation
+        id: viewer
+        uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
+        with:
+          ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
+          output-folder: 'docs/test-upload-${{ steps.timestamp.outputs.value }}'
+          viewer-title: 'Test Upload: ${{ inputs.test-name }}'
+          camera-position: '0,0,150'
+          auto-rotate: true
+          background-color: '#000000'
+          point-size: '1.5'
+          animation-speed: '1.0'
+          music-file: ''  # 音楽なしでテスト
+          branch-name: 'main'
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+      
+      - name: Test Results Summary
+        run: |
+          echo "## 🧪 Image Upload Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Test Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Name**: ${{ inputs.test-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image URL**: ${{ inputs.image-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Test Folder**: test-upload-${{ steps.timestamp.outputs.value }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Upload**: ${{ steps.upload.outputs.upload-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Format**: ${{ steps.upload.outputs.image-format }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Path**: ${{ steps.upload.outputs.image-path }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pointcloud Generated**: ${{ steps.pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **PLY File**: ${{ steps.pointcloud.outputs.ply-file-path }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Viewer Created**: ${{ steps.viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.deployment.conclusion }}" = "success" ]; then
+            echo "### 🚀 Test Viewer" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 **Test URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/test-upload-${{ steps.timestamp.outputs.value }}/" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Performance Notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Using lightweight depth model (midas_v21_small) for faster testing" >> $GITHUB_STEP_SUMMARY
+          echo "- No background music for simplified testing" >> $GITHUB_STEP_SUMMARY

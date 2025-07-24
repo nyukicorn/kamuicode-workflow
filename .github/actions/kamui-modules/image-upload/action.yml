@@ -1,0 +1,165 @@
+name: 'Image Upload'
+description: 'Upload and process images from Issue attachments'
+author: 'KamuiCode Workflow'
+
+inputs:
+  image-url:
+    description: 'Issue attachment image URL'
+    required: true
+  output-folder:
+    description: 'Output folder for processed image'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+
+outputs:
+  image-path:
+    description: 'Path to the processed image file'
+    value: ${{ steps.upload.outputs.image-path }}
+  upload-completed:
+    description: 'Whether image upload was completed successfully'
+    value: ${{ steps.upload.outputs.completed }}
+  image-format:
+    description: 'Detected image format'
+    value: ${{ steps.upload.outputs.format }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Upload and Process Image
+      id: upload
+      shell: bash
+      run: |
+        echo "::group::🖼️ Image Upload Processing"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        IMAGE_URL="${{ inputs.image-url }}"
+        OUTPUT_FOLDER="${{ inputs.output-folder }}"
+        
+        echo "Image URL: $IMAGE_URL"
+        echo "Output folder: $OUTPUT_FOLDER"
+        
+        # URL形式の検証
+        if [[ ! "$IMAGE_URL" =~ ^https://github\.com/.*\.(png|jpg|jpeg|webp) ]]; then
+          echo "::error::❌ Invalid GitHub attachment URL format"
+          echo "Expected: https://github.com/.../image.(png|jpg|jpeg|webp)"
+          exit 1
+        fi
+        
+        # 出力フォルダの作成
+        mkdir -p "$OUTPUT_FOLDER"
+        mkdir -p "$OUTPUT_FOLDER/images"
+        
+        # 一時ファイル名を生成
+        TEMP_IMAGE="/tmp/temp_image_$(date +%s)"
+        
+        # 画像のダウンロード
+        echo "📥 Downloading image from URL..."
+        if ! curl -L -f -s -o "$TEMP_IMAGE" "$IMAGE_URL"; then
+          echo "::error::❌ Failed to download image from URL"
+          exit 1
+        fi
+        
+        # ファイルサイズチェック（10MB制限）
+        FILE_SIZE=$(stat -f%z "$TEMP_IMAGE" 2>/dev/null || stat -c%s "$TEMP_IMAGE" 2>/dev/null)
+        MAX_SIZE=$((10 * 1024 * 1024))  # 10MB
+        
+        if [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
+          echo "::error::❌ Image file too large: ${FILE_SIZE} bytes (max: ${MAX_SIZE} bytes)"
+          rm -f "$TEMP_IMAGE"
+          exit 1
+        fi
+        
+        echo "✅ Downloaded image: ${FILE_SIZE} bytes"
+        
+        # 画像形式の検証
+        if command -v file >/dev/null 2>&1; then
+          FILE_TYPE=$(file -b --mime-type "$TEMP_IMAGE")
+          case "$FILE_TYPE" in
+            image/png)
+              IMAGE_FORMAT="png"
+              EXTENSION="png"
+              ;;
+            image/jpeg)
+              IMAGE_FORMAT="jpeg"
+              EXTENSION="jpg"
+              ;;
+            image/webp)
+              IMAGE_FORMAT="webp"
+              EXTENSION="webp"
+              ;;
+            *)
+              echo "::error::❌ Unsupported image format: $FILE_TYPE"
+              echo "Supported formats: PNG, JPEG, WebP"
+              rm -f "$TEMP_IMAGE"
+              exit 1
+              ;;
+          esac
+        else
+          # fileコマンドがない場合はURL拡張子から推測
+          case "$IMAGE_URL" in
+            *.png|*.PNG)
+              IMAGE_FORMAT="png"
+              EXTENSION="png"
+              ;;
+            *.jpg|*.jpeg|*.JPG|*.JPEG)
+              IMAGE_FORMAT="jpeg"
+              EXTENSION="jpg"
+              ;;
+            *.webp|*.WEBP)
+              IMAGE_FORMAT="webp"
+              EXTENSION="webp"
+              ;;
+            *)
+              echo "::error::❌ Cannot determine image format from URL"
+              rm -f "$TEMP_IMAGE"
+              exit 1
+              ;;
+          esac
+        fi
+        
+        echo "✅ Detected format: $IMAGE_FORMAT"
+        
+        # 最終的な画像パスを決定
+        FINAL_IMAGE_PATH="$OUTPUT_FOLDER/images/uploaded-image.$EXTENSION"
+        
+        # 画像を最終位置に移動
+        mv "$TEMP_IMAGE" "$FINAL_IMAGE_PATH"
+        
+        echo "✅ Image saved to: $FINAL_IMAGE_PATH"
+        
+        # 画像情報の表示
+        if command -v identify >/dev/null 2>&1; then
+          IMAGE_INFO=$(identify "$FINAL_IMAGE_PATH" 2>/dev/null || echo "Unknown dimensions")
+          echo "📊 Image info: $IMAGE_INFO"
+        fi
+        
+        # Set outputs
+        echo "completed=true" >> $GITHUB_OUTPUT
+        echo "image-path=$FINAL_IMAGE_PATH" >> $GITHUB_OUTPUT
+        echo "format=$IMAGE_FORMAT" >> $GITHUB_OUTPUT
+        
+        echo "✅ Image upload completed successfully"
+        echo "::endgroup::"
+    
+    - name: Commit uploaded image
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.output-folder }}/images/
+        if git diff --cached --quiet; then
+          echo "No image files to commit"
+        else
+          git commit -m "Add uploaded image to ${{ inputs.output-folder }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
