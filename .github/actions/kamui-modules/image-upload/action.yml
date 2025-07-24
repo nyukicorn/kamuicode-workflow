@@ -154,7 +154,7 @@ runs:
         echo "🔄 Converting to PNG format..."
         echo "  Input: $TEMP_IMAGE"
         echo "  Output: $FINAL_IMAGE_PATH"
-        if ! ffmpeg -i "$TEMP_IMAGE" -f png -y "$FINAL_IMAGE_PATH"; then
+        if ! ffmpeg -i "$TEMP_IMAGE" -y "$FINAL_IMAGE_PATH"; then
           echo "::error::❌ Failed to convert image to PNG format"
           echo "Temp image size: $(ls -la "$TEMP_IMAGE" 2>/dev/null || echo 'File not found')"
           rm -f "$TEMP_IMAGE"
