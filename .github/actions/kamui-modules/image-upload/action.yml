@@ -32,6 +32,14 @@ runs:
       with:
         ref: ${{ inputs.branch-name }}
     
+    - name: Install ffmpeg
+      shell: bash
+      run: |
+        echo "📦 Installing ffmpeg..."
+        sudo apt-get update -qq
+        sudo apt-get install -y ffmpeg
+        echo "✅ ffmpeg installed: $(ffmpeg -version | head -1)"
+    
     - name: Upload and Process Image
       id: upload
       shell: bash
