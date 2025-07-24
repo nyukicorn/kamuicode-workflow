@@ -39,9 +39,9 @@ runs:
         echo "::group::🖼️ Image Upload Processing"
         echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
         
-        # 設定（空白文字を除去）
+        # 設定（空白文字とプレフィックスを除去）
         IMAGE_URL="${{ inputs.image-url }}"
-        IMAGE_URL=$(echo "$IMAGE_URL" | tr -d '[:space:]')
+        IMAGE_URL=$(echo "$IMAGE_URL" | tr -d '[:space:]' | sed 's/^[^:]*://g')
         OUTPUT_FOLDER="${{ inputs.output-folder }}"
         
         echo "Image URL: $IMAGE_URL"
