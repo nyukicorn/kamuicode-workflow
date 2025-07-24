@@ -39,8 +39,9 @@ runs:
         echo "::group::🖼️ Image Upload Processing"
         echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
         
-        # 設定
+        # 設定（空白文字を除去）
         IMAGE_URL="${{ inputs.image-url }}"
+        IMAGE_URL=$(echo "$IMAGE_URL" | tr -d '[:space:]')
         OUTPUT_FOLDER="${{ inputs.output-folder }}"
         
         echo "Image URL: $IMAGE_URL"
@@ -60,11 +61,15 @@ runs:
         # 一時ファイル名を生成
         TEMP_IMAGE="/tmp/temp_image_$(date +%s)"
         
-        # 画像のダウンロード
+        # 画像のダウンロード（GitHub認証付き）
         echo "📥 Downloading image from URL..."
-        if ! curl -L -f -s -o "$TEMP_IMAGE" "$IMAGE_URL"; then
-          echo "::error::❌ Failed to download image from URL"
-          exit 1
+        if ! curl -L -f -s -H "Authorization: token ${{ github.token }}" -o "$TEMP_IMAGE" "$IMAGE_URL"; then
+          echo "::warning::⚠️ Failed with GitHub token, trying without authentication..."
+          if ! curl -L -f -s -o "$TEMP_IMAGE" "$IMAGE_URL"; then
+            echo "::error::❌ Failed to download image from URL"
+            echo "URL: $IMAGE_URL"
+            exit 1
+          fi
         fi
         
         # ファイルサイズチェック（10MB制限）
