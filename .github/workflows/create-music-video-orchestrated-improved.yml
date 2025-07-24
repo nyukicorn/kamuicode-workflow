@@ -478,6 +478,21 @@ jobs:
           
           echo "::endgroup::"
       
+      - name: Commit and push final music video
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ${{ steps.setup.outputs.folder-name }}/
+          if git diff --cached --quiet; then
+            echo "No final video to commit"
+          else
+            git commit -m "Add final music video with integrated audio"
+            git push origin ${{ steps.setup.outputs.branch-name }}
+          fi
+      
       - name: Auto-Generate Web Player & Deploy
         id: web-player
         uses: ./.github/actions/kamui-modules/web-player-generation
@@ -511,21 +526,6 @@ jobs:
             ls -la "docs/$FOLDER_NAME/final/" || echo "No files found in final directory"
           else
             echo "⚠️ Final directory not found: $FOLDER_NAME/final"
-          fi
-      
-      - name: Commit and push final music video
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add ${{ steps.setup.outputs.folder-name }}/
-          if git diff --cached --quiet; then
-            echo "No final video to commit"
-          else
-            git commit -m "Add final music video with integrated audio"
-            git push origin ${{ steps.setup.outputs.branch-name }}
           fi
       
       - name: Summary (Experimental Results)

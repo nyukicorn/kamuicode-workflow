@@ -34,10 +34,39 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Backup final directory before checkout
+      shell: bash
+      run: |
+        echo "🔄 Backing up final directory before checkout..."
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        if [ -d "$FOLDER_NAME/final" ]; then
+          cp -r "$FOLDER_NAME/final" /tmp/final-backup-${{ inputs.folder-name }}
+          echo "✅ Final directory backed up to /tmp/final-backup-${{ inputs.folder-name }}"
+          ls -la "/tmp/final-backup-${{ inputs.folder-name }}/"
+        else
+          echo "ℹ️  No final directory found to backup"
+        fi
+    
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         ref: ${{ inputs.branch-name }}
+    
+    - name: Restore final directory after checkout
+      shell: bash
+      run: |
+        echo "🔄 Restoring final directory after checkout..."
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        BACKUP_PATH="/tmp/final-backup-${{ inputs.folder-name }}"
+        
+        if [ -d "$BACKUP_PATH" ]; then
+          mkdir -p "$FOLDER_NAME"
+          cp -r "$BACKUP_PATH" "$FOLDER_NAME/final"
+          echo "✅ Final directory restored to $FOLDER_NAME/final"
+          ls -la "$FOLDER_NAME/final/"
+        else
+          echo "⚠️ No backup found to restore"
+        fi
     
     - name: Setup Node.js
       uses: actions/setup-node@v4
