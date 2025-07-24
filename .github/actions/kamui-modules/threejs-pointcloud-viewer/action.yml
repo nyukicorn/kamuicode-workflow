@@ -447,51 +447,40 @@ runs:
         if [ "$MUSIC_AVAILABLE" = "true" ]; then
           # 音楽ボタンを追加
           MUSIC_BUTTON='                    <div class="control-item">
-                        <button id="musicToggle" class="music-button" onclick="toggleMusic()">🎵 Play Music</button>
+                        <button id="musicToggle" class="music-button">🎵 音楽を再生</button>
                     </div>'
           sed -i.bak "s|MUSIC_BUTTON_PLACEHOLDER|$MUSIC_BUTTON|g" "$OUTPUT_FOLDER/index.html"
           
           # 音楽初期化処理を追加
-          MUSIC_INIT="initAudio();"
+          MUSIC_INIT="setupMusic();"
           sed -i.bak "s/MUSIC_INIT_PLACEHOLDER/$MUSIC_INIT/g" "$OUTPUT_FOLDER/index.html"
           
-          # 音楽関数を段階的に追加
-          echo "// Audio functions" > /tmp/music_functions.js
-          echo "function initAudio() {" >> /tmp/music_functions.js
-          echo "    try {" >> /tmp/music_functions.js
-          echo "        audioElement = new Audio();" >> /tmp/music_functions.js
-          echo "        audioElement.src = 'assets/$MUSIC_FILENAME';" >> /tmp/music_functions.js
-          echo "        audioElement.loop = true;" >> /tmp/music_functions.js
-          echo "        audioElement.volume = 0.5;" >> /tmp/music_functions.js
-          echo "        console.log('🎵 Audio initialized');" >> /tmp/music_functions.js
-          echo "    } catch (error) {" >> /tmp/music_functions.js
-          echo "        console.error('❌ Audio initialization failed:', error);" >> /tmp/music_functions.js
-          echo "    }" >> /tmp/music_functions.js
-          echo "}" >> /tmp/music_functions.js
-          echo "" >> /tmp/music_functions.js
-          echo "function toggleMusic() {" >> /tmp/music_functions.js
-          echo "    if (!audioElement) {" >> /tmp/music_functions.js
-          echo "        console.error('❌ Audio not initialized');" >> /tmp/music_functions.js
-          echo "        return;" >> /tmp/music_functions.js
-          echo "    }" >> /tmp/music_functions.js
-          echo "    const musicButton = document.getElementById('musicToggle');" >> /tmp/music_functions.js
-          echo "    if (musicPlaying) {" >> /tmp/music_functions.js
-          echo "        audioElement.pause();" >> /tmp/music_functions.js
-          echo "        musicPlaying = false;" >> /tmp/music_functions.js
-          echo "        musicButton.textContent = '🎵 Play Music';" >> /tmp/music_functions.js
-          echo "        musicButton.classList.remove('playing');" >> /tmp/music_functions.js
-          echo "        console.log('🔇 Music paused');" >> /tmp/music_functions.js
-          echo "    } else {" >> /tmp/music_functions.js
-          echo "        audioElement.play().then(() => {" >> /tmp/music_functions.js
-          echo "            musicPlaying = true;" >> /tmp/music_functions.js
-          echo "            musicButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
-          echo "            musicButton.classList.add('playing');" >> /tmp/music_functions.js
-          echo "            console.log('🎵 Music playing');" >> /tmp/music_functions.js
-          echo "        }).catch(error => {" >> /tmp/music_functions.js
-          echo "            console.error('❌ Music playback failed:', error);" >> /tmp/music_functions.js
-          echo "            musicButton.textContent = '❌ Music Error';" >> /tmp/music_functions.js
-          echo "        });" >> /tmp/music_functions.js
-          echo "    }" >> /tmp/music_functions.js
+          # Three.jsワークフローの実績ある音楽実装を適用
+          echo "function setupMusic() {" > /tmp/music_functions.js
+          echo "    const playButton = document.getElementById('musicToggle');" >> /tmp/music_functions.js
+          echo "    let audio = null;" >> /tmp/music_functions.js
+          echo "    " >> /tmp/music_functions.js
+          echo "    playButton.addEventListener('click', () => {" >> /tmp/music_functions.js
+          echo "        if (!audio) {" >> /tmp/music_functions.js
+          echo "            audio = new Audio('assets/$MUSIC_FILENAME');" >> /tmp/music_functions.js
+          echo "            audio.loop = true;" >> /tmp/music_functions.js
+          echo "            audio.volume = 0.7;" >> /tmp/music_functions.js
+          echo "        }" >> /tmp/music_functions.js
+          echo "        " >> /tmp/music_functions.js
+          echo "        if (audio.paused) {" >> /tmp/music_functions.js
+          echo "            audio.play().then(() => {" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '🔇 音楽を停止';" >> /tmp/music_functions.js
+          echo "                playButton.classList.add('playing');" >> /tmp/music_functions.js
+          echo "            }).catch(error => {" >> /tmp/music_functions.js
+          echo "                console.log('Music file not found:', error);" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '❌ 音楽ファイルなし';" >> /tmp/music_functions.js
+          echo "            });" >> /tmp/music_functions.js
+          echo "        } else {" >> /tmp/music_functions.js
+          echo "            audio.pause();" >> /tmp/music_functions.js
+          echo "            playButton.textContent = '🎵 音楽を再生';" >> /tmp/music_functions.js
+          echo "            playButton.classList.remove('playing');" >> /tmp/music_functions.js
+          echo "        }" >> /tmp/music_functions.js
+          echo "    });" >> /tmp/music_functions.js
           echo "}" >> /tmp/music_functions.js
           
           # プレースホルダーを置換
@@ -499,9 +488,8 @@ runs:
           sed -i.bak "/MUSIC_FUNCTIONS_PLACEHOLDER/d" "$OUTPUT_FOLDER/index.html"
           rm -f /tmp/music_functions.js
           
-          # 音楽関数をwindowオブジェクトに追加
-          MUSIC_WINDOW="window.toggleMusic = toggleMusic;"
-          sed -i.bak "s/MUSIC_WINDOW_PLACEHOLDER/$MUSIC_WINDOW/g" "$OUTPUT_FOLDER/index.html"
+          # 音楽関数はsetupMusic()でイベントリスナー登録するため、window設定不要
+          sed -i.bak "s/MUSIC_WINDOW_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
         else
           # 音楽機能なしの場合はプレースホルダーを削除
           sed -i.bak "s/MUSIC_BUTTON_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
