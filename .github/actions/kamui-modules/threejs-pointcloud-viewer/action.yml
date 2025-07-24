@@ -455,13 +455,13 @@ runs:
           MUSIC_INIT="initAudio();"
           sed -i.bak "s/MUSIC_INIT_PLACEHOLDER/$MUSIC_INIT/g" "$OUTPUT_FOLDER/index.html"
           
-          # 音楽関数を追加（ヒアドキュメント使用）
-          cat > /tmp/music_functions.js << EOF
+          # 音楽関数を追加（ファイル作成方式）
+          cat > /tmp/music_functions.js << 'MUSIC_EOF'
 // Audio functions
                 function initAudio() {
                     try {
                         audioElement = new Audio();
-                        audioElement.src = 'assets/$MUSIC_FILENAME';
+                        audioElement.src = 'assets/MUSIC_FILENAME_PLACEHOLDER';
                         audioElement.loop = true;
                         audioElement.volume = 0.5;
                         console.log('🎵 Audio initialized');
@@ -496,7 +496,10 @@ runs:
                         });
                     }
                 }
-EOF
+MUSIC_EOF
+          
+          # 音楽ファイル名を置換
+          sed -i.bak "s/MUSIC_FILENAME_PLACEHOLDER/$MUSIC_FILENAME/g" /tmp/music_functions.js
           
           # プレースホルダーを置換
           sed -i.bak "/MUSIC_FUNCTIONS_PLACEHOLDER/r /tmp/music_functions.js" "$OUTPUT_FOLDER/index.html"
