@@ -136,11 +136,19 @@ runs:
         
         echo "✅ Detected format: $IMAGE_FORMAT"
         
-        # 最終的な画像パスを決定
-        FINAL_IMAGE_PATH="$OUTPUT_FOLDER/images/uploaded-image.$EXTENSION"
+        # 最終的な画像パス（常にPNGに統一）
+        FINAL_IMAGE_PATH="$OUTPUT_FOLDER/images/uploaded-image.png"
         
-        # 画像を最終位置に移動
-        mv "$TEMP_IMAGE" "$FINAL_IMAGE_PATH"
+        # ffmpegでPNGに変換（色情報完全保持）
+        echo "🔄 Converting to PNG format..."
+        if ! ffmpeg -i "$TEMP_IMAGE" -f png -y "$FINAL_IMAGE_PATH" 2>/dev/null; then
+          echo "::error::❌ Failed to convert image to PNG format"
+          rm -f "$TEMP_IMAGE"
+          exit 1
+        fi
+        
+        # 一時ファイルを削除
+        rm -f "$TEMP_IMAGE"
         
         echo "✅ Image saved to: $FINAL_IMAGE_PATH"
         
@@ -153,7 +161,7 @@ runs:
         # Set outputs
         echo "completed=true" >> $GITHUB_OUTPUT
         echo "image-path=$FINAL_IMAGE_PATH" >> $GITHUB_OUTPUT
-        echo "format=$IMAGE_FORMAT" >> $GITHUB_OUTPUT
+        echo "format=png" >> $GITHUB_OUTPUT
         
         echo "✅ Image upload completed successfully"
         echo "::endgroup::"
