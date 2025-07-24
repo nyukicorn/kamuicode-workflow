@@ -455,51 +455,44 @@ runs:
           MUSIC_INIT="initAudio();"
           sed -i.bak "s/MUSIC_INIT_PLACEHOLDER/$MUSIC_INIT/g" "$OUTPUT_FOLDER/index.html"
           
-          # 音楽関数を追加（ファイル作成方式）
-          cat > /tmp/music_functions.js << 'MUSIC_EOF'
-// Audio functions
-                function initAudio() {
-                    try {
-                        audioElement = new Audio();
-                        audioElement.src = 'assets/MUSIC_FILENAME_PLACEHOLDER';
-                        audioElement.loop = true;
-                        audioElement.volume = 0.5;
-                        console.log('🎵 Audio initialized');
-                    } catch (error) {
-                        console.error('❌ Audio initialization failed:', error);
-                    }
-                }
-                
-                function toggleMusic() {
-                    if (!audioElement) {
-                        console.error('❌ Audio not initialized');
-                        return;
-                    }
-                    
-                    const musicButton = document.getElementById('musicToggle');
-                    
-                    if (musicPlaying) {
-                        audioElement.pause();
-                        musicPlaying = false;
-                        musicButton.textContent = '🎵 Play Music';
-                        musicButton.classList.remove('playing');
-                        console.log('🔇 Music paused');
-                    } else {
-                        audioElement.play().then(() => {
-                            musicPlaying = true;  
-                            musicButton.textContent = '🔇 Stop Music';
-                            musicButton.classList.add('playing');
-                            console.log('🎵 Music playing');
-                        }).catch(error => {
-                            console.error('❌ Music playback failed:', error);
-                            musicButton.textContent = '❌ Music Error';
-                        });
-                    }
-                }
-MUSIC_EOF
-          
-          # 音楽ファイル名を置換
-          sed -i.bak "s/MUSIC_FILENAME_PLACEHOLDER/$MUSIC_FILENAME/g" /tmp/music_functions.js
+          # 音楽関数を段階的に追加
+          echo "// Audio functions" > /tmp/music_functions.js
+          echo "function initAudio() {" >> /tmp/music_functions.js
+          echo "    try {" >> /tmp/music_functions.js
+          echo "        audioElement = new Audio();" >> /tmp/music_functions.js
+          echo "        audioElement.src = 'assets/$MUSIC_FILENAME';" >> /tmp/music_functions.js
+          echo "        audioElement.loop = true;" >> /tmp/music_functions.js
+          echo "        audioElement.volume = 0.5;" >> /tmp/music_functions.js
+          echo "        console.log('🎵 Audio initialized');" >> /tmp/music_functions.js
+          echo "    } catch (error) {" >> /tmp/music_functions.js
+          echo "        console.error('❌ Audio initialization failed:', error);" >> /tmp/music_functions.js
+          echo "    }" >> /tmp/music_functions.js
+          echo "}" >> /tmp/music_functions.js
+          echo "" >> /tmp/music_functions.js
+          echo "function toggleMusic() {" >> /tmp/music_functions.js
+          echo "    if (!audioElement) {" >> /tmp/music_functions.js
+          echo "        console.error('❌ Audio not initialized');" >> /tmp/music_functions.js
+          echo "        return;" >> /tmp/music_functions.js
+          echo "    }" >> /tmp/music_functions.js
+          echo "    const musicButton = document.getElementById('musicToggle');" >> /tmp/music_functions.js
+          echo "    if (musicPlaying) {" >> /tmp/music_functions.js
+          echo "        audioElement.pause();" >> /tmp/music_functions.js
+          echo "        musicPlaying = false;" >> /tmp/music_functions.js
+          echo "        musicButton.textContent = '🎵 Play Music';" >> /tmp/music_functions.js
+          echo "        musicButton.classList.remove('playing');" >> /tmp/music_functions.js
+          echo "        console.log('🔇 Music paused');" >> /tmp/music_functions.js
+          echo "    } else {" >> /tmp/music_functions.js
+          echo "        audioElement.play().then(() => {" >> /tmp/music_functions.js
+          echo "            musicPlaying = true;" >> /tmp/music_functions.js
+          echo "            musicButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
+          echo "            musicButton.classList.add('playing');" >> /tmp/music_functions.js
+          echo "            console.log('🎵 Music playing');" >> /tmp/music_functions.js
+          echo "        }).catch(error => {" >> /tmp/music_functions.js
+          echo "            console.error('❌ Music playback failed:', error);" >> /tmp/music_functions.js
+          echo "            musicButton.textContent = '❌ Music Error';" >> /tmp/music_functions.js
+          echo "        });" >> /tmp/music_functions.js
+          echo "    }" >> /tmp/music_functions.js
+          echo "}" >> /tmp/music_functions.js
           
           # プレースホルダーを置換
           sed -i.bak "/MUSIC_FUNCTIONS_PLACEHOLDER/r /tmp/music_functions.js" "$OUTPUT_FOLDER/index.html"
