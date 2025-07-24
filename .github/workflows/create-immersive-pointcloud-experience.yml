@@ -198,45 +198,8 @@ jobs:
           background-color: ${{ steps.bg-color.outputs.color }}
           point-size: ${{ inputs.point-size }}
           animation-speed: '1.0'
+          music-file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
           branch-name: 'main'
-      
-      - name: Add music to viewer if available
-        if: inputs.enable-music == true && steps.save-music.outputs.music-completed == 'true'
-        run: |
-          VIEWER_DIR="docs/immersive-pointcloud-${{ steps.timestamp.outputs.value }}"
-          MUSIC_FILE="${{ steps.save-music.outputs.music-path }}"
-          
-          # Copy music file to viewer assets
-          if [ -f "$MUSIC_FILE" ]; then
-            mkdir -p "$VIEWER_DIR/assets"
-            cp "$MUSIC_FILE" "$VIEWER_DIR/assets/background-music.wav"
-            
-            # Add audio element to viewer HTML
-            sed -i '/<div id="container">/a\
-                <audio id="backgroundMusic" loop autoplay>\
-                    <source src="assets/background-music.wav" type="audio/wav">\
-                </audio>' "$VIEWER_DIR/index.html"
-            
-            # Add audio controls and function
-            # Insert before the closing </body> tag
-            sed -i '/<\/body>/i\
-            <script>\
-            function toggleMusic() {\
-                const audio = document.getElementById("backgroundMusic");\
-                if (audio.paused) {\
-                    audio.play();\
-                } else {\
-                    audio.pause();\
-                }\
-            }\
-            window.toggleMusic = toggleMusic;\
-            </script>' "$VIEWER_DIR/index.html"
-            
-            # Add toggle button after reset camera button
-            sed -i 's/<button onclick="resetCamera()">📷 Reset View<\/button>/<button onclick="resetCamera()">📷 Reset View<\/button><button onclick="toggleMusic()">🎵 Toggle Music<\/button>/' "$VIEWER_DIR/index.html"
-            
-            echo "✅ Music integrated into viewer"
-          fi
       
       - name: Setup Pages
         uses: actions/configure-pages@v4

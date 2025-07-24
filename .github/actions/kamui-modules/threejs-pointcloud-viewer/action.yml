@@ -33,6 +33,10 @@ inputs:
     description: 'Animation speed multiplier'
     required: false
     default: '1.0'
+  music-file:
+    description: 'Path to background music file (optional)'
+    required: false
+    default: ''
   branch-name:
     description: 'The branch to work on'
     required: true
@@ -77,6 +81,7 @@ runs:
         BG_COLOR="${{ inputs.background-color }}"
         POINT_SIZE="${{ inputs.point-size }}"
         ANIMATION_SPEED="${{ inputs.animation-speed }}"
+        MUSIC_FILE="${{ inputs.music-file }}"
         
         echo "PLY file: $PLY_FILE"
         echo "Output folder: $OUTPUT_FOLDER"
@@ -86,6 +91,7 @@ runs:
         echo "Background: $BG_COLOR"
         echo "Point size: $POINT_SIZE"
         echo "Animation speed: $ANIMATION_SPEED"
+        echo "Music file: $MUSIC_FILE"
         
         # PLYファイルの存在確認
         if [ ! -f "$PLY_FILE" ]; then
@@ -101,6 +107,17 @@ runs:
         PLY_FILENAME=$(basename "$PLY_FILE")
         cp "$PLY_FILE" "$OUTPUT_FOLDER/assets/$PLY_FILENAME"
         echo "✅ PLY file copied to viewer assets"
+        
+        # 音楽ファイルがある場合は処理
+        MUSIC_AVAILABLE="false"
+        if [ -n "$MUSIC_FILE" ] && [ -f "$MUSIC_FILE" ]; then
+          MUSIC_FILENAME=$(basename "$MUSIC_FILE")
+          cp "$MUSIC_FILE" "$OUTPUT_FOLDER/assets/$MUSIC_FILENAME"  
+          MUSIC_AVAILABLE="true"
+          echo "✅ Music file copied to viewer assets: $MUSIC_FILENAME"
+        else
+          echo "ℹ️  No music file provided or file not found"
+        fi
         
         # カメラ位置をパース
         IFS=',' read -ra CAM_ARRAY <<< "$CAMERA_POS"
@@ -183,6 +200,18 @@ runs:
                     background: #45a049;
                 }
                 
+                .music-button {
+                    background: #2196F3;
+                }
+                
+                .music-button:hover {
+                    background: #1976D2;
+                }
+                
+                .music-button.playing {
+                    background: #4CAF50;
+                }
+                
                 input[type="range"] {
                     width: 120px;
                     margin-left: 10px;
@@ -199,6 +228,7 @@ runs:
                         <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
                         <button onclick="resetCamera()">📷 Reset View</button>
                     </div>
+                    MUSIC_BUTTON_PLACEHOLDER
                     <div class="control-item">
                         Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="POINT_SIZE_PLACEHOLDER" onchange="updatePointSize(this.value)">
                     </div>
@@ -226,6 +256,8 @@ runs:
                 let autoRotate = AUTO_ROTATE_PLACEHOLDER;
                 let rotationSpeed = ANIMATION_SPEED_PLACEHOLDER;
                 let pointSize = POINT_SIZE_PLACEHOLDER;
+                let audioElement = null;
+                let musicPlaying = false;
                 
                 // Initialize the viewer
                 function init() {
@@ -257,6 +289,9 @@ runs:
                     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                     directionalLight.position.set(1, 1, 1);
                     scene.add(directionalLight);
+                    
+                    // Initialize audio if available
+                    MUSIC_INIT_PLACEHOLDER
                     
                     // Load PLY file
                     loadPointCloud();
@@ -381,11 +416,14 @@ runs:
                     controls.autoRotateSpeed = rotationSpeed;
                 }
                 
+                MUSIC_FUNCTIONS_PLACEHOLDER
+                
                 // Make functions globally accessible for HTML events
                 window.toggleAutoRotate = toggleAutoRotate;
                 window.resetCamera = resetCamera;
                 window.updatePointSize = updatePointSize;
                 window.updateRotationSpeed = updateRotationSpeed;
+                MUSIC_WINDOW_PLACEHOLDER
                 
                 // Start the application
                 init();
@@ -404,6 +442,71 @@ runs:
         sed -i.bak "s/CAM_Y_PLACEHOLDER/$CAM_Y/g" "$OUTPUT_FOLDER/index.html"
         sed -i.bak "s/CAM_Z_PLACEHOLDER/$CAM_Z/g" "$OUTPUT_FOLDER/index.html"
         sed -i.bak "s/PLY_FILENAME_PLACEHOLDER/$PLY_FILENAME/g" "$OUTPUT_FOLDER/index.html"
+        
+        # 音楽機能の処理
+        if [ "$MUSIC_AVAILABLE" = "true" ]; then
+          # 音楽ボタンを追加
+          MUSIC_BUTTON='                    <div class="control-item">
+                        <button id="musicToggle" class="music-button" onclick="toggleMusic()">🎵 Play Music</button>
+                    </div>'
+          sed -i.bak "s|MUSIC_BUTTON_PLACEHOLDER|$MUSIC_BUTTON|g" "$OUTPUT_FOLDER/index.html"
+          
+          # 音楽初期化処理を追加
+          MUSIC_INIT="initAudio();"
+          sed -i.bak "s/MUSIC_INIT_PLACEHOLDER/$MUSIC_INIT/g" "$OUTPUT_FOLDER/index.html"
+          
+          # 音楽関数を追加
+          MUSIC_FUNCTIONS="// Audio functions
+                function initAudio() {
+                    try {
+                        audioElement = new Audio();
+                        audioElement.src = 'assets/$MUSIC_FILENAME';
+                        audioElement.loop = true;
+                        audioElement.volume = 0.5;
+                        console.log('🎵 Audio initialized');
+                    } catch (error) {
+                        console.error('❌ Audio initialization failed:', error);
+                    }
+                }
+                
+                function toggleMusic() {
+                    if (!audioElement) {
+                        console.error('❌ Audio not initialized');
+                        return;
+                    }
+                    
+                    const musicButton = document.getElementById('musicToggle');
+                    
+                    if (musicPlaying) {
+                        audioElement.pause();
+                        musicPlaying = false;
+                        musicButton.textContent = '🎵 Play Music';
+                        musicButton.classList.remove('playing');
+                        console.log('🔇 Music paused');
+                    } else {
+                        audioElement.play().then(() => {
+                            musicPlaying = true;  
+                            musicButton.textContent = '🔇 Stop Music';
+                            musicButton.classList.add('playing');
+                            console.log('🎵 Music playing');
+                        }).catch(error => {
+                            console.error('❌ Music playback failed:', error);
+                            musicButton.textContent = '❌ Music Error';
+                        });
+                    }
+                }"
+          sed -i.bak "s|MUSIC_FUNCTIONS_PLACEHOLDER|$MUSIC_FUNCTIONS|g" "$OUTPUT_FOLDER/index.html"
+          
+          # 音楽関数をwindowオブジェクトに追加
+          MUSIC_WINDOW="window.toggleMusic = toggleMusic;"
+          sed -i.bak "s/MUSIC_WINDOW_PLACEHOLDER/$MUSIC_WINDOW/g" "$OUTPUT_FOLDER/index.html"
+        else
+          # 音楽機能なしの場合はプレースホルダーを削除
+          sed -i.bak "s/MUSIC_BUTTON_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
+          sed -i.bak "s/MUSIC_INIT_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
+          sed -i.bak "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
+          sed -i.bak "s/MUSIC_WINDOW_PLACEHOLDER//g" "$OUTPUT_FOLDER/index.html"
+        fi
         
         # バックアップファイルを削除
         rm -f "$OUTPUT_FOLDER/index.html.bak"
