@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幻想的なバラ園 - Fantasy Rose Garden</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        
+        canvas {
+            display: block;
+            cursor: grab;
+        }
+        
+        canvas:active {
+            cursor: grabbing;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 200px;
+            color: white;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #ff69b4;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        .control-group .value {
+            font-size: 11px;
+            color: #ccc;
+        }
+        
+        #playButton {
+            background: linear-gradient(45deg, #ff69b4, #ff1493);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        #playButton:hover {
+            background: linear-gradient(45deg, #ff1493, #dc143c);
+            transform: translateY(-2px);
+        }
+        
+        #playButton:active {
+            transform: translateY(0);
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h3 style="margin-top: 0; color: #ff69b4;">幻想的なバラ園</h3>
+        
+        <div class="control-group">
+            <label for="animationSpeed">Animation Speed</label>
+            <input type="range" id="animationSpeed" min="0.1" max="3.0" step="0.1" value="1.0">
+            <div class="value" id="animationSpeedValue">1.0</div>
+        </div>
+        
+        <div class="control-group">
+            <label for="rotationSpeed">Rotation Speed</label>
+            <input type="range" id="rotationSpeed" min="0.01" max="1.0" step="0.01" value="0.5">
+            <div class="value" id="rotationSpeedValue">0.5</div>
+        </div>
+        
+        <div class="control-group">
+            <label for="ambientOpacity">Ambient Opacity</label>
+            <input type="range" id="ambientOpacity" min="0.1" max="1.0" step="0.1" value="0.4">
+            <div class="value" id="ambientOpacityValue">0.4</div>
+        </div>
+        
+        <button id="playButton">🎵 Play Music</button>
+    </div>
+    
+    <div id="instructions">
+        <div>🖱️ Mouse drag: Rotate view</div>
+        <div>🎮 Mouse wheel: Zoom</div>
+        <div>👆 Double-click: Toggle auto-rotation</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Global variables
+        let scene, camera, renderer, particles, ambientParticles, floatingParticles;
+        let mouse = new THREE.Vector2();
+        let isMouseDown = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let cameraDistance = 18;
+        let cameraAngleY = 0;
+        let cameraAngleX = 0;
+        let animationSpeed = 1.0;
+        let rotationSpeed = 0.5;
+        let isAutoRotating = false;
+        let time = 0;
+        let audio, audioContext, audioBuffer;
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0.1, 18);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000);
+            document.body.appendChild(renderer.domElement);
+            
+            // Add lighting for better particle rendering
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            directionalLight.position.set(10, 10, 5);
+            scene.add(directionalLight);
+            
+            // Load panorama background
+            loadPanorama();
+            
+            // Create particle systems
+            createParticleSystems();
+            
+            // Setup controls
+            setupControls();
+            
+            // Setup audio
+            setupAudio();
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function loadPanorama() {
+            const loader = new THREE.TextureLoader();
+            loader.load(
+                'panorama.jpg',
+                function(texture) {
+                    const geometry = new THREE.SphereGeometry(500, 60, 40);
+                    geometry.scale(-1, 1, 1); // Invert for inside view
+                    
+                    const material = new THREE.MeshBasicMaterial({
+                        map: texture,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    
+                    const panorama = new THREE.Mesh(geometry, material);
+                    scene.add(panorama);
+                },
+                undefined,
+                function(error) {
+                    console.log('Panorama loading failed:', error);
+                    // Create gradient background as fallback
+                    createGradientBackground();
+                }
+            );
+        }
+        
+        function createGradientBackground() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+            gradient.addColorStop(0, '#FF69B4');
+            gradient.addColorStop(0.5, '#8B008B');
+            gradient.addColorStop(1, '#000000');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 256);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            geometry.scale(-1, 1, 1);
+            
+            const material = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            const background = new THREE.Mesh(geometry, material);
+            scene.add(background);
+        }
+        
+        function createSoftCircleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas with transparent background
+            ctx.clearRect(0, 0, 64, 64);
+            
+            // Create radial gradient for soft circle
+            const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            gradient.addColorStop(0, 'rgba(255, 105, 180, 1.0)');    // Center: bright pink
+            gradient.addColorStop(0.3, 'rgba(255, 105, 180, 0.8)');  // Mid: semi-transparent
+            gradient.addColorStop(0.7, 'rgba(255, 182, 193, 0.4)');  // Outer: light pink
+            gradient.addColorStop(1, 'rgba(255, 182, 193, 0.0)');    // Edge: transparent
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 64, 64);
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        function createParticleSystems() {
+            const softCircleTexture = createSoftCircleTexture();
+            
+            // High-density ambient particles (background layer)
+            const ambientCount = 4000;
+            const ambientGeometry = new THREE.BufferGeometry();
+            const ambientPositions = new Float32Array(ambientCount * 3);
+            const ambientColors = new Float32Array(ambientCount * 3);
+            const ambientSizes = new Float32Array(ambientCount);
+            
+            for (let i = 0; i < ambientCount; i++) {
+                // Distribute particles in a larger sphere
+                ambientPositions[i * 3] = (Math.random() - 0.5) * 200;
+                ambientPositions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                ambientPositions[i * 3 + 2] = (Math.random() - 0.5) * 200;
+                
+                // Pink color variations
+                const hue = 0.9 + Math.random() * 0.1; // Pink to magenta range
+                const saturation = 0.4 + Math.random() * 0.4;
+                const lightness = 0.6 + Math.random() * 0.3;
+                const color = new THREE.Color().setHSL(hue, saturation, lightness);
+                
+                ambientColors[i * 3] = color.r;
+                ambientColors[i * 3 + 1] = color.g;
+                ambientColors[i * 3 + 2] = color.b;
+                
+                ambientSizes[i] = Math.random() * 3 + 1;
+            }
+            
+            ambientGeometry.setAttribute('position', new THREE.BufferAttribute(ambientPositions, 3));
+            ambientGeometry.setAttribute('color', new THREE.BufferAttribute(ambientColors, 3));
+            ambientGeometry.setAttribute('size', new THREE.BufferAttribute(ambientSizes, 1));
+            
+            const ambientMaterial = new THREE.PointsMaterial({
+                size: 2.0,
+                map: softCircleTexture,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.4,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                alphaTest: 0.1
+            });
+            
+            ambientParticles = new THREE.Points(ambientGeometry, ambientMaterial);
+            scene.add(ambientParticles);
+            
+            // Floating particles (foreground layer)
+            const floatingCount = 1500;
+            const floatingGeometry = new THREE.BufferGeometry();
+            const floatingPositions = new Float32Array(floatingCount * 3);
+            const floatingColors = new Float32Array(floatingCount * 3);
+            const floatingVelocities = new Float32Array(floatingCount * 3);
+            const floatingSizes = new Float32Array(floatingCount);
+            
+            for (let i = 0; i < floatingCount; i++) {
+                floatingPositions[i * 3] = (Math.random() - 0.5) * 120;
+                floatingPositions[i * 3 + 1] = Math.random() * 60 - 30;
+                floatingPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+                
+                // Upward floating motion with slight horizontal drift
+                floatingVelocities[i * 3] = (Math.random() - 0.5) * 0.2;
+                floatingVelocities[i * 3 + 1] = Math.random() * 0.1 + 0.05;
+                floatingVelocities[i * 3 + 2] = (Math.random() - 0.5) * 0.2;
+                
+                // Brighter pink colors for foreground
+                const color = new THREE.Color().setHSL(0.9 + Math.random() * 0.05, 0.8, 0.7);
+                floatingColors[i * 3] = color.r;
+                floatingColors[i * 3 + 1] = color.g;
+                floatingColors[i * 3 + 2] = color.b;
+                
+                floatingSizes[i] = Math.random() * 2 + 2;
+            }
+            
+            floatingGeometry.setAttribute('position', new THREE.BufferAttribute(floatingPositions, 3));
+            floatingGeometry.setAttribute('color', new THREE.BufferAttribute(floatingColors, 3));
+            floatingGeometry.setAttribute('size', new THREE.BufferAttribute(floatingSizes, 1));
+            
+            const floatingMaterial = new THREE.PointsMaterial({
+                size: 4.0,
+                map: softCircleTexture,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.NormalBlending,
+                depthWrite: false,
+                alphaTest: 0.1
+            });
+            
+            floatingParticles = new THREE.Points(floatingGeometry, floatingMaterial);
+            floatingParticles.userData = { velocities: floatingVelocities };
+            scene.add(floatingParticles);
+        }
+        
+        function setupControls() {
+            const canvas = renderer.domElement;
+            
+            // Mouse controls
+            canvas.addEventListener('mousedown', onMouseDown, false);
+            canvas.addEventListener('mousemove', onMouseMove, false);
+            canvas.addEventListener('mouseup', onMouseUp, false);
+            canvas.addEventListener('wheel', onMouseWheel, false);
+            canvas.addEventListener('dblclick', onDoubleClick, false);
+            
+            // Touch controls for mobile
+            canvas.addEventListener('touchstart', onTouchStart, false);
+            canvas.addEventListener('touchmove', onTouchMove, false);
+            canvas.addEventListener('touchend', onTouchEnd, false);
+            
+            // UI controls
+            const animationSpeedSlider = document.getElementById('animationSpeed');
+            const rotationSpeedSlider = document.getElementById('rotationSpeed');
+            const ambientOpacitySlider = document.getElementById('ambientOpacity');
+            
+            animationSpeedSlider.addEventListener('input', function() {
+                animationSpeed = parseFloat(this.value);
+                document.getElementById('animationSpeedValue').textContent = animationSpeed.toFixed(1);
+            });
+            
+            rotationSpeedSlider.addEventListener('input', function() {
+                rotationSpeed = parseFloat(this.value);
+                document.getElementById('rotationSpeedValue').textContent = rotationSpeed.toFixed(2);
+            });
+            
+            ambientOpacitySlider.addEventListener('input', function() {
+                const opacity = parseFloat(this.value);
+                document.getElementById('ambientOpacityValue').textContent = opacity.toFixed(1);
+                if (ambientParticles) {
+                    ambientParticles.material.opacity = opacity;
+                }
+            });
+            
+            // Window resize
+            window.addEventListener('resize', onWindowResize, false);
+        }
+        
+        function onMouseDown(event) {
+            isMouseDown = true;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+        }
+        
+        function onMouseMove(event) {
+            if (isMouseDown) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+                
+                cameraAngleY -= deltaMove.x * 0.01;
+                cameraAngleX -= deltaMove.y * 0.01;
+                
+                // Limit vertical angle
+                cameraAngleX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraAngleX));
+                
+                updateCameraPosition();
+                
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
+        }
+        
+        function onMouseUp(event) {
+            isMouseDown = false;
+        }
+        
+        function onMouseWheel(event) {
+            event.preventDefault();
+            cameraDistance += event.deltaY * 0.01;
+            cameraDistance = Math.max(5, Math.min(50, cameraDistance));
+            updateCameraPosition();
+        }
+        
+        function onDoubleClick(event) {
+            isAutoRotating = !isAutoRotating;
+        }
+        
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                isMouseDown = true;
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }
+        
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1 && isMouseDown) {
+                const deltaMove = {
+                    x: event.touches[0].clientX - previousMousePosition.x,
+                    y: event.touches[0].clientY - previousMousePosition.y
+                };
+                
+                cameraAngleY -= deltaMove.x * 0.01;
+                cameraAngleX -= deltaMove.y * 0.01;
+                
+                cameraAngleX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraAngleX));
+                
+                updateCameraPosition();
+                
+                previousMousePosition = {
+                    x: event.touches[0].clientX,
+                    y: event.touches[0].clientY
+                };
+            }
+        }
+        
+        function onTouchEnd(event) {
+            isMouseDown = false;
+        }
+        
+        function updateCameraPosition() {
+            camera.position.x = cameraDistance * Math.sin(cameraAngleY) * Math.cos(cameraAngleX);
+            camera.position.y = cameraDistance * Math.sin(cameraAngleX) + 0.15;
+            camera.position.z = cameraDistance * Math.cos(cameraAngleY) * Math.cos(cameraAngleX);
+            camera.lookAt(0, 0.15, 0);
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function setupAudio() {
+            const playButton = document.getElementById('playButton');
+            playButton.addEventListener('click', function() {
+                if (!audio) {
+                    audio = new Audio('generated-music.wav');
+                    audio.loop = true;
+                    audio.volume = 0.5;
+                }
+                
+                if (audio.paused) {
+                    audio.play().then(() => {
+                        playButton.textContent = '⏸️ Pause Music';
+                    }).catch(error => {
+                        console.log('Audio play failed:', error);
+                        playButton.textContent = '❌ Audio Failed';
+                    });
+                } else {
+                    audio.pause();
+                    playButton.textContent = '🎵 Play Music';
+                }
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            time += 0.016 * animationSpeed; // 60fps * animationSpeed
+            
+            // Auto rotation
+            if (isAutoRotating) {
+                cameraAngleY += rotationSpeed * 0.01;
+                updateCameraPosition();
+            }
+            
+            // Update floating particles
+            if (floatingParticles) {
+                const positions = floatingParticles.geometry.attributes.position.array;
+                const velocities = floatingParticles.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i] * animationSpeed;
+                    positions[i + 1] += velocities[i + 1] * animationSpeed;
+                    positions[i + 2] += velocities[i + 2] * animationSpeed;
+                    
+                    // Reset particles that float too high
+                    if (positions[i + 1] > 50) {
+                        positions[i + 1] = -50;
+                        positions[i] = (Math.random() - 0.5) * 120;
+                        positions[i + 2] = (Math.random() - 0.5) * 120;
+                    }
+                }
+                floatingParticles.geometry.attributes.position.needsUpdate = true;
+            }
+            
+            // Subtle ambient particle movement
+            if (ambientParticles) {
+                ambientParticles.rotation.y += 0.001 * animationSpeed;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize everything when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
