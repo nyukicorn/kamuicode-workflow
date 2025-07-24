@@ -269,25 +269,26 @@ runs:
         CURRENT_BRANCH=$(git branch --show-current)
         echo "Current branch: $CURRENT_BRANCH"
         
-        # mainブランチの最新を取得
-        git fetch origin main
+        # mainブランチの最新を取得（ログ削減）
+        git fetch origin main --quiet
         
         # mainブランチにチェックアウト
-        git checkout main
-        git pull origin main
+        git checkout main --quiet
+        git pull origin main --quiet
         
         # feature branchからdocs/フォルダをコピー
-        git checkout $CURRENT_BRANCH -- docs/
+        git checkout $CURRENT_BRANCH -- docs/ || echo "No docs to copy from feature branch"
         
         # docs/フォルダをステージに追加
         git add docs/
         
-        # docs/フォルダをコミット
+        # docs/フォルダをコミット（単一バッチコミット）
         if git diff --cached --quiet; then
           echo "No web player files to commit"
         else
-          git commit -m "Update GitHub Pages content: ${{ inputs.music_concept }} [branch: $CURRENT_BRANCH, folder: ${{ inputs.folder-name }}]"
-          git push origin main
+          git commit -m "Update GitHub Pages: ${{ inputs.music_concept }} [branch: $CURRENT_BRANCH, folder: ${{ inputs.folder-name }}]" --quiet
+          git push origin main --quiet
+          echo "✅ Single Pages deployment triggered"
         fi
         
         # 元のブランチに戻る
