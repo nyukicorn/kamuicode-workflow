@@ -52,7 +52,12 @@ HIGH-DENSITY ENHANCED PARTICLE SYSTEM - COPY THESE TEMPLATES:
 
 1. Include these JavaScript classes directly in HTML:
 
+// CONDITIONAL: Only include Rose Bouquet System if art_style contains 'flower'
+// Check if art_style is 'flower:*' before including 3D flower objects
+// For panorama-only experiences, skip 3D objects and focus on particle effects
+
 // TEMPLATE 1: Rose Bouquet System (InstancedMesh-based for realistic flower recognition)
+// ONLY INCLUDE IF: art_style starts with 'flower:'
 class RoseBouquetSystem {
     constructor(scene, config = {}) {
         this.scene = scene;
@@ -412,7 +417,7 @@ CRITICAL FEATURES:
 
 2. ANIMATION CONTROLS:
    - Animation Speed slider (0.1-3.0): Controls particle floating/movement speed
-   - Rotation Speed slider (0.1-5.0): Controls camera/scene rotation speed
+   - Rotation Speed slider (0.01-1.0): Controls camera/scene rotation speed
 
 3. CAMERA ROTATION:
    - Double-click canvas: Start/stop automatic camera rotation around scene
@@ -420,11 +425,11 @@ CRITICAL FEATURES:
    - Individual flowers should only float up/down subtly
 
 4. UI CONTROLS:
-   - Animation Speed, Rotation Speed, Rose Opacity, Ambient Opacity
-   - Petal Width (0.05-0.3): Controls width of individual rose petals
-   - Petal Curl (0.0-1.0): Controls curvature/curl intensity of petals
-   - Stem Opacity (0.0-1.0): Controls visibility of flower stems
-   - REMOVED: Particle Size (roses use fixed gradient textures now)
+   - ALWAYS INCLUDE: Animation Speed, Rotation Speed
+   - ONLY IF art_style contains 'flower': Rose Opacity, Petal Width, Petal Curl, Stem Opacity
+   - ALWAYS INCLUDE: Ambient Opacity (for particle effects)
+   - FOR PANORAMA-ONLY: Only show Animation Speed, Rotation Speed, Ambient Opacity
+   - REMOVED: Particle Size (particles use fixed gradient textures now)
 
 IMPLEMENTATION REQUIREMENTS:
 - ESSENTIAL: Mouse drag for camera control must work
