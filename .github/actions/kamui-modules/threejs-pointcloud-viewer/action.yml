@@ -455,8 +455,9 @@ runs:
           MUSIC_INIT="initAudio();"
           sed -i.bak "s/MUSIC_INIT_PLACEHOLDER/$MUSIC_INIT/g" "$OUTPUT_FOLDER/index.html"
           
-          # 音楽関数を追加
-          MUSIC_FUNCTIONS="// Audio functions
+          # 音楽関数を追加（ヒアドキュメント使用）
+          cat > /tmp/music_functions.js << EOF
+// Audio functions
                 function initAudio() {
                     try {
                         audioElement = new Audio();
@@ -494,8 +495,13 @@ runs:
                             musicButton.textContent = '❌ Music Error';
                         });
                     }
-                }"
-          sed -i.bak "s|MUSIC_FUNCTIONS_PLACEHOLDER|$MUSIC_FUNCTIONS|g" "$OUTPUT_FOLDER/index.html"
+                }
+EOF
+          
+          # プレースホルダーを置換
+          sed -i.bak "/MUSIC_FUNCTIONS_PLACEHOLDER/r /tmp/music_functions.js" "$OUTPUT_FOLDER/index.html"
+          sed -i.bak "/MUSIC_FUNCTIONS_PLACEHOLDER/d" "$OUTPUT_FOLDER/index.html"
+          rm -f /tmp/music_functions.js
           
           # 音楽関数をwindowオブジェクトに追加
           MUSIC_WINDOW="window.toggleMusic = toggleMusic;"
