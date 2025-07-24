@@ -142,9 +142,22 @@ jobs:
         id: save-music
         if: inputs.enable-music == true
         run: |
-          # Find the generated music
+          # Find the generated music (avoiding duplicated paths)
           MUSIC_FILE=$(find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.wav" -o -name "*.mp3" | head -1)
           if [ -n "$MUSIC_FILE" ]; then
+            # Clean up duplicated path segments
+            CLEAN_MUSIC_FILE=$(echo "$MUSIC_FILE" | sed 's|immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/|immersive-pointcloud-${{ steps.timestamp.outputs.value }}/music/|g')
+            
+            # If the cleaned path is different, move the file to correct location
+            if [ "$MUSIC_FILE" != "$CLEAN_MUSIC_FILE" ]; then
+              echo "🔧 Fixing duplicated music path..."
+              echo "Original: $MUSIC_FILE"
+              echo "Fixed: $CLEAN_MUSIC_FILE"
+              mkdir -p "$(dirname "$CLEAN_MUSIC_FILE")"
+              mv "$MUSIC_FILE" "$CLEAN_MUSIC_FILE"
+              MUSIC_FILE="$CLEAN_MUSIC_FILE"
+            fi
+            
             echo "music-path=$MUSIC_FILE" >> $GITHUB_OUTPUT
             echo "music-completed=true" >> $GITHUB_OUTPUT
             echo "✅ Generated music: $MUSIC_FILE"
