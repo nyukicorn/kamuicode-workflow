@@ -100,24 +100,39 @@ jobs:
         id: timestamp
         run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
       
+      - name: Translate Image Prompt to English
+        id: image-translation
+        uses: ./.github/actions/kamui-modules/prompt-translation
+        with:
+          japanese-prompt: ${{ inputs.image-prompt }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
       - name: Generate Image with AI
         id: image
         uses: ./.github/actions/kamui-modules/image-generation
         with:
-          image-prompt: ${{ inputs.image-prompt }}
+          image-prompt: ${{ steps.image-translation.outputs.english-prompt }}
           image-model: ${{ inputs.image-model }}
           folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
+      - name: Translate Music Prompt to English
+        id: music-translation
+        if: inputs.enable-music == true
+        uses: ./.github/actions/kamui-modules/prompt-translation
+        with:
+          japanese-prompt: ${{ inputs.music-prompt }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
       - name: Generate Background Music (Optional)
         id: music
         if: inputs.enable-music == true
         uses: ./.github/actions/kamui-modules/music-generation
         with:
-          music-concept: ${{ inputs.music-prompt }}
-          music-prompt: ${{ inputs.music-prompt }}
+          music-concept: ${{ steps.music-translation.outputs.english-prompt }}
+          music-prompt: ${{ steps.music-translation.outputs.english-prompt }}
           folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
@@ -240,9 +255,14 @@ jobs:
           echo "## 🎨 Immersive Pointcloud Experience Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Configuration" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Prompt**: ${{ inputs.image-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Prompt (Original)**: ${{ inputs.image-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Prompt (English)**: ${{ steps.image-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Image Model**: ${{ inputs.image-model }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Music Enabled**: ${{ inputs.enable-music }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.enable-music }}" = "true" ]; then
+            echo "- **Music Prompt (Original)**: ${{ inputs.music-prompt }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Music Prompt (English)**: ${{ steps.music-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- **Background Style**: ${{ inputs.background-style }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🎯 Results" >> $GITHUB_STEP_SUMMARY
