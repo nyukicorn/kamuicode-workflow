@@ -149,8 +149,11 @@ runs:
         
         # ffmpegでPNGに変換（色情報完全保持）
         echo "🔄 Converting to PNG format..."
-        if ! ffmpeg -i "$TEMP_IMAGE" -f png -y "$FINAL_IMAGE_PATH" 2>/dev/null; then
+        echo "  Input: $TEMP_IMAGE"
+        echo "  Output: $FINAL_IMAGE_PATH"
+        if ! ffmpeg -i "$TEMP_IMAGE" -f png -y "$FINAL_IMAGE_PATH"; then
           echo "::error::❌ Failed to convert image to PNG format"
+          echo "Temp image size: $(ls -la "$TEMP_IMAGE" 2>/dev/null || echo 'File not found')"
           rm -f "$TEMP_IMAGE"
           exit 1
         fi
