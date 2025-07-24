@@ -21,7 +21,7 @@ def create_synthetic_depth(image_path, output_path):
         print(f"Processing image: {image_path}")
         print(f"Image shape: {image.shape}")
         
-        # Convert to grayscale
+        # Convert to grayscale for depth calculation only (preserve original colors)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
         # Create synthetic depth based on brightness

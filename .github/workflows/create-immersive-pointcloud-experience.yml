@@ -3,11 +3,26 @@ name: 'Create Immersive Pointcloud Experience'
 on:
   workflow_dispatch:
     inputs:
-      image-prompt:
-        description: '生成する画像の詳細なプロンプト'
+      image-source:
+        description: '画像ソース'
         required: true
+        type: choice
+        options:
+          - 'ai-generated'
+          - 'uploaded-image'
+        default: 'ai-generated'
+      
+      image-prompt:
+        description: '生成する画像の詳細なプロンプト（AI生成選択時）'
+        required: false
         type: string
         default: 'A beautiful Japanese garden with cherry blossoms, serene pond with koi fish, traditional stone lantern'
+      
+      uploaded-image-url:
+        description: 'Issue添付画像のURL（アップロード選択時）'
+        required: false
+        type: string
+        default: ''
       
       image-model:
         description: '画像生成モデル'
@@ -102,13 +117,15 @@ jobs:
       
       - name: Translate Image Prompt to English
         id: image-translation
+        if: inputs.image-source == 'ai-generated'
         uses: ./.github/actions/kamui-modules/prompt-translation
         with:
           japanese-prompt: ${{ inputs.image-prompt }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
       
       - name: Generate Image with AI
-        id: image
+        id: image-generation
+        if: inputs.image-source == 'ai-generated'
         uses: ./.github/actions/kamui-modules/image-generation
         with:
           image-prompt: ${{ steps.image-translation.outputs.english-prompt }}
@@ -117,6 +134,24 @@ jobs:
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Upload Image from URL
+        id: image-upload
+        if: inputs.image-source == 'uploaded-image'
+        uses: ./.github/actions/kamui-modules/image-upload
+        with:
+          image-url: ${{ inputs.uploaded-image-url }}
+          output-folder: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          branch-name: 'main'
+      
+      - name: Set image path for downstream steps
+        id: image-path
+        run: |
+          if [ "${{ inputs.image-source }}" = "ai-generated" ]; then
+            echo "path=${{ steps.image-generation.outputs.image-path }}" >> $GITHUB_OUTPUT
+          else
+            echo "path=${{ steps.image-upload.outputs.image-path }}" >> $GITHUB_OUTPUT
+          fi
       
       - name: Translate Music Prompt to English
         id: music-translation
@@ -170,7 +205,7 @@ jobs:
         id: pointcloud
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
-          input-image-path: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images/generated-image.png'
+          input-image-path: ${{ steps.image-path.outputs.path }}
           output-folder: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           depth-model: ${{ inputs.depth-model }}
@@ -231,9 +266,14 @@ jobs:
           echo "## 🎨 Immersive Pointcloud Experience Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Configuration" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Prompt (Original)**: ${{ inputs.image-prompt }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Prompt (English)**: ${{ steps.image-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Model**: ${{ inputs.image-model }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Source**: ${{ inputs.image-source }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.image-source }}" = "ai-generated" ]; then
+            echo "- **Image Prompt (Original)**: ${{ inputs.image-prompt }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Image Prompt (English)**: ${{ steps.image-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Image Model**: ${{ inputs.image-model }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Uploaded Image URL**: ${{ inputs.uploaded-image-url }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- **Music Enabled**: ${{ inputs.enable-music }}" >> $GITHUB_STEP_SUMMARY
           if [ "${{ inputs.enable-music }}" = "true" ]; then
             echo "- **Music Prompt (Original)**: ${{ inputs.music-prompt }}" >> $GITHUB_STEP_SUMMARY
@@ -242,7 +282,11 @@ jobs:
           echo "- **Background Style**: ${{ inputs.background-style }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🎯 Results" >> $GITHUB_STEP_SUMMARY
-          echo "- **Image Generated**: ${{ steps.image.outputs.image-completed }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.image-source }}" = "ai-generated" ]; then
+            echo "- **Image Generated**: ${{ steps.image-generation.outputs.image-completed }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Image Uploaded**: ${{ steps.image-upload.outputs.upload-completed }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "- **Music Generated**: ${{ steps.save-music.outputs.music-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Pointcloud Generated**: ${{ steps.pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Viewer Created**: ${{ steps.viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
