@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Video Player - Rose Music Box</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradient 3s ease infinite;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        .metadata div {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .media-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .media-card:hover::before {
+            left: 100%;
+        }
+
+        .media-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #feca57;
+            text-align: center;
+        }
+
+        .card-description {
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            opacity: 0.8;
+            text-align: center;
+        }
+
+        .media-content {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .media-content img {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .media-content audio,
+        .media-content video {
+            width: 100%;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .download-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 40px;
+            backdrop-filter: blur(10px);
+        }
+
+        .download-title {
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #48dbfb;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .download-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .download-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .download-link {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .download-link:hover {
+            background: linear-gradient(45deg, #764ba2, #667eea);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header fade-in">
+            <h1>🌹 Rose Music Box 🌹</h1>
+            <p class="subtitle">バラの花をイメージした美しいオルゴールの曲</p>
+            <div class="metadata">
+                <div><strong>作品ID:</strong> music-video-20250724-16486050103</div>
+                <div><strong>生成日時:</strong> 2025-07-24T16:48:60.501Z</div>
+                <div><strong>コンセプト:</strong> Rose-themed Music Box</div>
+                <div><strong>ブランチ:</strong> music-video/20250724-16486050103</div>
+            </div>
+        </header>
+
+        <main class="media-grid">
+            <!-- Generated Image Section -->
+            <section class="media-card fade-in">
+                <h2 class="card-title">🖼️ Generated Image</h2>
+                <p class="card-description">バラの美しさを表現した静止画像</p>
+                <div class="media-content">
+                    <img src="images/generated-image.png" alt="Generated Rose Image" />
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="downloadImage()">📥 画像保存</button>
+                </div>
+            </section>
+
+            <!-- Generated Music Section -->
+            <section class="media-card fade-in">
+                <h2 class="card-title">🎵 Generated Music</h2>
+                <p class="card-description">オルゴールの音色で奏でるバラのメロディー</p>
+                <div class="media-content">
+                    <audio controls preload="metadata">
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="downloadMusic()">📥 音楽保存</button>
+                    <button class="control-btn" onclick="playMusic()">▶️ 再生</button>
+                    <button class="control-btn" onclick="pauseMusic()">⏸️ 停止</button>
+                </div>
+            </section>
+
+            <!-- Individual Video Section -->
+            <section class="media-card fade-in">
+                <h2 class="card-title">🎬 Individual Video</h2>
+                <p class="card-description">ビデオセグメント（音楽なし）</p>
+                <div class="media-content">
+                    <video controls preload="metadata" muted>
+                        <source src="videos/segment-1.mp4" type="video/mp4">
+                        Your browser does not support the video element.
+                    </video>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="downloadVideo()">📥 動画保存</button>
+                    <button class="control-btn" onclick="playVideo()">▶️ 再生</button>
+                    <button class="control-btn" onclick="pauseVideo()">⏸️ 停止</button>
+                </div>
+            </section>
+
+            <!-- Final Music Video Section -->
+            <section class="media-card fade-in">
+                <h2 class="card-title">🎭 Final Music Video</h2>
+                <p class="card-description">完成版ミュージックビデオ（音楽付き）</p>
+                <div class="media-content">
+                    <video controls preload="metadata">
+                        <source src="final/final-music-video.mp4" type="video/mp4">
+                        Your browser does not support the video element.
+                    </video>
+                </div>
+                <div class="controls">
+                    <button class="control-btn" onclick="downloadFinalVideo()">📥 完成版保存</button>
+                    <button class="control-btn" onclick="playFinalVideo()">▶️ 再生</button>
+                    <button class="control-btn" onclick="pauseFinalVideo()">⏸️ 停止</button>
+                </div>
+            </section>
+        </main>
+
+        <section class="download-section">
+            <h2 class="download-title">📦 Download Assets</h2>
+            <div class="download-grid">
+                <div class="download-item">
+                    <h3>🖼️ Image</h3>
+                    <p>静止画像 (PNG)</p>
+                    <a href="images/generated-image.png" download="rose-music-box-image.png" class="download-link">Download</a>
+                </div>
+                <div class="download-item">
+                    <h3>🎵 Music</h3>
+                    <p>音楽ファイル (WAV)</p>
+                    <a href="music/generated-music.wav" download="rose-music-box-music.wav" class="download-link">Download</a>
+                </div>
+                <div class="download-item">
+                    <h3>🎬 Video</h3>
+                    <p>ビデオセグメント (MP4)</p>
+                    <a href="videos/segment-1.mp4" download="rose-music-box-video.mp4" class="download-link">Download</a>
+                </div>
+                <div class="download-item">
+                    <h3>🎭 Final Video</h3>
+                    <p>完成版ビデオ (MP4)</p>
+                    <a href="final/final-music-video.mp4" download="rose-music-box-final.mp4" class="download-link">Download</a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Media control functions
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = 'images/generated-image.png';
+            link.download = 'rose-music-box-image.png';
+            link.click();
+        }
+
+        function downloadMusic() {
+            const link = document.createElement('a');
+            link.href = 'music/generated-music.wav';
+            link.download = 'rose-music-box-music.wav';
+            link.click();
+        }
+
+        function downloadVideo() {
+            const link = document.createElement('a');
+            link.href = 'videos/segment-1.mp4';
+            link.download = 'rose-music-box-video.mp4';
+            link.click();
+        }
+
+        function downloadFinalVideo() {
+            const link = document.createElement('a');
+            link.href = 'final/final-music-video.mp4';
+            link.download = 'rose-music-box-final.mp4';
+            link.click();
+        }
+
+        // Audio controls
+        function playMusic() {
+            const audio = document.querySelector('audio');
+            audio.play();
+        }
+
+        function pauseMusic() {
+            const audio = document.querySelector('audio');
+            audio.pause();
+        }
+
+        // Video controls
+        function playVideo() {
+            const video = document.querySelector('video[muted]');
+            video.play();
+        }
+
+        function pauseVideo() {
+            const video = document.querySelector('video[muted]');
+            video.pause();
+        }
+
+        function playFinalVideo() {
+            const videos = document.querySelectorAll('video');
+            const finalVideo = videos[videos.length - 1];
+            finalVideo.play();
+        }
+
+        function pauseFinalVideo() {
+            const videos = document.querySelectorAll('video');
+            const finalVideo = videos[videos.length - 1];
+            finalVideo.pause();
+        }
+
+        // Add fade-in animation on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        });
+
+        document.querySelectorAll('.media-card').forEach(card => {
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
