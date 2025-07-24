@@ -18,9 +18,9 @@ inputs:
     required: false
     default: '0,0,100'
   auto-rotate:
-    description: 'Enable automatic rotation'
+    description: 'Enable automatic rotation (deprecated - use double-click)'
     required: false
-    default: 'true'
+    default: 'false'
   background-color:
     description: 'Background color (hex format e.g., "#000000")'
     required: false
@@ -232,6 +232,9 @@ runs:
                     <div class="control-item">
                         Point Size: <input type="range" id="pointSize" min="0.1" max="5.0" step="0.1" value="POINT_SIZE_PLACEHOLDER" onchange="updatePointSize(this.value)">
                     </div>
+                    <div class="control-item" style="font-size: 0.8em; opacity: 0.8;">
+                        🖱️ ダブルクリック: 回転ON/OFF | スペース: 回転切替
+                    </div>
                     <div class="control-item">
                         Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="ANIMATION_SPEED_PLACEHOLDER" onchange="updateRotationSpeed(this.value)">
                     </div>
@@ -304,6 +307,12 @@ runs:
                     
                     // Keyboard controls
                     document.addEventListener('keydown', onKeyDown);
+                    
+                    // Double-click to toggle rotation
+                    renderer.domElement.addEventListener('dblclick', (event) => {
+                        event.preventDefault();
+                        toggleAutoRotate();
+                    });
                 }
                 
                 function loadPointCloud() {

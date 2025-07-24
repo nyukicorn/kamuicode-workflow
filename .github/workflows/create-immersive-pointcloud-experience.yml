@@ -82,11 +82,6 @@ on:
         type: string
         default: '1.5'
       
-      auto-rotate:
-        description: '自動回転を有効にする'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -242,7 +237,6 @@ jobs:
           output-folder: 'docs/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           viewer-title: ${{ inputs.viewer-title }}
           camera-position: '0,0,150'
-          auto-rotate: ${{ inputs.auto-rotate }}
           background-color: ${{ steps.bg-color.outputs.color }}
           point-size: ${{ inputs.point-size }}
           animation-speed: '1.0'
