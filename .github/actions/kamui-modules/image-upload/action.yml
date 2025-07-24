@@ -46,10 +46,10 @@ runs:
         echo "Image URL: $IMAGE_URL"
         echo "Output folder: $OUTPUT_FOLDER"
         
-        # URL形式の検証
-        if [[ ! "$IMAGE_URL" =~ ^https://github\.com/.*\.(png|jpg|jpeg|webp) ]]; then
+        # URL形式の検証（GitHub添付URLパターン）
+        if [[ ! "$IMAGE_URL" =~ ^https://github\.com/(user-attachments/assets/|.*\.(png|jpg|jpeg|webp)) ]]; then
           echo "::error::❌ Invalid GitHub attachment URL format"
-          echo "Expected: https://github.com/.../image.(png|jpg|jpeg|webp)"
+          echo "Expected: https://github.com/user-attachments/assets/... or https://github.com/.../image.(png|jpg|jpeg|webp)"
           exit 1
         fi
         
