@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8'?><Error><Code>SignatureDoesNotMatch</Code><Message>Access denied.</Message><Details>The request signature we calculated does not match the signature you provided. Check your Google secret key and signing method.</Details><StringToSign>GOOG4-RSA-SHA256
+20250725T132559Z
+20250725/20250725/storage/goog4_request
+cbb6ba6887ba0153e4a9e4092bf4045b3af55e2064aaee8ff01c81bb5862af5a</StringToSign><CanonicalRequest>GET
+/geminicli/lyria_outputs/lyria_output_quchBZwHR.wav
+X-Goog-Algorithm=GOOG4-RSA-SHA256&amp;X-Goog-Credential=gcs-signer%40kamui-445410.iam.gserviceaccount.com%2F20250725%2F20250725%2Fstorage%2Fgoog4_request&amp;X-Goog-Date=20250725T132559Z&amp;X-Goog-Expires=3599&amp;X-Goog-SignedHeaders=host
+host:storage.googleapis.com
+
+host
+UNSIGNED-PAYLOAD</CanonicalRequest></Error>
