@@ -294,16 +294,6 @@ function setupControlsAutoHide() {
         }, 3000); // Hide after 3 seconds
     };
     
-    // Mouse position tracking
-    document.addEventListener('mousemove', (e) => {
-        // Show if mouse is in left 300px of screen
-        if (e.clientX < 300) {
-            showControls();
-        } else {
-            scheduleHide();
-        }
-    });
-    
     // Show when hovering over controls
     controls.addEventListener('mouseenter', showControls);
     controls.addEventListener('mouseleave', scheduleHide);
@@ -315,14 +305,26 @@ function setupControlsAutoHide() {
 }
 
 function setupMouseInteraction() {
+    const controls = document.getElementById('controls');
+    
     // Track mouse position for 3D interaction
     document.addEventListener('mousemove', (event) => {
+        // Handle control visibility
+        if (event.clientX < 300) {
+            controls.classList.add('visible');
+        }
+        
         // Normalize mouse coordinates to [-1, 1]
         mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
         mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
         
         // Convert to world coordinates
         updateMouseWorldPosition();
+        
+        // Debug log occasionally
+        if (Math.random() < 0.01) {
+            console.log(`🖱️ Mouse: screen(${event.clientX}, ${event.clientY}) normalized(${mousePosition.x.toFixed(2)}, ${mousePosition.y.toFixed(2)})`);
+        }
     });
 }
 
@@ -333,14 +335,18 @@ function updateMouseWorldPosition() {
     const raycaster = new THREE.Raycaster();
     raycaster.setFromCamera(mousePosition, camera);
     
-    // Get intersection with point cloud bounds
-    const box = new THREE.Box3().setFromObject(pointCloud);
-    const center = box.getCenter(new THREE.Vector3());
-    const distance = camera.position.distanceTo(center);
+    // Try to intersect with the point cloud geometry
+    const intersects = raycaster.intersectObject(pointCloud);
     
-    // Project mouse position onto a plane at the point cloud center
-    mouseWorldPosition.copy(raycaster.ray.origin)
-        .add(raycaster.ray.direction.multiplyScalar(distance * 0.8));
+    if (intersects.length > 0) {
+        // Use intersection point if available
+        mouseWorldPosition.copy(intersects[0].point);
+    } else {
+        // Fallback: project onto a plane at a fixed distance
+        const distance = 100; // Fixed distance for more predictable behavior
+        mouseWorldPosition.copy(raycaster.ray.origin)
+            .add(raycaster.ray.direction.multiplyScalar(distance));
+    }
 }
 
 function storeOriginalPositions() {
@@ -357,8 +363,10 @@ function applyMouseGravity() {
     const positions = pointCloud.geometry.attributes.position;
     const positionArray = positions.array;
     
-    const gravityStrength = 0.02; // Adjustable gravity strength
-    const maxDistance = 50; // Maximum effective distance
+    const gravityStrength = 0.1; // Increased strength for more visible effect
+    const maxDistance = 100; // Increased distance for wider effect
+    
+    let affectedParticles = 0;
     
     for (let i = 0; i < positionArray.length; i += 3) {
         const originalX = originalPositions[i];
@@ -372,21 +380,27 @@ function applyMouseGravity() {
         const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
         
         if (distance < maxDistance && distance > 0) {
-            // Apply gravity effect (inverse square law with smoothing)
+            affectedParticles++;
+            
+            // Apply gravity effect (linear falloff for more visible effect)
             const force = gravityStrength * (maxDistance - distance) / maxDistance;
-            const smoothForce = force * force; // Smooth falloff
             
             // Move particle towards mouse
-            positionArray[i] = originalX + dx * smoothForce;
-            positionArray[i + 1] = originalY + dy * smoothForce;
-            positionArray[i + 2] = originalZ + dz * smoothForce;
+            positionArray[i] = originalX + dx * force;
+            positionArray[i + 1] = originalY + dy * force;
+            positionArray[i + 2] = originalZ + dz * force;
         } else {
             // Return to original position when far from mouse
-            const returnSpeed = 0.05;
+            const returnSpeed = 0.1; // Increased return speed
             positionArray[i] += (originalX - positionArray[i]) * returnSpeed;
             positionArray[i + 1] += (originalY - positionArray[i + 1]) * returnSpeed;
             positionArray[i + 2] += (originalZ - positionArray[i + 2]) * returnSpeed;
         }
+    }
+    
+    // Debug log every 60 frames (once per second at 60fps)
+    if (Math.random() < 0.016) {
+        console.log(`🧲 Mouse gravity: ${affectedParticles} particles affected, mouse at (${mouseWorldPosition.x.toFixed(1)}, ${mouseWorldPosition.y.toFixed(1)}, ${mouseWorldPosition.z.toFixed(1)})`);
     }
     
     positions.needsUpdate = true;
