@@ -39,7 +39,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pointcloud-viewer"
+  group: "pages"
   cancel-in-progress: false
 
 jobs:

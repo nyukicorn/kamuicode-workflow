@@ -93,7 +93,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "immersive-pointcloud"
+  group: "pages"
   cancel-in-progress: false
 
 jobs:
