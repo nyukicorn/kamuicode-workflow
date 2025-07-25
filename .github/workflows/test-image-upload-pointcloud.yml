@@ -21,7 +21,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "test-image-upload"
+  group: "pages"
   cancel-in-progress: false
 
 jobs:

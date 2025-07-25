@@ -104,6 +104,15 @@ on:
           - rainbow
         default: 'auto'
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   create-threejs-experience:
     runs-on: ubuntu-latest
