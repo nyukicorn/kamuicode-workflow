@@ -16,6 +16,12 @@ directionalLight = null;  // Initialize to avoid TDZ
 brightnessLevel = 0.2;  // Default brightness level (dim, so button shows "bright")
 glowIntensity = 0.0;  // Default no glow
 
+// Mouse interaction variables
+let mousePosition = new THREE.Vector2();
+let mouseWorldPosition = new THREE.Vector3();
+let originalPositions = null;
+let mouseGravityEnabled = true;
+
 // Initialize the viewer
 function init() {
     // Scene setup
@@ -84,6 +90,9 @@ function init() {
     
     // Setup control panel auto-hide
     setupControlsAutoHide();
+    
+    // Setup mouse interaction
+    setupMouseInteraction();
 }
 
 function loadPointCloud() {
@@ -112,6 +121,9 @@ function loadPointCloud() {
         
         // Auto-fit camera
         fitCameraToObject(pointCloud);
+        
+        // Store original positions for mouse interaction
+        storeOriginalPositions();
         
         console.log('✅ Point cloud loaded:', pointCount, 'points');
         console.log('Rotation center set to:', controls.target);
@@ -148,6 +160,12 @@ function fitCameraToObject(object) {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+    
+    // Apply mouse gravity effect
+    if (mouseGravityEnabled && pointCloud && originalPositions) {
+        applyMouseGravity();
+    }
+    
     renderer.render(scene, camera);
 }
 
@@ -296,6 +314,112 @@ function setupControlsAutoHide() {
     }, 5000);
 }
 
+function setupMouseInteraction() {
+    // Track mouse position for 3D interaction
+    document.addEventListener('mousemove', (event) => {
+        // Normalize mouse coordinates to [-1, 1]
+        mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        // Convert to world coordinates
+        updateMouseWorldPosition();
+    });
+}
+
+function updateMouseWorldPosition() {
+    if (!camera || !pointCloud) return;
+    
+    // Create a raycaster to get 3D mouse position
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    
+    // Get intersection with point cloud bounds
+    const box = new THREE.Box3().setFromObject(pointCloud);
+    const center = box.getCenter(new THREE.Vector3());
+    const distance = camera.position.distanceTo(center);
+    
+    // Project mouse position onto a plane at the point cloud center
+    mouseWorldPosition.copy(raycaster.ray.origin)
+        .add(raycaster.ray.direction.multiplyScalar(distance * 0.8));
+}
+
+function storeOriginalPositions() {
+    if (!pointCloud) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    originalPositions = new Float32Array(positions.array.length);
+    originalPositions.set(positions.array);
+    
+    console.log('📍 Original positions stored for mouse interaction');
+}
+
+function applyMouseGravity() {
+    const positions = pointCloud.geometry.attributes.position;
+    const positionArray = positions.array;
+    
+    const gravityStrength = 0.02; // Adjustable gravity strength
+    const maxDistance = 50; // Maximum effective distance
+    
+    for (let i = 0; i < positionArray.length; i += 3) {
+        const originalX = originalPositions[i];
+        const originalY = originalPositions[i + 1];
+        const originalZ = originalPositions[i + 2];
+        
+        // Calculate distance to mouse
+        const dx = mouseWorldPosition.x - originalX;
+        const dy = mouseWorldPosition.y - originalY;
+        const dz = mouseWorldPosition.z - originalZ;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        
+        if (distance < maxDistance && distance > 0) {
+            // Apply gravity effect (inverse square law with smoothing)
+            const force = gravityStrength * (maxDistance - distance) / maxDistance;
+            const smoothForce = force * force; // Smooth falloff
+            
+            // Move particle towards mouse
+            positionArray[i] = originalX + dx * smoothForce;
+            positionArray[i + 1] = originalY + dy * smoothForce;
+            positionArray[i + 2] = originalZ + dz * smoothForce;
+        } else {
+            // Return to original position when far from mouse
+            const returnSpeed = 0.05;
+            positionArray[i] += (originalX - positionArray[i]) * returnSpeed;
+            positionArray[i + 1] += (originalY - positionArray[i + 1]) * returnSpeed;
+            positionArray[i + 2] += (originalZ - positionArray[i + 2]) * returnSpeed;
+        }
+    }
+    
+    positions.needsUpdate = true;
+}
+
+function toggleMouseGravity() {
+    mouseGravityEnabled = !mouseGravityEnabled;
+    const button = document.getElementById('gravityToggle');
+    
+    if (mouseGravityEnabled) {
+        button.innerHTML = '🧲 Gravity';
+        button.title = 'Mouse gravity enabled - move mouse to attract particles';
+        console.log('🧲 Mouse gravity enabled');
+    } else {
+        button.innerHTML = '❌ No Gravity';
+        button.title = 'Mouse gravity disabled';
+        console.log('❌ Mouse gravity disabled');
+        
+        // Reset particles to original positions when disabled
+        resetParticlePositions();
+    }
+}
+
+function resetParticlePositions() {
+    if (!pointCloud || !originalPositions) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    positions.array.set(originalPositions);
+    positions.needsUpdate = true;
+    
+    console.log('🔄 Particles reset to original positions');
+}
+
 MUSIC_FUNCTIONS_PLACEHOLDER
 
 // Make functions globally accessible for HTML events
@@ -305,6 +429,7 @@ window.updatePointSize = updatePointSize;
 window.updateRotationSpeed = updateRotationSpeed;
 window.toggleBrightness = toggleBrightness;
 window.updateGlowIntensity = updateGlowIntensity;
+window.toggleMouseGravity = toggleMouseGravity;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application
