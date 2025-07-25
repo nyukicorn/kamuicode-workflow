@@ -227,7 +227,7 @@ runs:
                     <div class="control-item">
                         <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
                         <button onclick="resetCamera()">📷 Reset View</button>
-                        <button onclick="toggleBrightness()" id="brightnessToggle">🔆 明るく</button>
+                        <button onclick="toggleBrightness()" id="brightnessToggle">☀️ 明るく</button>
                     </div>
                     MUSIC_BUTTON_PLACEHOLDER
                     <div class="control-item">
@@ -446,15 +446,15 @@ runs:
                     // Cycle through brightness levels: 0.2 -> 0.5 -> 0.8 -> 0.2
                     if (brightnessLevel <= 0.2) {
                         brightnessLevel = 0.5;
-                        button.innerHTML = '🔅 暗く';
-                        button.title = 'Make dimmer';
+                        button.innerHTML = '☀️ 明るく';
+                        button.title = 'Make brighter';
                     } else if (brightnessLevel <= 0.5) {
                         brightnessLevel = 0.8;
-                        button.innerHTML = '🔅 暗く';
+                        button.innerHTML = '🌙 暗く';
                         button.title = 'Make dimmer';
                     } else {
                         brightnessLevel = 0.2;
-                        button.innerHTML = '🔆 明るく';
+                        button.innerHTML = '☀️ 明るく';
                         button.title = 'Make brighter';
                     }
                     
