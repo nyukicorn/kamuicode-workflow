@@ -403,29 +403,44 @@ function applyMouseGravity() {
         }
     }
     
-    // Second pass: Wave propagation between neighboring particles
+    // Second pass: Optimized wave propagation with sampling
     if (waveIntensity > 0) {
-        const neighborDistance = 20; // Distance to consider particles as neighbors
-        const waveStrength = waveIntensity * 0.02;
+        const neighborDistance = 25; // Distance to consider particles as neighbors
+        const waveStrength = waveIntensity * 0.03;
+        const maxSampleSize = Math.min(2000, Math.floor(positionArray.length / 30)); // Limit sampling
+        const sampleStep = Math.max(1, Math.floor(positionArray.length / (maxSampleSize * 3)));
         
-        for (let i = 0; i < positionArray.length; i += 3) {
+        // Only process a subset of particles for wave propagation
+        for (let i = 0; i < positionArray.length; i += sampleStep * 3) {
+            // Skip if this particle has no velocity
+            if (Math.abs(particleVelocities[i]) < 0.001 && 
+                Math.abs(particleVelocities[i + 1]) < 0.001 && 
+                Math.abs(particleVelocities[i + 2]) < 0.001) {
+                continue;
+            }
+            
             let neighborInfluenceX = 0;
             let neighborInfluenceY = 0;
             let neighborInfluenceZ = 0;
             let neighborCount = 0;
+            const maxNeighbors = 50; // Limit neighbors to check
             
-            // Check nearby particles for wave propagation
-            for (let j = 0; j < positionArray.length; j += 3) {
+            // Check nearby particles with early termination
+            for (let j = 0; j < positionArray.length && neighborCount < maxNeighbors; j += 6) { // Skip every other particle
                 if (i === j) continue;
                 
                 const dx = positionArray[j] - positionArray[i];
                 const dy = positionArray[j + 1] - positionArray[i + 1];
                 const dz = positionArray[j + 2] - positionArray[i + 2];
-                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                 
-                if (distance < neighborDistance && distance > 0) {
-                    // Calculate influence from neighbor's velocity
+                // Quick distance check without sqrt for performance
+                const distanceSquared = dx * dx + dy * dy + dz * dz;
+                const neighborDistanceSquared = neighborDistance * neighborDistance;
+                
+                if (distanceSquared < neighborDistanceSquared && distanceSquared > 0.01) {
+                    const distance = Math.sqrt(distanceSquared);
                     const influence = (neighborDistance - distance) / neighborDistance;
+                    
                     neighborInfluenceX += particleVelocities[j] * influence;
                     neighborInfluenceY += particleVelocities[j + 1] * influence;
                     neighborInfluenceZ += particleVelocities[j + 2] * influence;
@@ -433,11 +448,18 @@ function applyMouseGravity() {
                 }
             }
             
-            // Apply wave propagation
+            // Apply wave propagation to nearby particles
             if (neighborCount > 0) {
-                particleVelocities[i] += (neighborInfluenceX / neighborCount) * waveStrength;
-                particleVelocities[i + 1] += (neighborInfluenceY / neighborCount) * waveStrength;
-                particleVelocities[i + 2] += (neighborInfluenceZ / neighborCount) * waveStrength;
+                const avgInfluenceX = (neighborInfluenceX / neighborCount) * waveStrength;
+                const avgInfluenceY = (neighborInfluenceY / neighborCount) * waveStrength;
+                const avgInfluenceZ = (neighborInfluenceZ / neighborCount) * waveStrength;
+                
+                // Apply to current particle and some neighbors
+                for (let k = Math.max(0, i - 9); k <= Math.min(positionArray.length - 3, i + 9); k += 3) {
+                    particleVelocities[k] += avgInfluenceX * 0.3;
+                    particleVelocities[k + 1] += avgInfluenceY * 0.3;
+                    particleVelocities[k + 2] += avgInfluenceZ * 0.3;
+                }
             }
         }
     }
@@ -469,8 +491,8 @@ function applyMouseGravity() {
         particleVelocities[i + 2] += returnForceZ;
     }
     
-    // Debug log every 60 frames (once per second at 60fps)
-    if (Math.random() < 0.016) {
+    // Debug log every 120 frames (reduce logging frequency)
+    if (Math.random() < 0.008) {
         console.log(`🌊 Wave gravity: ${affectedParticles} particles directly affected, wave intensity: ${waveIntensity.toFixed(2)}`);
     }
     
