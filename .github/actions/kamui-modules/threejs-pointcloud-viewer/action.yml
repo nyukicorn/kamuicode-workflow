@@ -227,7 +227,7 @@ runs:
                     <div class="control-item">
                         <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
                         <button onclick="resetCamera()">📷 Reset View</button>
-                        <button onclick="toggleDarkMode()" id="darkModeToggle">🌙 Light Mode</button>
+                        <button onclick="toggleBrightness()" id="brightnessToggle">🔆 明るく</button>
                     </div>
                     MUSIC_BUTTON_PLACEHOLDER
                     <div class="control-item">
@@ -267,11 +267,11 @@ runs:
                 let musicPlaying = false;
                 
                 // Lighting and appearance
-                let ambientLight, isDarkMode, glowIntensity;  // Declare without initialization
+                let ambientLight, brightnessLevel, glowIntensity;  // Declare without initialization
                 
                 // Initialize appearance variables
                 ambientLight = null;  // Initialize to avoid TDZ
-                isDarkMode = true;  // Default to dark mode
+                brightnessLevel = 0.3;  // Default brightness level
                 glowIntensity = 0.0;  // Default no glow
                 
                 // Initialize the viewer
@@ -280,8 +280,8 @@ runs:
                     scene = new THREE.Scene();
                     scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
                     
-                    // Lighting setup (default to dark mode)
-                    ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+                    // Lighting setup (use default brightness level)
+                    ambientLight = new THREE.AmbientLight(0xffffff, brightnessLevel);
                     scene.add(ambientLight);
                     
                     // Camera setup
@@ -440,23 +440,26 @@ runs:
                     controls.autoRotateSpeed = rotationSpeed;
                 }
                 
-                function toggleDarkMode() {
-                    isDarkMode = !isDarkMode;
-                    const button = document.getElementById('darkModeToggle');
+                function toggleBrightness() {
+                    const button = document.getElementById('brightnessToggle');
                     
-                    if (isDarkMode) {
-                        // Switch to dark mode - dramatic change
-                        scene.background = new THREE.Color('#000000');  // Pure black
-                        ambientLight.intensity = 0.2;  // Very dim
-                        button.innerHTML = '🌙 Light Mode';
-                        button.title = 'Switch to light mode';
+                    // Cycle through brightness levels: 0.2 -> 0.5 -> 0.8 -> 0.2
+                    if (brightnessLevel <= 0.2) {
+                        brightnessLevel = 0.5;
+                        button.innerHTML = '🔅 暗く';
+                        button.title = 'Make dimmer';
+                    } else if (brightnessLevel <= 0.5) {
+                        brightnessLevel = 0.8;
+                        button.innerHTML = '🔅 暗く';
+                        button.title = 'Make dimmer';
                     } else {
-                        // Switch to light mode - bright background
-                        scene.background = new THREE.Color('#2a2a2a');  // Dark gray
-                        ambientLight.intensity = 0.8;  // Much brighter
-                        button.innerHTML = '☀️ Dark Mode';
-                        button.title = 'Switch to dark mode';
+                        brightnessLevel = 0.2;
+                        button.innerHTML = '🔆 明るく';
+                        button.title = 'Make brighter';
                     }
+                    
+                    // Apply brightness change
+                    ambientLight.intensity = brightnessLevel;
                 }
                 
                 function updateGlowIntensity(value) {
@@ -497,7 +500,7 @@ runs:
                 window.resetCamera = resetCamera;
                 window.updatePointSize = updatePointSize;
                 window.updateRotationSpeed = updateRotationSpeed;
-                window.toggleDarkMode = toggleDarkMode;
+                window.toggleBrightness = toggleBrightness;
                 window.updateGlowIntensity = updateGlowIntensity;
                 MUSIC_WINDOW_PLACEHOLDER
                 
