@@ -267,9 +267,11 @@ runs:
                 let musicPlaying = false;
                 
                 // Lighting and appearance
-                var ambientLight = null;  // Use var to avoid temporal dead zone
-                let isDarkMode = true;  // Default to dark mode
-                let glowIntensity = 0.0;  // Default no glow
+                let ambientLight, isDarkMode, glowIntensity;  // Declare without initialization
+                
+                // Initialize appearance variables
+                isDarkMode = true;  // Default to dark mode
+                glowIntensity = 0.0;  // Default no glow
                 
                 // Initialize the viewer
                 function init() {
