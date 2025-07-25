@@ -272,7 +272,7 @@ runs:
                 // Initialize appearance variables
                 ambientLight = null;  // Initialize to avoid TDZ
                 directionalLight = null;  // Initialize to avoid TDZ
-                brightnessLevel = 0.5;  // Default brightness level (medium)
+                brightnessLevel = 0.2;  // Default brightness level (dim, so button shows "bright")
                 glowIntensity = 0.0;  // Default no glow
                 
                 // Initialize the viewer
@@ -303,7 +303,7 @@ runs:
                     controls.autoRotateSpeed = rotationSpeed;
                     
                     // Additional lighting (directional light)
-                    directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.2);
+                    directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.5);
                     directionalLight.position.set(1, 1, 1);
                     scene.add(directionalLight);
                     
@@ -443,16 +443,14 @@ runs:
                 function toggleBrightness() {
                     const button = document.getElementById('brightnessToggle');
                     
-                    // Cycle through brightness levels: 0.2 -> 0.5 -> 0.8 -> 0.2
-                    if (brightnessLevel <= 0.2) {
-                        brightnessLevel = 0.5;
-                        button.innerHTML = '☀️ 明るく';
-                        button.title = 'Make brighter';
-                    } else if (brightnessLevel <= 0.5) {
+                    // Simple 2-level toggle: dim (0.2) <-> bright (0.8)
+                    if (brightnessLevel <= 0.5) {
+                        // Make it bright
                         brightnessLevel = 0.8;
                         button.innerHTML = '🌙 暗く';
                         button.title = 'Make dimmer';
                     } else {
+                        // Make it dim
                         brightnessLevel = 0.2;
                         button.innerHTML = '☀️ 明るく';
                         button.title = 'Make brighter';
@@ -460,7 +458,7 @@ runs:
                     
                     // Apply brightness change to both lights for dramatic effect
                     ambientLight.intensity = brightnessLevel;
-                    directionalLight.intensity = brightnessLevel * 1.2; // Directional light slightly stronger
+                    directionalLight.intensity = brightnessLevel * 1.5; // Even more dramatic difference
                 }
                 
                 function updateGlowIntensity(value) {
