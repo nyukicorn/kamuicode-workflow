@@ -23,6 +23,8 @@ let originalPositions = null;
 let mouseGravityEnabled = true;
 let gravityStrength = 0.1;  // Default strength
 let gravityRange = 100;     // Default range
+let waveIntensity = 0.3;    // Wave propagation intensity (0-1)
+let particleVelocities = null; // Store particle velocities for wave effect
 
 // Initialize the viewer
 function init() {
@@ -358,7 +360,11 @@ function storeOriginalPositions() {
     originalPositions = new Float32Array(positions.array.length);
     originalPositions.set(positions.array);
     
-    console.log('📍 Original positions stored for mouse interaction');
+    // Initialize particle velocities for wave effect
+    particleVelocities = new Float32Array(positions.array.length);
+    particleVelocities.fill(0);
+    
+    console.log('📍 Original positions and velocities stored for mouse interaction');
 }
 
 function applyMouseGravity() {
@@ -370,7 +376,9 @@ function applyMouseGravity() {
     const maxDistance = gravityRange;
     
     let affectedParticles = 0;
+    const dampening = 0.95; // Velocity dampening factor
     
+    // First pass: Direct mouse gravity effect
     for (let i = 0; i < positionArray.length; i += 3) {
         const originalX = originalPositions[i];
         const originalY = originalPositions[i + 1];
@@ -388,22 +396,82 @@ function applyMouseGravity() {
             // Apply gravity effect (linear falloff for more visible effect)
             const force = currentStrength * (maxDistance - distance) / maxDistance;
             
-            // Move particle towards mouse
-            positionArray[i] = originalX + dx * force;
-            positionArray[i + 1] = originalY + dy * force;
-            positionArray[i + 2] = originalZ + dz * force;
-        } else {
-            // Return to original position when far from mouse
-            const returnSpeed = 0.1; // Increased return speed
-            positionArray[i] += (originalX - positionArray[i]) * returnSpeed;
-            positionArray[i + 1] += (originalY - positionArray[i + 1]) * returnSpeed;
-            positionArray[i + 2] += (originalZ - positionArray[i + 2]) * returnSpeed;
+            // Add velocity for wave effect
+            particleVelocities[i] += dx * force * 0.1;
+            particleVelocities[i + 1] += dy * force * 0.1;
+            particleVelocities[i + 2] += dz * force * 0.1;
         }
+    }
+    
+    // Second pass: Wave propagation between neighboring particles
+    if (waveIntensity > 0) {
+        const neighborDistance = 20; // Distance to consider particles as neighbors
+        const waveStrength = waveIntensity * 0.02;
+        
+        for (let i = 0; i < positionArray.length; i += 3) {
+            let neighborInfluenceX = 0;
+            let neighborInfluenceY = 0;
+            let neighborInfluenceZ = 0;
+            let neighborCount = 0;
+            
+            // Check nearby particles for wave propagation
+            for (let j = 0; j < positionArray.length; j += 3) {
+                if (i === j) continue;
+                
+                const dx = positionArray[j] - positionArray[i];
+                const dy = positionArray[j + 1] - positionArray[i + 1];
+                const dz = positionArray[j + 2] - positionArray[i + 2];
+                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                
+                if (distance < neighborDistance && distance > 0) {
+                    // Calculate influence from neighbor's velocity
+                    const influence = (neighborDistance - distance) / neighborDistance;
+                    neighborInfluenceX += particleVelocities[j] * influence;
+                    neighborInfluenceY += particleVelocities[j + 1] * influence;
+                    neighborInfluenceZ += particleVelocities[j + 2] * influence;
+                    neighborCount++;
+                }
+            }
+            
+            // Apply wave propagation
+            if (neighborCount > 0) {
+                particleVelocities[i] += (neighborInfluenceX / neighborCount) * waveStrength;
+                particleVelocities[i + 1] += (neighborInfluenceY / neighborCount) * waveStrength;
+                particleVelocities[i + 2] += (neighborInfluenceZ / neighborCount) * waveStrength;
+            }
+        }
+    }
+    
+    // Third pass: Apply velocities and handle return to original position
+    for (let i = 0; i < positionArray.length; i += 3) {
+        const originalX = originalPositions[i];
+        const originalY = originalPositions[i + 1];
+        const originalZ = originalPositions[i + 2];
+        
+        // Apply velocity
+        positionArray[i] += particleVelocities[i];
+        positionArray[i + 1] += particleVelocities[i + 1];
+        positionArray[i + 2] += particleVelocities[i + 2];
+        
+        // Dampen velocity
+        particleVelocities[i] *= dampening;
+        particleVelocities[i + 1] *= dampening;
+        particleVelocities[i + 2] *= dampening;
+        
+        // Add spring force back to original position
+        const returnStrength = 0.02;
+        const returnForceX = (originalX - positionArray[i]) * returnStrength;
+        const returnForceY = (originalY - positionArray[i + 1]) * returnStrength;
+        const returnForceZ = (originalZ - positionArray[i + 2]) * returnStrength;
+        
+        particleVelocities[i] += returnForceX;
+        particleVelocities[i + 1] += returnForceY;
+        particleVelocities[i + 2] += returnForceZ;
     }
     
     // Debug log every 60 frames (once per second at 60fps)
     if (Math.random() < 0.016) {
-        console.log(`🧲 Mouse gravity: ${affectedParticles} particles affected, mouse at (${mouseWorldPosition.x.toFixed(1)}, ${mouseWorldPosition.y.toFixed(1)}, ${mouseWorldPosition.z.toFixed(1)})`);
+        console.log(`🌊 Wave gravity: ${affectedParticles} particles directly affected, wave intensity: ${waveIntensity.toFixed(2)}`);
     }
     
     positions.needsUpdate = true;
@@ -432,9 +500,15 @@ function resetParticlePositions() {
     
     const positions = pointCloud.geometry.attributes.position;
     positions.array.set(originalPositions);
+    
+    // Reset velocities
+    if (particleVelocities) {
+        particleVelocities.fill(0);
+    }
+    
     positions.needsUpdate = true;
     
-    console.log('🔄 Particles reset to original positions');
+    console.log('🔄 Particles and velocities reset to original state');
 }
 
 MUSIC_FUNCTIONS_PLACEHOLDER
@@ -459,8 +533,14 @@ function updateGravityStrength(value) {
     console.log(`🧲 Gravity strength updated to: ${gravityStrength}`);
 }
 
+function updateWaveIntensity(value) {
+    waveIntensity = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    console.log(`🌊 Wave intensity updated to: ${waveIntensity}`);
+}
+
 window.updateGravityRange = updateGravityRange;
 window.updateGravityStrength = updateGravityStrength;
+window.updateWaveIntensity = updateWaveIntensity;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application
