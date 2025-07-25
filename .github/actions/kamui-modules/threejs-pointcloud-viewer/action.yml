@@ -194,6 +194,8 @@ runs:
                     border-radius: 4px;
                     cursor: pointer;
                     margin: 0 5px 5px 0;
+                    min-width: 120px;
+                    text-align: center;
                 }
                 
                 button:hover {
@@ -201,15 +203,15 @@ runs:
                 }
                 
                 .music-button {
-                    background: #2196F3;
+                    background: #4CAF50;
                 }
                 
                 .music-button:hover {
-                    background: #1976D2;
+                    background: #45a049;
                 }
                 
                 .music-button.playing {
-                    background: #4CAF50;
+                    background: #2E7D32;
                 }
                 
                 input[type="range"] {
@@ -227,7 +229,7 @@ runs:
                     <div class="control-item">
                         <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
                         <button onclick="resetCamera()">📷 Reset View</button>
-                        <button onclick="toggleBrightness()" id="brightnessToggle">☀️ 明るく</button>
+                        <button onclick="toggleBrightness()" id="brightnessToggle">☀️ Light</button>
                     </div>
                     MUSIC_BUTTON_PLACEHOLDER
                     <div class="control-item">
@@ -452,13 +454,13 @@ runs:
                     if (brightnessLevel <= 0.5) {
                         // Make it bright
                         brightnessLevel = 0.8;
-                        button.innerHTML = '🌙 暗く';
-                        button.title = 'Make dimmer';
+                        button.innerHTML = '🌙 Dark';
+                        button.title = 'Switch to dark mode';
                     } else {
                         // Make it dim
                         brightnessLevel = 0.2;
-                        button.innerHTML = '☀️ 明るく';
-                        button.title = 'Make brighter';
+                        button.innerHTML = '☀️ Light';
+                        button.title = 'Switch to light mode';
                     }
                     
                     // Apply brightness change to both lights for dramatic effect
@@ -531,7 +533,7 @@ runs:
           # 音楽ボタンを追加（一時ファイルを使用）
           cat > /tmp/music_button.html << 'EOF'
                     <div class="control-item">
-                        <button id="musicToggle" class="music-button">🎵 音楽を再生</button>
+                        <button id="musicToggle" class="music-button">🎵 Play Music</button>
                     </div>
         EOF
           sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/r /tmp/music_button.html" "$OUTPUT_FOLDER/index.html"
@@ -556,15 +558,15 @@ runs:
           echo "        " >> /tmp/music_functions.js
           echo "        if (audio.paused) {" >> /tmp/music_functions.js
           echo "            audio.play().then(() => {" >> /tmp/music_functions.js
-          echo "                playButton.textContent = '🔇 音楽を停止';" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
           echo "                playButton.classList.add('playing');" >> /tmp/music_functions.js
           echo "            }).catch(error => {" >> /tmp/music_functions.js
           echo "                console.log('Music file not found:', error);" >> /tmp/music_functions.js
-          echo "                playButton.textContent = '❌ 音楽ファイルなし';" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '❌ No Music File';" >> /tmp/music_functions.js
           echo "            });" >> /tmp/music_functions.js
           echo "        } else {" >> /tmp/music_functions.js
           echo "            audio.pause();" >> /tmp/music_functions.js
-          echo "            playButton.textContent = '🎵 音楽を再生';" >> /tmp/music_functions.js
+          echo "            playButton.textContent = '🎵 Play Music';" >> /tmp/music_functions.js
           echo "            playButton.classList.remove('playing');" >> /tmp/music_functions.js
           echo "        }" >> /tmp/music_functions.js
           echo "    });" >> /tmp/music_functions.js
