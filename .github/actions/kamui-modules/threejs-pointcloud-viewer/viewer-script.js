@@ -21,6 +21,8 @@ let mousePosition = new THREE.Vector2();
 let mouseWorldPosition = new THREE.Vector3();
 let originalPositions = null;
 let mouseGravityEnabled = true;
+let gravityStrength = 0.1;  // Default strength
+let gravityRange = 100;     // Default range
 
 // Initialize the viewer
 function init() {
@@ -363,8 +365,9 @@ function applyMouseGravity() {
     const positions = pointCloud.geometry.attributes.position;
     const positionArray = positions.array;
     
-    const gravityStrength = 0.1; // Increased strength for more visible effect
-    const maxDistance = 100; // Increased distance for wider effect
+    // Use dynamic values from sliders
+    const currentStrength = gravityStrength;
+    const maxDistance = gravityRange;
     
     let affectedParticles = 0;
     
@@ -383,7 +386,7 @@ function applyMouseGravity() {
             affectedParticles++;
             
             // Apply gravity effect (linear falloff for more visible effect)
-            const force = gravityStrength * (maxDistance - distance) / maxDistance;
+            const force = currentStrength * (maxDistance - distance) / maxDistance;
             
             // Move particle towards mouse
             positionArray[i] = originalX + dx * force;
@@ -444,6 +447,20 @@ window.updateRotationSpeed = updateRotationSpeed;
 window.toggleBrightness = toggleBrightness;
 window.updateGlowIntensity = updateGlowIntensity;
 window.toggleMouseGravity = toggleMouseGravity;
+
+// Gravity adjustment functions
+function updateGravityRange(value) {
+    gravityRange = parseFloat(value);
+    console.log(`🧲 Gravity range updated to: ${gravityRange}`);
+}
+
+function updateGravityStrength(value) {
+    gravityStrength = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    console.log(`🧲 Gravity strength updated to: ${gravityStrength}`);
+}
+
+window.updateGravityRange = updateGravityRange;
+window.updateGravityStrength = updateGravityStrength;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application
