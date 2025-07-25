@@ -126,8 +126,9 @@ runs:
         CAM_Z=${CAM_ARRAY[2]:-100}
         
         # テンプレートファイルをコピーして生成
-        cp "$(dirname "$0")/viewer-template.html" "$OUTPUT_FOLDER/index.html"
-        cp "$(dirname "$0")/viewer-script.js" "$OUTPUT_FOLDER/viewer-script.js"
+        SCRIPT_DIR="${GITHUB_ACTION_PATH}"
+        cp "$SCRIPT_DIR/viewer-template.html" "$OUTPUT_FOLDER/index.html"
+        cp "$SCRIPT_DIR/viewer-script.js" "$OUTPUT_FOLDER/viewer-script.js"
         
         # HTMLファイル内のプレースホルダーを置換
         sed -i.bak "s/VIEWER_TITLE_PLACEHOLDER/$VIEWER_TITLE/g" "$OUTPUT_FOLDER/index.html"
