@@ -21,9 +21,9 @@ let mousePosition = new THREE.Vector2();
 let mouseWorldPosition = new THREE.Vector3();
 let originalPositions = null;
 let mouseGravityEnabled = true;
-let gravityStrength = 0.1;  // Default strength
+let gravityStrength = 0.3;  // Increased default strength for bigger movement
 let gravityRange = 100;     // Default range
-let waveIntensity = 0.3;    // Wave propagation intensity (0-1)
+let waveIntensity = 0.0;    // Disable wave by default for better performance
 let particleVelocities = null; // Store particle velocities for wave effect
 
 // Initialize the viewer
@@ -393,13 +393,14 @@ function applyMouseGravity() {
         if (distance < maxDistance && distance > 0) {
             affectedParticles++;
             
-            // Apply gravity effect (linear falloff for more visible effect)
+            // Apply stronger gravity effect for bigger movement (2x-3x larger displacement)
             const force = currentStrength * (maxDistance - distance) / maxDistance;
+            const amplifiedForce = force * 3.0; // Amplify movement for better visibility
             
-            // Add velocity for wave effect
-            particleVelocities[i] += dx * force * 0.1;
-            particleVelocities[i + 1] += dy * force * 0.1;
-            particleVelocities[i + 2] += dz * force * 0.1;
+            // Add velocity for wave effect with increased magnitude
+            particleVelocities[i] += dx * amplifiedForce * 0.2;
+            particleVelocities[i + 1] += dy * amplifiedForce * 0.2;
+            particleVelocities[i + 2] += dz * amplifiedForce * 0.2;
         }
     }
     
@@ -480,8 +481,8 @@ function applyMouseGravity() {
         particleVelocities[i + 1] *= dampening;
         particleVelocities[i + 2] *= dampening;
         
-        // Add spring force back to original position
-        const returnStrength = 0.02;
+        // Add gentler spring force back to original position (slower return for longer visibility)
+        const returnStrength = 0.015; // Reduced for slower return
         const returnForceX = (originalX - positionArray[i]) * returnStrength;
         const returnForceY = (originalY - positionArray[i + 1]) * returnStrength;
         const returnForceZ = (originalZ - positionArray[i + 2]) * returnStrength;
