@@ -267,11 +267,12 @@ runs:
                 let musicPlaying = false;
                 
                 // Lighting and appearance
-                let ambientLight, brightnessLevel, glowIntensity;  // Declare without initialization
+                let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
                 
                 // Initialize appearance variables
                 ambientLight = null;  // Initialize to avoid TDZ
-                brightnessLevel = 0.3;  // Default brightness level
+                directionalLight = null;  // Initialize to avoid TDZ
+                brightnessLevel = 0.5;  // Default brightness level (medium)
                 glowIntensity = 0.0;  // Default no glow
                 
                 // Initialize the viewer
@@ -301,9 +302,8 @@ runs:
                     controls.autoRotate = autoRotate;
                     controls.autoRotateSpeed = rotationSpeed;
                     
-                    // Additional lighting (directional only, ambientLight already created above)
-                    
-                    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                    // Additional lighting (directional light)
+                    directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.2);
                     directionalLight.position.set(1, 1, 1);
                     scene.add(directionalLight);
                     
@@ -458,8 +458,9 @@ runs:
                         button.title = 'Make brighter';
                     }
                     
-                    // Apply brightness change
+                    // Apply brightness change to both lights for dramatic effect
                     ambientLight.intensity = brightnessLevel;
+                    directionalLight.intensity = brightnessLevel * 1.2; // Directional light slightly stronger
                 }
                 
                 function updateGlowIntensity(value) {
