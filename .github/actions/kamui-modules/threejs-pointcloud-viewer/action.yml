@@ -460,13 +460,32 @@ runs:
                 }
                 
                 function updateGlowIntensity(value) {
-                    glowIntensity = parseFloat(value) / 100.0 * 2.0; // 0-100% to 0-2.0
+                    glowIntensity = parseFloat(value) / 100.0; // 0-100% to 0-1.0
                     
                     if (pointCloud && pointCloud.material) {
-                        // PointsMaterial doesn't support emissive, use opacity and size for glow effect
-                        const baseSize = pointSize;
-                        const glowMultiplier = 1.0 + glowIntensity;
-                        pointCloud.material.size = baseSize * glowMultiplier;
+                        // Create glow effect by making colors brighter and slightly larger
+                        const geometry = pointCloud.geometry;
+                        if (geometry.attributes.color) {
+                            const colors = geometry.attributes.color.array;
+                            const originalColors = pointCloud.userData.originalColors;
+                            
+                            // Store original colors if not already stored
+                            if (!originalColors) {
+                                pointCloud.userData.originalColors = new Float32Array(colors);
+                            }
+                            
+                            // Apply glow brightness
+                            const glowBrightness = 1.0 + glowIntensity * 1.5; // Up to 2.5x brightness
+                            for (let i = 0; i < colors.length; i++) {
+                                colors[i] = Math.min(1.0, pointCloud.userData.originalColors[i] * glowBrightness);
+                            }
+                            
+                            geometry.attributes.color.needsUpdate = true;
+                        }
+                        
+                        // Also slightly increase size for extra glow effect
+                        const sizeMultiplier = 1.0 + glowIntensity * 0.3; // Up to 30% size increase
+                        pointCloud.material.size = pointSize * sizeMultiplier;
                         pointCloud.material.needsUpdate = true;
                     }
                 }
