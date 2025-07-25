@@ -341,7 +341,6 @@ runs:
                             vertexColors: true,
                             size: pointSize,
                             sizeAttenuation: true,
-                            emissive: new THREE.Color(0x000000), // Initial no glow
                             transparent: false
                         });
                         
@@ -459,12 +458,13 @@ runs:
                 }
                 
                 function updateGlowIntensity(value) {
-                    glowIntensity = parseFloat(value) / 100.0 * 0.8; // 0-100% to 0-0.8
+                    glowIntensity = parseFloat(value) / 100.0 * 2.0; // 0-100% to 0-2.0
                     
                     if (pointCloud && pointCloud.material) {
-                        // Convert glow intensity to emissive color
-                        const emissiveIntensity = glowIntensity;
-                        pointCloud.material.emissive = new THREE.Color(emissiveIntensity, emissiveIntensity, emissiveIntensity);
+                        // PointsMaterial doesn't support emissive, use opacity and size for glow effect
+                        const baseSize = pointSize;
+                        const glowMultiplier = 1.0 + glowIntensity;
+                        pointCloud.material.size = baseSize * glowMultiplier;
                         pointCloud.material.needsUpdate = true;
                     }
                 }
