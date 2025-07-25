@@ -35,10 +35,23 @@
             left: 20px;
             color: white;
             z-index: 200;
-            background: rgba(0,0,0,0.7);
-            padding: 15px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
             border-radius: 8px;
-            font-size: 14px;
+            font-size: 12px;
+            max-width: 200px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        #controls.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        #controls:hover {
+            opacity: 1;
         }
         
         #info {
@@ -58,31 +71,26 @@
         }
         
         button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 6px 10px;
             border-radius: 4px;
             cursor: pointer;
-            margin: 0 5px 5px 0;
-            min-width: 120px;
-            text-align: center;
+            margin: 2px;
+            font-size: 11px;
+            min-width: auto;
+            transition: all 0.2s ease;
         }
         
         button:hover {
-            background: #45a049;
-        }
-        
-        .music-button {
-            background: #4CAF50;
-        }
-        
-        .music-button:hover {
-            background: #45a049;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border-color: rgba(255,255,255,0.4);
         }
         
         .music-button.playing {
-            background: #2E7D32;
+            background: rgba(255,255,255,0.15);
         }
         
         input[type="range"] {
@@ -95,11 +103,12 @@
     <div id="container">
         <div id="loading">🔄 Loading Point Cloud...</div>
         
-        <div id="controls">
-            <h3>📐 Controls</h3>
+        <div id="controls" class="visible">
             <div class="control-item">
-                <button onclick="toggleAutoRotate()">🔄 Toggle Rotation</button>
-                <button onclick="resetCamera()">📷 Reset View</button>
+                <button onclick="toggleAutoRotate()">🔄 Rotate</button>
+                <button onclick="resetCamera()">📷 Reset</button>
+            </div>
+            <div class="control-item">
                 <button onclick="toggleBrightness()" id="brightnessToggle">☀️ Light</button>
             </div>
             MUSIC_BUTTON_PLACEHOLDER
@@ -109,8 +118,8 @@
             <div class="control-item">
                 Glow Intensity: <input type="range" id="glowIntensity" min="0" max="100" step="5" value="0" onchange="updateGlowIntensity(this.value)">
             </div>
-            <div class="control-item" style="font-size: 0.8em; opacity: 0.8;">
-                🖱️ Double-click: Toggle Rotation | Space: Toggle
+            <div class="control-item" style="font-size: 0.7em; opacity: 0.6; margin-top: 8px;">
+                Double-click or Space: Toggle rotation
             </div>
             <div class="control-item">
                 Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="ANIMATION_SPEED_PLACEHOLDER" onchange="updateRotationSpeed(this.value)">

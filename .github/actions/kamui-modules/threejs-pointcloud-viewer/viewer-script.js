@@ -81,6 +81,9 @@ function init() {
         // Don't prevent default - let OrbitControls handle zoom
         toggleAutoRotate();
     });
+    
+    // Setup control panel auto-hide
+    setupControlsAutoHide();
 }
 
 function loadPointCloud() {
@@ -204,22 +207,24 @@ function updateRotationSpeed(value) {
 function toggleBrightness() {
     const button = document.getElementById('brightnessToggle');
     
-    // Simple 2-level toggle: dim (0.2) <-> bright (0.8)
+    // Enhanced brightness toggle with background change
     if (brightnessLevel <= 0.5) {
-        // Make it bright
-        brightnessLevel = 0.8;
+        // Make it bright - much brighter lighting + lighter background
+        brightnessLevel = 1.2;
+        scene.background = new THREE.Color('#404040'); // Dark gray instead of black
         button.innerHTML = '🌙 Dark';
         button.title = 'Switch to dark mode';
     } else {
-        // Make it dim
-        brightnessLevel = 0.2;
+        // Make it dim - keep original dark appearance
+        brightnessLevel = 0.3;
+        scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
         button.innerHTML = '☀️ Light';
         button.title = 'Switch to light mode';
     }
     
-    // Apply brightness change to both lights for dramatic effect
+    // Apply enhanced brightness change
     ambientLight.intensity = brightnessLevel;
-    directionalLight.intensity = brightnessLevel * 1.5; // Even more dramatic difference
+    directionalLight.intensity = brightnessLevel * 1.8; // More dramatic difference
 }
 
 function updateGlowIntensity(value) {
@@ -251,6 +256,44 @@ function updateGlowIntensity(value) {
         pointCloud.material.size = pointSize * sizeMultiplier;
         pointCloud.material.needsUpdate = true;
     }
+}
+
+function setupControlsAutoHide() {
+    const controls = document.getElementById('controls');
+    let hideTimeout;
+    
+    // Show controls when mouse enters the left side of screen or controls
+    const showControls = () => {
+        controls.classList.add('visible');
+        clearTimeout(hideTimeout);
+    };
+    
+    // Hide controls after a delay
+    const scheduleHide = () => {
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(() => {
+            controls.classList.remove('visible');
+        }, 3000); // Hide after 3 seconds
+    };
+    
+    // Mouse position tracking
+    document.addEventListener('mousemove', (e) => {
+        // Show if mouse is in left 300px of screen
+        if (e.clientX < 300) {
+            showControls();
+        } else {
+            scheduleHide();
+        }
+    });
+    
+    // Show when hovering over controls
+    controls.addEventListener('mouseenter', showControls);
+    controls.addEventListener('mouseleave', scheduleHide);
+    
+    // Initial hide after 5 seconds
+    setTimeout(() => {
+        scheduleHide();
+    }, 5000);
 }
 
 MUSIC_FUNCTIONS_PLACEHOLDER
