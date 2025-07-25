@@ -301,9 +301,7 @@ runs:
                     controls.autoRotate = autoRotate;
                     controls.autoRotateSpeed = rotationSpeed;
                     
-                    // Lighting
-                    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                    scene.add(ambientLight);
+                    // Additional lighting (directional only, ambientLight already created above)
                     
                     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                     directionalLight.position.set(1, 1, 1);
