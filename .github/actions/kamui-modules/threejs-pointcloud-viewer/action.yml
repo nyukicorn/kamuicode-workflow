@@ -277,9 +277,8 @@ runs:
                     scene = new THREE.Scene();
                     scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
                     
-                    // Lighting setup
-                    const initialIntensity = isDarkMode ? 0.3 : 0.45;
-                    ambientLight = new THREE.AmbientLight(0xffffff, initialIntensity);
+                    // Lighting setup (default to dark mode)
+                    ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
                     scene.add(ambientLight);
                     
                     // Camera setup
