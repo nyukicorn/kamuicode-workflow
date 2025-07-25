@@ -43,6 +43,10 @@ function init() {
     controls.autoRotate = autoRotate;
     controls.autoRotateSpeed = rotationSpeed;
     
+    // Lock vertical rotation to prevent flipping
+    controls.minPolarAngle = 0; // 0 degrees
+    controls.maxPolarAngle = Math.PI; // 180 degrees
+    
     // Ensure zoom is always enabled
     controls.enableZoom = true;
     controls.enablePan = true;
@@ -58,6 +62,10 @@ function init() {
     
     // Load PLY file
     loadPointCloud();
+    
+    // Debug info for rotation center
+    console.log('OrbitControls initialized with autoRotate:', autoRotate);
+    console.log('Rotation will be around Y-axis through controls.target');
     
     // Start animation loop
     animate();
@@ -103,6 +111,8 @@ function loadPointCloud() {
         fitCameraToObject(pointCloud);
         
         console.log('✅ Point cloud loaded:', pointCount, 'points');
+        console.log('Rotation center set to:', controls.target);
+        console.log('Camera position:', camera.position);
     }, 
     function(progress) {
         const percent = Math.round((progress.loaded / progress.total) * 100);
@@ -171,6 +181,11 @@ function toggleAutoRotate() {
 function resetCamera() {
     if (pointCloud) {
         fitCameraToObject(pointCloud);
+        // Ensure rotation is around the object center
+        const box = new THREE.Box3().setFromObject(pointCloud);
+        const center = box.getCenter(new THREE.Vector3());
+        controls.target.copy(center);
+        controls.update();
     }
 }
 
