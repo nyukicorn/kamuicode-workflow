@@ -99,6 +99,9 @@ jobs:
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
       timestamp: ${{ needs.create-viewer.outputs.timestamp }}
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
