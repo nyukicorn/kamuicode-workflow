@@ -302,6 +302,11 @@ runs:
                     controls.autoRotate = autoRotate;
                     controls.autoRotateSpeed = rotationSpeed;
                     
+                    // Ensure zoom is always enabled
+                    controls.enableZoom = true;
+                    controls.enablePan = true;
+                    controls.enableRotate = true;
+                    
                     // Additional lighting (directional light)
                     directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.5);
                     directionalLight.position.set(1, 1, 1);
@@ -322,9 +327,9 @@ runs:
                     // Keyboard controls
                     document.addEventListener('keydown', onKeyDown);
                     
-                    // Double-click to toggle rotation
+                    // Double-click to toggle rotation (don't prevent default to preserve zoom)
                     renderer.domElement.addEventListener('dblclick', (event) => {
-                        event.preventDefault();
+                        // Don't prevent default - let OrbitControls handle zoom
                         toggleAutoRotate();
                     });
                 }
