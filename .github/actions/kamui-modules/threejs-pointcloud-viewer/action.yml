@@ -267,7 +267,7 @@ runs:
                 let musicPlaying = false;
                 
                 // Lighting and appearance
-                let ambientLight = null;  // Declare explicitly
+                var ambientLight = null;  // Use var to avoid temporal dead zone
                 let isDarkMode = true;  // Default to dark mode
                 let glowIntensity = 0.0;  // Default no glow
                 
