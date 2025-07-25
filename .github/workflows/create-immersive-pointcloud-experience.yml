@@ -16,7 +16,7 @@ on:
         description: '生成する画像の詳細なプロンプト（AI生成選択時）'
         required: false
         type: string
-        default: 'A beautiful Japanese garden with cherry blossoms, serene pond with koi fish, traditional stone lantern'
+        default: 'A magnificent rose garden with blooming roses in various colors, beautiful pink and red roses, garden paths winding through rose bushes, romantic atmosphere with depth and spatial beauty'
       
       uploaded-image-url:
         description: 'Issue添付画像のURL（アップロード選択時）'
@@ -41,7 +41,7 @@ on:
         description: '背景音楽のプロンプト（オプション）'
         required: false
         type: string
-        default: 'Ambient, peaceful, zen garden atmosphere, soft piano and nature sounds'
+        default: 'Beautiful music box melody, romantic and nostalgic, gentle chimes, delicate and dreamy atmosphere for rose garden'
       
       enable-music:
         description: '背景音楽を生成する'
