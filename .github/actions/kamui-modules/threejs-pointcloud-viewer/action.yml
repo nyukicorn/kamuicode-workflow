@@ -172,6 +172,18 @@ runs:
           echo "            audio = new Audio('assets/$MUSIC_FILENAME');" >> /tmp/music_functions.js
           echo "            audio.loop = true;" >> /tmp/music_functions.js
           echo "            audio.volume = 0.7;" >> /tmp/music_functions.js
+          echo "            " >> /tmp/music_functions.js
+          echo "            // Enhanced error handling" >> /tmp/music_functions.js
+          echo "            audio.addEventListener('error', (e) => {" >> /tmp/music_functions.js
+          echo "                console.error('Audio loading error:', e);" >> /tmp/music_functions.js
+          echo "                console.error('Audio src:', audio.src);" >> /tmp/music_functions.js
+          echo "                console.error('Audio error:', audio.error);" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '❌ No Music File';" >> /tmp/music_functions.js
+          echo "            });" >> /tmp/music_functions.js
+          echo "            " >> /tmp/music_functions.js
+          echo "            audio.addEventListener('loadeddata', () => {" >> /tmp/music_functions.js
+          echo "                console.log('Audio loaded successfully from:', audio.src);" >> /tmp/music_functions.js
+          echo "            });" >> /tmp/music_functions.js
           echo "        }" >> /tmp/music_functions.js
           echo "        " >> /tmp/music_functions.js
           echo "        if (audio.paused) {" >> /tmp/music_functions.js
@@ -179,8 +191,14 @@ runs:
           echo "                playButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
           echo "                playButton.classList.add('playing');" >> /tmp/music_functions.js
           echo "            }).catch(error => {" >> /tmp/music_functions.js
-          echo "                console.log('Music file not found:', error);" >> /tmp/music_functions.js
-          echo "                playButton.textContent = '❌ No Music File';" >> /tmp/music_functions.js
+          echo "                console.error('Music playback error:', error);" >> /tmp/music_functions.js
+          echo "                console.error('Error name:', error.name);" >> /tmp/music_functions.js
+          echo "                console.error('Error message:', error.message);" >> /tmp/music_functions.js
+          echo "                if (error.name === 'NotAllowedError') {" >> /tmp/music_functions.js
+          echo "                    playButton.textContent = '⚠️ Click First';" >> /tmp/music_functions.js
+          echo "                } else {" >> /tmp/music_functions.js
+          echo "                    playButton.textContent = '❌ No Music File';" >> /tmp/music_functions.js
+          echo "                }" >> /tmp/music_functions.js
           echo "            });" >> /tmp/music_functions.js
           echo "        } else {" >> /tmp/music_functions.js
           echo "            audio.pause();" >> /tmp/music_functions.js
