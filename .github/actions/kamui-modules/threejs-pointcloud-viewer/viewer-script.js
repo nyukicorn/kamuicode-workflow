@@ -26,6 +26,11 @@ let gravityRange = 100;     // Default range
 let waveIntensity = 0.0;    // Disable wave by default for better performance
 let particleVelocities = null; // Store particle velocities for wave effect
 
+// Trail mode variables
+let gravityMode = 'circle';  // 'circle' or 'trail'
+let mouseTrail = [];         // Store recent mouse positions
+const MAX_TRAIL_LENGTH = 15; // Number of positions to remember
+
 // Initialize the viewer
 function init() {
     // Scene setup
@@ -325,9 +330,15 @@ function setupMouseInteraction() {
         // Convert to world coordinates
         updateMouseWorldPosition();
         
+        // Update mouse trail for trail mode
+        if (gravityMode === 'trail') {
+            updateMouseTrail();
+        }
+        
         // Debug log occasionally
         if (Math.random() < 0.01) {
-            console.log(`🖱️ Mouse: screen(${event.clientX}, ${event.clientY}) normalized(${mousePosition.x.toFixed(2)}, ${mousePosition.y.toFixed(2)})`);
+            const modeIcon = gravityMode === 'trail' ? '🌊' : '🎯';
+            console.log(`${modeIcon} Mouse: screen(${event.clientX}, ${event.clientY}) mode: ${gravityMode}`);
         }
     });
 }
@@ -350,6 +361,26 @@ function updateMouseWorldPosition() {
         const distance = 100; // Fixed distance for more predictable behavior
         mouseWorldPosition.copy(raycaster.ray.origin)
             .add(raycaster.ray.direction.multiplyScalar(distance));
+    }
+}
+
+function updateMouseTrail() {
+    // Add current position to trail
+    mouseTrail.push({
+        x: mouseWorldPosition.x,
+        y: mouseWorldPosition.y,
+        z: mouseWorldPosition.z,
+        strength: 1.0  // Full strength for newest position
+    });
+    
+    // Limit trail length
+    if (mouseTrail.length > MAX_TRAIL_LENGTH) {
+        mouseTrail.shift();
+    }
+    
+    // Fade older positions
+    for (let i = 0; i < mouseTrail.length - 1; i++) {
+        mouseTrail[i].strength = (i + 1) / mouseTrail.length;
     }
 }
 
@@ -378,29 +409,72 @@ function applyMouseGravity() {
     let affectedParticles = 0;
     const dampening = 0.95; // Velocity dampening factor
     
-    // First pass: Direct mouse gravity effect
-    for (let i = 0; i < positionArray.length; i += 3) {
-        const originalX = originalPositions[i];
-        const originalY = originalPositions[i + 1];
-        const originalZ = originalPositions[i + 2];
-        
-        // Calculate distance to mouse
-        const dx = mouseWorldPosition.x - originalX;
-        const dy = mouseWorldPosition.y - originalY;
-        const dz = mouseWorldPosition.z - originalZ;
-        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        
-        if (distance < maxDistance && distance > 0) {
-            affectedParticles++;
+    if (gravityMode === 'circle') {
+        // Original circle mode - single point of attraction
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
             
-            // Apply stronger gravity effect for bigger movement (2x-3x larger displacement)
-            const force = currentStrength * (maxDistance - distance) / maxDistance;
-            const amplifiedForce = force * 3.0; // Amplify movement for better visibility
+            // Calculate distance to mouse
+            const dx = mouseWorldPosition.x - originalX;
+            const dy = mouseWorldPosition.y - originalY;
+            const dz = mouseWorldPosition.z - originalZ;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             
-            // Add velocity for wave effect with increased magnitude
-            particleVelocities[i] += dx * amplifiedForce * 0.2;
-            particleVelocities[i + 1] += dy * amplifiedForce * 0.2;
-            particleVelocities[i + 2] += dz * amplifiedForce * 0.2;
+            if (distance < maxDistance && distance > 0) {
+                affectedParticles++;
+                
+                // Apply stronger gravity effect for bigger movement
+                const force = currentStrength * (maxDistance - distance) / maxDistance;
+                const amplifiedForce = force * 3.0;
+                
+                // Add velocity
+                particleVelocities[i] += dx * amplifiedForce * 0.2;
+                particleVelocities[i + 1] += dy * amplifiedForce * 0.2;
+                particleVelocities[i + 2] += dz * amplifiedForce * 0.2;
+            }
+        }
+    } else if (gravityMode === 'trail' && mouseTrail.length > 0) {
+        // Trail mode - multiple points of attraction along mouse path
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
+            
+            let totalForceX = 0;
+            let totalForceY = 0;
+            let totalForceZ = 0;
+            let hasEffect = false;
+            
+            // Check influence from each trail point
+            for (const trailPoint of mouseTrail) {
+                const dx = trailPoint.x - originalX;
+                const dy = trailPoint.y - originalY;
+                const dz = trailPoint.z - originalZ;
+                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                
+                if (distance < maxDistance && distance > 0) {
+                    hasEffect = true;
+                    
+                    // Apply force with trail point strength
+                    const force = currentStrength * (maxDistance - distance) / maxDistance * trailPoint.strength;
+                    const amplifiedForce = force * 2.5; // Slightly less than circle mode
+                    
+                    totalForceX += dx * amplifiedForce * 0.15;
+                    totalForceY += dy * amplifiedForce * 0.15;
+                    totalForceZ += dz * amplifiedForce * 0.15;
+                }
+            }
+            
+            if (hasEffect) {
+                affectedParticles++;
+                
+                // Apply combined force from all trail points
+                particleVelocities[i] += totalForceX;
+                particleVelocities[i + 1] += totalForceY;
+                particleVelocities[i + 2] += totalForceZ;
+            }
         }
     }
     
@@ -518,6 +592,22 @@ function toggleMouseGravity() {
     }
 }
 
+function toggleGravityMode() {
+    gravityMode = gravityMode === 'circle' ? 'trail' : 'circle';
+    const button = document.getElementById('gravityModeToggle');
+    
+    if (gravityMode === 'circle') {
+        button.innerHTML = '🎯 Circle';
+        button.title = 'Circle mode - particles attracted to current mouse position';
+        mouseTrail = []; // Clear trail
+        console.log('🎯 Switched to Circle gravity mode');
+    } else {
+        button.innerHTML = '🌊 Trail';
+        button.title = 'Trail mode - particles follow mouse movement path';
+        console.log('🌊 Switched to Trail gravity mode');
+    }
+}
+
 function resetParticlePositions() {
     if (!pointCloud || !originalPositions) return;
     
@@ -564,6 +654,7 @@ function updateWaveIntensity(value) {
 window.updateGravityRange = updateGravityRange;
 window.updateGravityStrength = updateGravityStrength;
 window.updateWaveIntensity = updateWaveIntensity;
+window.toggleGravityMode = toggleGravityMode;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application
