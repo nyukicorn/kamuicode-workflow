@@ -1,0 +1,29 @@
+1
+00:00:00,000 --> 00:00:05,000
+Opening: Heroes emerge from darkness
+Atmosphere: Mysterious → Building tension
+Energy: 3/10 → 6/10
+
+2
+00:00:05,000 --> 00:00:15,000
+Rising action: Storm clouds gather
+Camera: Static → Dynamic tracking
+Lighting: Dim → Dramatic contrasts
+
+3
+00:00:15,000 --> 00:00:25,000
+Climax: Lightning illuminates battle
+Audio: Orchestral crescendo peaks
+Energy: 9/10 (Maximum intensity)
+
+4
+00:00:25,000 --> 00:00:35,000
+Battle peak: Heroes in flowing motion
+Visual: Rich saturated colors
+Movement: Sweeping camera dynamics
+
+5
+00:00:35,000 --> 00:00:40,000
+Resolution: Heroic triumph moment
+Atmosphere: Dramatic → Triumphant
+Energy: 9/10 → 7/10 (Sustained epic)
