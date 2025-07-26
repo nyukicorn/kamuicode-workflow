@@ -122,10 +122,10 @@ jobs:
       - name: Run World Synthesis V2 - Multimodal
         uses: ./.github/actions/kamui-modules/world-synthesis-v2
         with:
-          image-analysis-json: ${{ env.image-json }}
-          music-analysis-json: ${{ env.music-json }}
-          speech-analysis-json: ${{ env.speech-json }}
-          video-analysis-json: ${{ env.video-json }}
+          image-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/image-analysis.json
+          music-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/music-analysis.json
+          speech-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/speech-analysis.json
+          video-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/video-analysis.json
           primary-weight: 'auto'
           folder-name: ${{ steps.setup.outputs.folder-name }}
           branch-name: ${{ github.ref_name }}
