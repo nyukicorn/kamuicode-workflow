@@ -188,7 +188,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "No multimodal analysis files to commit"
           else
-            git commit -m "Add multimodal world analysis and synthesis results ($SCENARIO scenario)
+            git commit -m "$(cat <<'EOF'
+Add multimodal world analysis and synthesis results ($SCENARIO scenario)
 
 Image Analysis: dramatic/mysterious/enhanced
 Music Analysis: dramatic/orchestral/variable  
@@ -198,7 +199,9 @@ World Synthesis: unified multimodal experience
 
 Generated with Claude Code
 
-Co-Authored-By: Claude <noreply@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
             
             # Push the final results
             for i in {1..3}; do
