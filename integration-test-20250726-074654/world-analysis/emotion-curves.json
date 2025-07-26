@@ -1,0 +1,114 @@
+{
+  "emotion_timeline": {
+    "total_duration": "00:05:00",
+    "sample_rate": "30s",
+    "curve_points": [
+      {
+        "timestamp": "00:00:00",
+        "duration": 30,
+        "energy": 2,
+        "mood": "mysterious",
+        "atmosphere": "emerging",
+        "tempo": "slow",
+        "intensity": 1,
+        "description": "Gentle introduction with ethereal synthesizer pads beginning to emerge"
+      },
+      {
+        "timestamp": "00:00:30",
+        "duration": 30,
+        "energy": 3,
+        "mood": "curious",
+        "atmosphere": "building",
+        "tempo": "slow",
+        "intensity": 2,
+        "description": "Additional layers begin to build, deep bass subtly enters"
+      },
+      {
+        "timestamp": "00:01:00",
+        "duration": 30,
+        "energy": 3,
+        "mood": "mysterious",
+        "atmosphere": "deepening",
+        "tempo": "slow",
+        "intensity": 3,
+        "description": "Mystery deepens as bass becomes more prominent, atmosphere thickens"
+      },
+      {
+        "timestamp": "00:01:30",
+        "duration": 30,
+        "energy": 4,
+        "mood": "ethereal",
+        "atmosphere": "expansive",
+        "tempo": "slow",
+        "intensity": 4,
+        "description": "Ethereal qualities become prominent, soundscape expands spatially"
+      },
+      {
+        "timestamp": "00:02:00",
+        "duration": 30,
+        "energy": 4,
+        "mood": "mysterious",
+        "atmosphere": "immersive",
+        "tempo": "slow",
+        "intensity": 5,
+        "description": "Full immersion in mysterious atmosphere, all elements present"
+      },
+      {
+        "timestamp": "00:02:30",
+        "duration": 30,
+        "energy": 5,
+        "mood": "enigmatic",
+        "atmosphere": "climactic",
+        "tempo": "slow",
+        "intensity": 6,
+        "description": "Emotional and sonic climax, maximum mystery and complexity"
+      },
+      {
+        "timestamp": "00:03:00",
+        "duration": 30,
+        "energy": 4,
+        "mood": "contemplative",
+        "atmosphere": "mysterious",
+        "tempo": "slow",
+        "intensity": 5,
+        "description": "Post-climax contemplation, maintaining mysterious quality"
+      },
+      {
+        "timestamp": "00:03:30",
+        "duration": 30,
+        "energy": 3,
+        "mood": "ethereal",
+        "atmosphere": "floating",
+        "tempo": "slow",
+        "intensity": 4,
+        "description": "Return to ethereal floating state, gentle descent begins"
+      },
+      {
+        "timestamp": "00:04:00",
+        "duration": 30,
+        "energy": 3,
+        "mood": "mysterious",
+        "atmosphere": "fading",
+        "tempo": "slow",
+        "intensity": 3,
+        "description": "Gradual fade while maintaining mysterious character"
+      },
+      {
+        "timestamp": "00:04:30",
+        "duration": 30,
+        "energy": 2,
+        "mood": "serene",
+        "atmosphere": "resolved",
+        "tempo": "slow",
+        "intensity": 2,
+        "description": "Peaceful resolution, mystery resolved into serenity"
+      }
+    ]
+  },
+  "metadata": {
+    "analysis_method": "prompt_based_inference",
+    "music_type": "ambient_electronic",
+    "confidence": 0.85,
+    "created": "2025-07-26T07:46:54Z"
+  }
+}

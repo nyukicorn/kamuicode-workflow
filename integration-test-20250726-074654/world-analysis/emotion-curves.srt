@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:30,000
+energy: 2, mood: mysterious, atmosphere: emerging, tempo: slow, intensity: 1
+
+2
+00:00:30,000 --> 00:01:00,000
+energy: 3, mood: curious, atmosphere: building, tempo: slow, intensity: 2
+
+3
+00:01:00,000 --> 00:01:30,000
+energy: 3, mood: mysterious, atmosphere: deepening, tempo: slow, intensity: 3
+
+4
+00:01:30,000 --> 00:02:00,000
+energy: 4, mood: ethereal, atmosphere: expansive, tempo: slow, intensity: 4
+
+5
+00:02:00,000 --> 00:02:30,000
+energy: 4, mood: mysterious, atmosphere: immersive, tempo: slow, intensity: 5
+
+6
+00:02:30,000 --> 00:03:00,000
+energy: 5, mood: enigmatic, atmosphere: climactic, tempo: slow, intensity: 6
+
+7
+00:03:00,000 --> 00:03:30,000
+energy: 4, mood: contemplative, atmosphere: mysterious, tempo: slow, intensity: 5
+
+8
+00:03:30,000 --> 00:04:00,000
+energy: 3, mood: ethereal, atmosphere: floating, tempo: slow, intensity: 4
+
+9
+00:04:00,000 --> 00:04:30,000
+energy: 3, mood: mysterious, atmosphere: fading, tempo: slow, intensity: 3
+
+10
+00:04:30,000 --> 00:05:00,000
+energy: 2, mood: serene, atmosphere: resolved, tempo: slow, intensity: 2
