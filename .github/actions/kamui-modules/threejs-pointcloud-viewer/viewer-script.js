@@ -40,7 +40,7 @@ glowIntensity = 0.0;  // Default no glow
 let mousePosition = new THREE.Vector2();
 let mouseWorldPosition = new THREE.Vector3();
 let originalPositions = null;
-let mouseGravityEnabled = true;
+let mouseGravityEnabled = false;  // Default OFF for cleaner initial experience
 let gravityStrength = 0.3;  // Increased default strength for bigger movement
 let gravityRange = 100;     // Default range
 let waveIntensity = 0.0;    // Disable wave by default for better performance
@@ -95,6 +95,9 @@ function init() {
     
     // Initialize audio if available
     MUSIC_INIT_PLACEHOLDER
+    
+    // Auto-initialize microphone for external audio
+    initializeExternalAudio();
     
     // Load PLY file
     loadPointCloud();
@@ -814,6 +817,34 @@ function initializeAudioContext() {
     return audioContext;
 }
 
+// Initialize external audio (microphone/BlackHole) automatically
+function initializeExternalAudio() {
+    // Wait a moment for page to fully load, then try to setup microphone
+    setTimeout(() => {
+        setupMicrophoneAnalysis().then(success => {
+            if (success) {
+                console.log('🎧 External audio initialized - Ready for BlackHole/external music!');
+                
+                // Update button to show microphone is active
+                const micButton = document.getElementById('microphoneToggle');
+                if (micButton) {
+                    micButton.innerHTML = '🎤 External Audio ON';
+                    micButton.title = 'External audio is ON (BlackHole/microphone input active)';
+                }
+                
+                // Update audio reactive button
+                const audioButton = document.getElementById('audioReactiveToggle');
+                if (audioButton) {
+                    audioButton.innerHTML = '🎵 Audio React ON';
+                    audioButton.title = 'Audio reactive is ON - particles will respond to external music';
+                }
+            } else {
+                console.log('💡 To use external music: Allow microphone access and select BlackHole as input device');
+            }
+        });
+    }, 1000); // 1 second delay to ensure page is ready
+}
+
 function setupMusicAnalysis(audioElement) {
     if (!audioElement || musicAnalyser) return;
     
@@ -847,35 +878,50 @@ function setupMicrophoneAnalysis() {
             microphoneSource.connect(micAnalyser);
             microphoneEnabled = true;
             
-            console.log('🎤 Microphone analysis setup complete');
+            // Automatically enable audio reactive for microphone
+            audioReactiveEnabled = true;
+            
+            console.log('🎤 Microphone analysis setup complete - External audio ready!');
             return true;
         })
         .catch(error => {
-            console.error('❌ Microphone access denied:', error);
+            console.warn('⚠️ Microphone access denied - External audio will not work:', error.message);
+            console.log('💡 To use external audio: Allow microphone access and select BlackHole as input');
             return false;
         });
 }
 
 function getVolumeLevel() {
     let volume = 0;
+    let hasAudioSource = false;
     
-    if (audioReactiveEnabled && musicAnalyser && musicPlaying) {
-        musicAnalyser.getByteFrequencyData(musicDataArray);
-        volume = Math.max(volume, getAverageVolume(musicDataArray));
-        
-        // Also analyze frequency bands
-        if (frequencyMode === 'frequency') {
-            analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
-        }
-    }
-    
+    // Check microphone input first (external audio via BlackHole)
     if (microphoneEnabled && micAnalyser) {
         micAnalyser.getByteFrequencyData(micDataArray);
-        volume = Math.max(volume, getAverageVolume(micDataArray));
+        const micVolume = getAverageVolume(micDataArray);
+        volume = Math.max(volume, micVolume);
+        hasAudioSource = true;
         
         // Also analyze frequency bands for microphone
         if (frequencyMode === 'frequency') {
             analyzeFrequencyBands(micDataArray, micAnalyser.context.sampleRate);
+        }
+    }
+    
+    // Check page music (if playing and no strong microphone signal)
+    if (audioReactiveEnabled && musicAnalyser && musicPlaying) {
+        musicAnalyser.getByteFrequencyData(musicDataArray);
+        const musicVolume = getAverageVolume(musicDataArray);
+        
+        // Use page music if no microphone or microphone is quiet
+        if (!microphoneEnabled || volume < 0.1) {
+            volume = Math.max(volume, musicVolume);
+            hasAudioSource = true;
+            
+            // Also analyze frequency bands for page music
+            if (frequencyMode === 'frequency') {
+                analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
+            }
         }
     }
     
