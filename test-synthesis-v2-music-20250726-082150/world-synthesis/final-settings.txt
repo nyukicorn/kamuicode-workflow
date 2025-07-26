@@ -1,0 +1,1 @@
+depth_mode=enhanced,atmosphere=energetic_uplifting,brightness_level=0.8,rotation_speed=1.2,particle_energy=0.8,auto_rotate=true
