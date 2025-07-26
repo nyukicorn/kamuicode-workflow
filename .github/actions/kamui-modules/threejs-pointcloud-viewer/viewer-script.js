@@ -954,6 +954,9 @@ function toggleAudioReactive() {
         button.innerHTML = '🔇 Audio React OFF';
         button.title = 'Audio reactive is OFF (click to enable)';
         console.log('🔇 Audio-reactive mode disabled');
+        
+        // Reset to normal state when disabling audio reactive
+        resetToNormalState();
     }
 }
 
@@ -976,6 +979,11 @@ function toggleMicrophone() {
         button.innerHTML = '🎙️ Mic OFF';
         button.title = 'Microphone is OFF (click to enable)';
         console.log('🎤 Microphone disabled');
+        
+        // Reset to normal state when disabling microphone (if audio reactive is also off)
+        if (!audioReactiveEnabled) {
+            resetToNormalState();
+        }
     }
 }
 
@@ -1093,6 +1101,42 @@ function applyAudioReactiveEffects() {
             }
         }
     }
+}
+
+function resetToNormalState() {
+    if (!pointCloud) return;
+    
+    console.log('🔄 Resetting to normal state');
+    
+    // Reset particle size to default
+    pointCloud.material.size = pointSize;
+    
+    // Reset lighting to default levels
+    if (ambientLight) {
+        ambientLight.intensity = brightnessLevel;
+    }
+    if (directionalLight) {
+        directionalLight.intensity = brightnessLevel * 1.5;
+    }
+    
+    // Reset colors to original
+    if (pointCloud.geometry.attributes.color) {
+        const colors = pointCloud.geometry.attributes.color;
+        const originalColors = pointCloud.geometry.userData.originalColors;
+        
+        if (originalColors) {
+            colors.array.set(originalColors);
+            colors.needsUpdate = true;
+        }
+    }
+    
+    // Reset audio analysis values
+    currentVolumeLevel = 0;
+    frequencyBands.bass = 0;
+    frequencyBands.mid = 0;
+    frequencyBands.treble = 0;
+    
+    console.log('✅ Normal state restored');
 }
 
 MUSIC_FUNCTIONS_PLACEHOLDER
