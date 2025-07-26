@@ -1,0 +1,25 @@
+{
+  "depth_mode": "enhanced",
+  "atmosphere": "mysterious_dramatic",
+  "brightness_level": 0.5,
+  "rotation_speed": 0.2,
+  "particle_energy": 0.5,
+  "auto_rotate": true,
+  "synthesis_confidence": 0.9,
+  "primary_influence": "balanced",
+  "reasoning": "Image analysis shows dramatic mysterious scene with enhanced depth, music reinforces mysterious atmosphere with moderate energy. Balanced integration creates contemplative, atmospheric experience with enhanced visual depth.",
+  "integration_details": {
+    "image_weight": 0.5,
+    "music_weight": 0.5,
+    "atmosphere_consensus": "mysterious",
+    "energy_balance": "moderate",
+    "visual_priority": "dramatic_depth"
+  },
+  "technical_rationale": {
+    "depth_mode_reason": "Dramatic scene type requires enhanced depth for immersion",
+    "brightness_reason": "Mysterious dramatic atmosphere calls for darker setting (0.5)",
+    "rotation_reason": "Dramatic scenes benefit from very slow rotation (0.2) for contemplation",
+    "particle_reason": "Movement energy 4 translates to moderate particle responsiveness (0.5)",
+    "auto_rotate_reason": "Static dramatic scene enhanced by subtle automatic movement"
+  }
+}
