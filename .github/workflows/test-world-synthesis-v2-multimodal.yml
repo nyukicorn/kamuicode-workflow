@@ -190,13 +190,13 @@ jobs:
           else
             git commit -m "Add multimodal world analysis and synthesis results ($SCENARIO scenario)
 
-🎨 Image Analysis: dramatic/mysterious/enhanced
-🎵 Music Analysis: dramatic/orchestral/variable  
-🎤 Speech Analysis: mysterious/contemplative/authoritative
-🎬 Video Analysis: fantasy/mysterious/cinematic
-🌍 World Synthesis: unified multimodal experience
+Image Analysis: dramatic/mysterious/enhanced
+Music Analysis: dramatic/orchestral/variable  
+Speech Analysis: mysterious/contemplative/authoritative
+Video Analysis: fantasy/mysterious/cinematic
+World Synthesis: unified multimodal experience
 
-🤖 Generated with [Claude Code](https://claude.ai/code)
+Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
             
