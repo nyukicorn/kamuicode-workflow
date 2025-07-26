@@ -353,5 +353,7 @@ runs:
           else
             git commit -m "Add music world analysis for file: ${{ inputs.music-file }}"
           fi
+          # Pull before push to handle concurrent commits
+          git pull origin ${{ inputs.branch-name }} --rebase || true
           git push origin ${{ inputs.branch-name }}
         fi

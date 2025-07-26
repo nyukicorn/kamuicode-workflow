@@ -362,5 +362,7 @@ runs:
           echo "No analysis files to commit"
         else
           git commit -m "Add speech world analysis results"
+          # Pull before push to handle concurrent commits
+          git pull origin ${{ inputs.branch-name }} --rebase || true
           git push origin ${{ inputs.branch-name }}
         fi

@@ -316,5 +316,7 @@ runs:
           else
             git commit -m "Add image world analysis for file: ${{ inputs.image-file }}"
           fi
+          # Pull before push to handle concurrent commits
+          git pull origin ${{ inputs.branch-name }} --rebase || true
           git push origin ${{ inputs.branch-name }}
         fi
