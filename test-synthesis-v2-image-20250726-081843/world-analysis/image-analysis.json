@@ -1,0 +1,19 @@
+{
+  "scene_type": "fantasy",
+  "atmosphere": "ethereal",
+  "depth_mode": "enhanced",
+  "lighting_style": "soft_glow",
+  "movement_energy": 7,
+  "color_temperature": "warm",
+  "perspective": "aerial",
+  "scene_scale": "vast",
+  "object_density": "sparse",
+  "foreground_elements": "clouds",
+  "background_elements": "celestial",
+  "cultural_style": "universal",
+  "era_style": "timeless",
+  "artistic_style": "impressionistic",
+  "technical_approach": "volumetric",
+  "confidence": 0.92,
+  "analysis_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+}
