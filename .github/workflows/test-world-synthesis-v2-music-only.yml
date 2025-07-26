@@ -1,0 +1,102 @@
+name: Test World Synthesis V2 - Music Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-name:
+        description: 'Test scenario name'
+        required: false
+        default: 'music-only-synthesis'
+
+jobs:
+  test-music-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          FOLDER_NAME="test-synthesis-v2-music-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          
+          # Create test folder
+          mkdir -p $FOLDER_NAME/world-analysis
+          
+          # Create sample music analysis JSON with emotion curves
+          cat > $FOLDER_NAME/world-analysis/music-analysis.json << 'EOF'
+          {
+            "atmosphere": "energetic",
+            "genre": "electronic",
+            "instrumentation": "synthesizers,drums,bass",
+            "tempo": "fast",
+            "energy": 8,
+            "mood": "uplifting",
+            "color_temperature": "warm",
+            "acoustic_space": "wide",
+            "reverb_depth": "moderate",
+            "distance_feel": "close",
+            "complexity_level": "complex",
+            "change_rate": "dynamic",
+            "predictability": "varied",
+            "regional_style": "western",
+            "era_style": "contemporary",
+            "artistic_style": "commercial",
+            "production_quality": "hi-fi",
+            "processing_level": "heavily_processed",
+            "confidence": 0.95,
+            "analysis_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          }
+          EOF
+          
+          # Create emotion curves in SRT format
+          cat > $FOLDER_NAME/world-analysis/emotion-curves.srt << 'EOF'
+          1
+          00:00:00,000 --> 00:00:15,000
+          energy: 6, mood: building, atmosphere: anticipation, tempo: medium, intensity: 5
+          
+          2
+          00:00:15,000 --> 00:00:30,000
+          energy: 8, mood: energetic, atmosphere: explosive, tempo: fast, intensity: 8
+          
+          3
+          00:00:30,000 --> 00:00:45,000
+          energy: 9, mood: euphoric, atmosphere: climactic, tempo: fast, intensity: 9
+          
+          4
+          00:00:45,000 --> 00:01:00,000
+          energy: 7, mood: uplifting, atmosphere: soaring, tempo: fast, intensity: 7
+          EOF
+          
+          echo "Created music analysis at: $FOLDER_NAME/world-analysis/music-analysis.json"
+          echo "Created emotion curves at: $FOLDER_NAME/world-analysis/emotion-curves.srt"
+      
+      - name: Run World Synthesis V2 - Music Only
+        uses: ./.github/actions/kamui-modules/world-synthesis-v2
+        with:
+          music-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/music-analysis.json
+          primary-weight: 'auto'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking synthesis results in: $FOLDER_NAME/world-synthesis"
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.json" ]; then
+            echo "✅ Synthesis JSON found:"
+            cat "$FOLDER_NAME/world-synthesis/world-synthesis.json"
+          else
+            echo "❌ Synthesis JSON not found"
+            exit 1
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/input-summary.json" ]; then
+            echo "✅ Input summary found:"
+            cat "$FOLDER_NAME/world-synthesis/input-summary.json"
+          fi

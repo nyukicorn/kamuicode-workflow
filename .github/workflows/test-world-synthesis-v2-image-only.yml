@@ -1,0 +1,79 @@
+name: Test World Synthesis V2 - Image Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-name:
+        description: 'Test scenario name'
+        required: false
+        default: 'image-only-synthesis'
+
+jobs:
+  test-image-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          FOLDER_NAME="test-synthesis-v2-image-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
+          
+          # Create test folder
+          mkdir -p $FOLDER_NAME/world-analysis
+          
+          # Create sample image analysis JSON
+          cat > $FOLDER_NAME/world-analysis/image-analysis.json << 'EOF'
+          {
+            "scene_type": "fantasy",
+            "atmosphere": "ethereal",
+            "depth_mode": "enhanced",
+            "lighting_style": "soft_glow",
+            "movement_energy": 7,
+            "color_temperature": "warm",
+            "perspective": "aerial",
+            "scene_scale": "vast",
+            "object_density": "sparse",
+            "foreground_elements": "clouds",
+            "background_elements": "celestial",
+            "cultural_style": "universal",
+            "era_style": "timeless",
+            "artistic_style": "impressionistic",
+            "technical_approach": "volumetric",
+            "confidence": 0.92,
+            "analysis_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          }
+          EOF
+          
+          echo "Created image analysis at: $FOLDER_NAME/world-analysis/image-analysis.json"
+      
+      - name: Run World Synthesis V2 - Image Only
+        uses: ./.github/actions/kamui-modules/world-synthesis-v2
+        with:
+          image-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/image-analysis.json
+          primary-weight: 'auto'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking synthesis results in: $FOLDER_NAME/world-synthesis"
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.json" ]; then
+            echo "✅ Synthesis JSON found:"
+            cat "$FOLDER_NAME/world-synthesis/world-synthesis.json"
+          else
+            echo "❌ Synthesis JSON not found"
+            exit 1
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/input-summary.json" ]; then
+            echo "✅ Input summary found:"
+            cat "$FOLDER_NAME/world-synthesis/input-summary.json"
+          fi

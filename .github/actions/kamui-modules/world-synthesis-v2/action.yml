@@ -1,0 +1,308 @@
+name: 'World Synthesis V2'
+description: 'Flexibly synthesize any combination of world analyses into unified settings'
+author: 'KamuiCode Workflow'
+
+inputs:
+  # JSONファイルパスを直接指定する新方式
+  image-analysis-json:
+    description: 'Path to image world analysis JSON file'
+    required: false
+  music-analysis-json:
+    description: 'Path to music world analysis JSON file' 
+    required: false
+  speech-analysis-json:
+    description: 'Path to speech world analysis JSON file'
+    required: false
+  video-analysis-json:
+    description: 'Path to video world analysis JSON file'
+    required: false
+  
+  # 共通設定
+  primary-weight:
+    description: 'Primary analysis weight (auto/image/music/speech/video/balanced)'
+    required: false
+    default: 'auto'
+  folder-name:
+    description: 'The folder name for storing synthesis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  synthesis-completed:
+    description: 'Whether synthesis was completed successfully'
+    value: ${{ steps.synthesis.outputs.completed }}
+  input-count:
+    description: 'Number of analysis inputs processed'
+    value: ${{ steps.synthesis.outputs.input-count }}
+  primary-source:
+    description: 'Primary source used for synthesis'
+    value: ${{ steps.synthesis.outputs.primary-source }}
+  final-depth-mode:
+    description: 'Final depth enhancement recommendation'
+    value: ${{ steps.synthesis.outputs.depth-mode }}
+  final-atmosphere:
+    description: 'Synthesized atmosphere'
+    value: ${{ steps.synthesis.outputs.atmosphere }}
+  brightness-level:
+    description: 'Recommended brightness level (0.3-1.2)'
+    value: ${{ steps.synthesis.outputs.brightness-level }}
+  rotation-speed:
+    description: 'Recommended rotation speed (0.1-2.0)'
+    value: ${{ steps.synthesis.outputs.rotation-speed }}
+  particle-energy:
+    description: 'Recommended particle interaction energy (0.1-1.0)'
+    value: ${{ steps.synthesis.outputs.particle-energy }}
+  auto-rotate:
+    description: 'Whether auto-rotation should be enabled'
+    value: ${{ steps.synthesis.outputs.auto-rotate }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 柔軟な世界観統合エージェント
+      id: synthesis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🌍 Flexible World Synthesis Agent V2"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        SYNTHESIS_DIR="$FOLDER_NAME/world-synthesis"
+        PRIMARY_WEIGHT="${{ inputs.primary-weight }}"
+        
+        # 入力JSONファイルの収集
+        IMAGE_JSON="${{ inputs.image-analysis-json }}"
+        MUSIC_JSON="${{ inputs.music-analysis-json }}"
+        SPEECH_JSON="${{ inputs.speech-analysis-json }}"
+        VIDEO_JSON="${{ inputs.video-analysis-json }}"
+        
+        echo "Synthesis folder: $SYNTHESIS_DIR"
+        echo "Primary weight: $PRIMARY_WEIGHT"
+        
+        # 統合フォルダを事前に作成
+        if [ ! -d "$SYNTHESIS_DIR" ]; then
+          mkdir -p "$SYNTHESIS_DIR"
+          echo "📁 Created synthesis folder: $SYNTHESIS_DIR"
+        fi
+        
+        # 利用可能な入力をカウント
+        INPUT_COUNT=0
+        AVAILABLE_INPUTS=""
+        
+        if [ -n "$IMAGE_JSON" ] && [ -f "$IMAGE_JSON" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}image "
+          echo "✅ Image analysis JSON found: $IMAGE_JSON"
+        fi
+        
+        if [ -n "$MUSIC_JSON" ] && [ -f "$MUSIC_JSON" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}music "
+          echo "✅ Music analysis JSON found: $MUSIC_JSON"
+        fi
+        
+        if [ -n "$SPEECH_JSON" ] && [ -f "$SPEECH_JSON" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}speech "
+          echo "✅ Speech analysis JSON found: $SPEECH_JSON"
+        fi
+        
+        if [ -n "$VIDEO_JSON" ] && [ -f "$VIDEO_JSON" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}video "
+          echo "✅ Video analysis JSON found: $VIDEO_JSON"
+        fi
+        
+        echo "Total inputs available: $INPUT_COUNT"
+        echo "Available input types: $AVAILABLE_INPUTS"
+        
+        if [ "$INPUT_COUNT" -eq 0 ]; then
+          echo "::error::❌ No analysis input files provided"
+          exit 1
+        fi
+        
+        # プロンプトの構築
+        PROMPT="あなたは柔軟な世界観統合の専門家です。提供された任意の組み合わせの分析結果から、最適な3D体験設定を生成してください。
+
+        **利用可能な入力**: $AVAILABLE_INPUTS ($INPUT_COUNT 個)
+        **統合戦略**: $PRIMARY_WEIGHT"
+        
+        # 各JSONファイルの内容を追加
+        if [ -n "$IMAGE_JSON" ] && [ -f "$IMAGE_JSON" ]; then
+          PROMPT="$PROMPT
+
+        **画像分析データ** ($IMAGE_JSON):
+        提供されたJSONファイルを読み込んで内容を確認してください"
+        fi
+        
+        if [ -n "$MUSIC_JSON" ] && [ -f "$MUSIC_JSON" ]; then
+          PROMPT="$PROMPT
+
+        **音楽分析データ** ($MUSIC_JSON):
+        提供されたJSONファイルを読み込んで内容を確認してください
+        ※感情曲線データがある場合は emotion-curves.srt または emotion-curves.json も参照"
+        fi
+        
+        if [ -n "$SPEECH_JSON" ] && [ -f "$SPEECH_JSON" ]; then
+          PROMPT="$PROMPT
+
+        **音声分析データ** ($SPEECH_JSON):
+        提供されたJSONファイルを読み込んで内容を確認してください"
+        fi
+        
+        if [ -n "$VIDEO_JSON" ] && [ -f "$VIDEO_JSON" ]; then
+          PROMPT="$PROMPT
+
+        **動画分析データ** ($VIDEO_JSON):
+        提供されたJSONファイルを読み込んで内容を確認してください"
+        fi
+        
+        PROMPT="$PROMPT
+
+        **統合タスク**:
+        1. 各JSONファイルを読み込み、世界観特性を抽出
+        2. 利用可能な分析結果に基づいて最適な設定を決定
+        3. 単一入力の場合は、その特性を最大限活用
+        4. 複数入力の場合は、調和的に統合
+        5. primary-weight='auto'の場合は、入力タイプに基づいて自動判断
+
+        **適応的統合ルール**:
+        - **1入力の場合**: その入力の特性をフルに反映
+        - **2入力の場合**: 主従関係を明確にして統合
+        - **3入力以上**: 多層的な世界観を構築
+        - **競合解決**: より具体的・詳細な分析を優先
+
+        **出力設定の決定**:
+        - **depth_mode**: シーンタイプに基づく (dramatic/dynamic→enhanced)
+        - **brightness_level**: 雰囲気に基づく (0.3-1.2)
+        - **rotation_speed**: エネルギーレベルに基づく (0.1-2.0)
+        - **particle_energy**: 動きの強度に基づく (0.1-1.0)
+        - **auto_rotate**: シーンの静動に基づく
+
+        **必須出力ファイル**:
+        1. **$SYNTHESIS_DIR/world-synthesis.json** - 最終設定
+        2. **$SYNTHESIS_DIR/world-synthesis.md** - 統合解説
+        3. **$SYNTHESIS_DIR/final-settings.txt** - 1行設定値
+        4. **$SYNTHESIS_DIR/input-summary.json** - 入力サマリー
+
+        **JSONフォーマット**:
+        \`\`\`json
+        {
+          \"depth_mode\": \"enhanced\",
+          \"atmosphere\": \"mysterious_energetic\",
+          \"brightness_level\": 0.6,
+          \"rotation_speed\": 0.4,
+          \"particle_energy\": 0.6,
+          \"auto_rotate\": true,
+          \"synthesis_confidence\": 0.9,
+          \"input_sources\": [\"image\", \"music\"],
+          \"primary_influence\": \"balanced\",
+          \"reasoning\": \"統合理由の詳細\",
+          \"input_count\": $INPUT_COUNT
+        }
+        \`\`\`
+
+        **重要**: 
+        - 提供された入力のみを使用（存在しない入力は無視）
+        - 単一入力でも完全な設定を生成
+        - 入力タイプに応じた最適化を実施"
+        
+        echo "🚀 Starting Flexible World Synthesis..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 20 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された統合結果の確認
+        echo ""
+        echo "📋 Checking generated synthesis files..."
+        
+        # JSON統合結果の確認と出力設定
+        if [ -f "$SYNTHESIS_DIR/world-synthesis.json" ]; then
+          echo "::notice::✅ World synthesis JSON generated"
+          
+          # JSONから値を抽出
+          DEPTH_MODE=$(grep -o '"depth_mode"[[:space:]]*:[[:space:]]*"[^"]*"' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d'"' -f4)
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d'"' -f4)
+          BRIGHTNESS_LEVEL=$(grep -o '"brightness_level"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          ROTATION_SPEED=$(grep -o '"rotation_speed"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          PARTICLE_ENERGY=$(grep -o '"particle_energy"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          AUTO_ROTATE=$(grep -o '"auto_rotate"[[:space:]]*:[[:space:]]*[a-z]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          PRIMARY_SOURCE=$(grep -o '"primary_influence"[[:space:]]*:[[:space:]]*"[^"]*"' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d'"' -f4)
+          
+          echo "Final depth mode: $DEPTH_MODE"
+          echo "Final atmosphere: $ATMOSPHERE"
+          echo "Brightness level: $BRIGHTNESS_LEVEL"
+          echo "Rotation speed: $ROTATION_SPEED"
+          echo "Particle energy: $PARTICLE_ENERGY"
+          echo "Auto rotate: $AUTO_ROTATE"
+          echo "Primary source: $PRIMARY_SOURCE"
+          
+          # GitHub Outputに設定
+          echo "depth-mode=$DEPTH_MODE" >> $GITHUB_OUTPUT
+          echo "atmosphere=$ATMOSPHERE" >> $GITHUB_OUTPUT
+          echo "brightness-level=${BRIGHTNESS_LEVEL:-0.8}" >> $GITHUB_OUTPUT
+          echo "rotation-speed=${ROTATION_SPEED:-0.5}" >> $GITHUB_OUTPUT
+          echo "particle-energy=${PARTICLE_ENERGY:-0.3}" >> $GITHUB_OUTPUT
+          echo "auto-rotate=${AUTO_ROTATE:-true}" >> $GITHUB_OUTPUT
+          echo "input-count=$INPUT_COUNT" >> $GITHUB_OUTPUT
+          echo "primary-source=${PRIMARY_SOURCE:-auto}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ World synthesis JSON file not found"
+          exit 1
+        fi
+        
+        # input-summary.jsonの確認
+        if [ -f "$SYNTHESIS_DIR/input-summary.json" ]; then
+          echo "::notice::✅ Input summary generated"
+          cat "$SYNTHESIS_DIR/input-summary.json"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push synthesis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No synthesis files to commit"
+        else
+          git commit -m "Add flexible world synthesis results (v2)"
+          git push origin ${{ inputs.branch-name }}
+        fi
