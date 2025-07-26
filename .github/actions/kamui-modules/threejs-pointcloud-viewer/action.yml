@@ -172,6 +172,7 @@ runs:
           echo "            audio = new Audio('assets/$MUSIC_FILENAME');" >> /tmp/music_functions.js
           echo "            audio.loop = true;" >> /tmp/music_functions.js
           echo "            audio.volume = 0.7;" >> /tmp/music_functions.js
+          echo "            audio.crossOrigin = 'anonymous';" >> /tmp/music_functions.js
           echo "            " >> /tmp/music_functions.js
           echo "            // Enhanced error handling" >> /tmp/music_functions.js
           echo "            audio.addEventListener('error', (e) => {" >> /tmp/music_functions.js
@@ -190,6 +191,9 @@ runs:
           echo "            audio.play().then(() => {" >> /tmp/music_functions.js
           echo "                playButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
           echo "                playButton.classList.add('playing');" >> /tmp/music_functions.js
+          echo "                // Setup audio analysis for music" >> /tmp/music_functions.js
+          echo "                setupMusicAnalysis(audio);" >> /tmp/music_functions.js
+          echo "                musicPlaying = true;" >> /tmp/music_functions.js
           echo "            }).catch(error => {" >> /tmp/music_functions.js
           echo "                console.error('Music playback error:', error);" >> /tmp/music_functions.js
           echo "                console.error('Error name:', error.name);" >> /tmp/music_functions.js
@@ -204,6 +208,7 @@ runs:
           echo "            audio.pause();" >> /tmp/music_functions.js
           echo "            playButton.textContent = '🎵 Play Music';" >> /tmp/music_functions.js
           echo "            playButton.classList.remove('playing');" >> /tmp/music_functions.js
+          echo "            musicPlaying = false;" >> /tmp/music_functions.js
           echo "        }" >> /tmp/music_functions.js
           echo "    });" >> /tmp/music_functions.js
           echo "}" >> /tmp/music_functions.js

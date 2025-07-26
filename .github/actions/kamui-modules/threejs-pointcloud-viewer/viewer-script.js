@@ -3,9 +3,21 @@ let scene, camera, renderer, controls;
 let pointCloud = null;
 let autoRotate = AUTO_ROTATE_PLACEHOLDER;
 let rotationSpeed = ANIMATION_SPEED_PLACEHOLDER;
-let pointSize = POINT_SIZE_PLACEHOLDER;
+let pointSize = 1.5;
 let audioElement = null;
 let musicPlaying = false;
+
+// Audio analysis variables
+let audioContext = null;
+let microphoneSource = null;
+let musicAnalyser = null;
+let micAnalyser = null;
+let musicDataArray = null;
+let micDataArray = null;
+let audioReactiveEnabled = false;
+let microphoneEnabled = false;
+let currentVolumeLevel = 0;
+let volumeSmoothing = 0.8; // Smoothing factor for volume changes
 
 // Lighting and appearance
 let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
@@ -178,6 +190,11 @@ function animate() {
     // Apply mouse gravity effect
     if (mouseGravityEnabled && pointCloud && originalPositions) {
         applyMouseGravity();
+    }
+    
+    // Apply audio-reactive effects
+    if ((audioReactiveEnabled || microphoneEnabled) && pointCloud) {
+        applyAudioReactiveEffects();
     }
     
     renderer.render(scene, camera);
@@ -780,6 +797,188 @@ function resetParticlePositions() {
     console.log('🔄 Particles, velocities, and colors reset to original state');
 }
 
+// Audio analysis functions
+function initializeAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('🎵 Audio context initialized');
+    }
+    return audioContext;
+}
+
+function setupMusicAnalysis(audioElement) {
+    if (!audioElement || musicAnalyser) return;
+    
+    try {
+        const context = initializeAudioContext();
+        const source = context.createMediaElementSource(audioElement);
+        musicAnalyser = context.createAnalyser();
+        musicAnalyser.fftSize = 256;
+        musicDataArray = new Uint8Array(musicAnalyser.frequencyBinCount);
+        
+        source.connect(musicAnalyser);
+        musicAnalyser.connect(context.destination);
+        
+        console.log('🎵 Music analysis setup complete');
+    } catch (error) {
+        console.error('❌ Music analysis setup failed:', error);
+    }
+}
+
+function setupMicrophoneAnalysis() {
+    if (micAnalyser) return Promise.resolve();
+    
+    return navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            const context = initializeAudioContext();
+            microphoneSource = context.createMediaStreamSource(stream);
+            micAnalyser = context.createAnalyser();
+            micAnalyser.fftSize = 256;
+            micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+            
+            microphoneSource.connect(micAnalyser);
+            microphoneEnabled = true;
+            
+            console.log('🎤 Microphone analysis setup complete');
+            return true;
+        })
+        .catch(error => {
+            console.error('❌ Microphone access denied:', error);
+            return false;
+        });
+}
+
+function getVolumeLevel() {
+    let volume = 0;
+    
+    if (audioReactiveEnabled && musicAnalyser && musicPlaying) {
+        musicAnalyser.getByteFrequencyData(musicDataArray);
+        volume = Math.max(volume, getAverageVolume(musicDataArray));
+    }
+    
+    if (microphoneEnabled && micAnalyser) {
+        micAnalyser.getByteFrequencyData(micDataArray);
+        volume = Math.max(volume, getAverageVolume(micDataArray));
+    }
+    
+    // Apply smoothing
+    currentVolumeLevel = currentVolumeLevel * volumeSmoothing + volume * (1 - volumeSmoothing);
+    return currentVolumeLevel;
+}
+
+function getAverageVolume(dataArray) {
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+    }
+    return (sum / dataArray.length) / 255; // Normalize to 0-1
+}
+
+function toggleAudioReactive() {
+    audioReactiveEnabled = !audioReactiveEnabled;
+    const button = document.getElementById('audioReactiveToggle');
+    
+    if (audioReactiveEnabled) {
+        button.innerHTML = '🎵 Audio ON';
+        button.title = 'Audio-reactive mode enabled';
+        console.log('🎵 Audio-reactive mode enabled');
+    } else {
+        button.innerHTML = '🔇 Audio OFF';
+        button.title = 'Audio-reactive mode disabled';
+        console.log('🔇 Audio-reactive mode disabled');
+    }
+}
+
+function toggleMicrophone() {
+    if (!microphoneEnabled) {
+        setupMicrophoneAnalysis().then(success => {
+            if (success) {
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎤 Mic ON';
+                button.title = 'Microphone enabled';
+                console.log('🎤 Microphone enabled');
+            }
+        });
+    } else {
+        microphoneEnabled = false;
+        if (microphoneSource) {
+            microphoneSource.disconnect();
+        }
+        const button = document.getElementById('microphoneToggle');
+        button.innerHTML = '🎤 Mic OFF';
+        button.title = 'Microphone disabled';
+        console.log('🎤 Microphone disabled');
+    }
+}
+
+function applyAudioReactiveEffects() {
+    const volumeLevel = getVolumeLevel();
+    
+    if (volumeLevel > 0.01) { // Only apply effects if there's audio
+        // 1. Size effect based on volume (like audio meter)
+        const sizeMultiplier = 1.0 + (volumeLevel * 2.0); // Up to 3x size
+        pointCloud.material.size = pointSize * sizeMultiplier;
+        
+        // 2. Brightness effect
+        const brightnessMultiplier = 1.0 + (volumeLevel * 1.5); // Up to 2.5x brightness
+        if (ambientLight) {
+            ambientLight.intensity = brightnessLevel * brightnessMultiplier;
+        }
+        if (directionalLight) {
+            directionalLight.intensity = brightnessLevel * 1.5 * brightnessMultiplier;
+        }
+        
+        // 3. Color intensity effect
+        if (pointCloud.geometry.attributes.color) {
+            const colors = pointCloud.geometry.attributes.color;
+            const originalColors = pointCloud.geometry.userData.originalColors;
+            
+            if (originalColors) {
+                const colorIntensity = 1.0 + (volumeLevel * 1.0); // Up to 2x color intensity
+                const colorArray = colors.array;
+                
+                // Apply to a subset of particles for performance
+                for (let i = 0; i < colorArray.length; i += 30) { // Every 10th particle
+                    if (i + 2 < colorArray.length) {
+                        colorArray[i] = Math.min(1.0, originalColors[i] * colorIntensity);     // R
+                        colorArray[i + 1] = Math.min(1.0, originalColors[i + 1] * colorIntensity); // G
+                        colorArray[i + 2] = Math.min(1.0, originalColors[i + 2] * colorIntensity); // B
+                    }
+                }
+                colors.needsUpdate = true;
+            }
+        }
+        
+        // 4. Optional: Subtle gravity effect based on volume
+        if (volumeLevel > 0.3) { // Only for louder sounds
+            const audioGravityStrength = volumeLevel * 0.5;
+            // Apply a gentle outward expansion effect
+            if (originalPositions && particleVelocities) {
+                const expansionForce = audioGravityStrength * 0.1;
+                for (let i = 0; i < particleVelocities.length; i += 30) { // Sample particles
+                    const centerX = 0, centerY = 0, centerZ = 0; // Center point
+                    const dx = originalPositions[i] - centerX;
+                    const dy = originalPositions[i + 1] - centerY;
+                    const dz = originalPositions[i + 2] - centerZ;
+                    
+                    // Normalize direction
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (distance > 0) {
+                        particleVelocities[i] += (dx / distance) * expansionForce;
+                        particleVelocities[i + 1] += (dy / distance) * expansionForce;
+                        particleVelocities[i + 2] += (dz / distance) * expansionForce;
+                    }
+                }
+            }
+        }
+        
+        // Debug log occasionally
+        if (Math.random() < 0.01) {
+            console.log(`🎵 Audio reactive: volume=${(volumeLevel * 100).toFixed(1)}%, size=${sizeMultiplier.toFixed(2)}x`);
+        }
+    }
+}
+
 MUSIC_FUNCTIONS_PLACEHOLDER
 
 // Make functions globally accessible for HTML events
@@ -811,6 +1010,8 @@ window.updateGravityRange = updateGravityRange;
 window.updateGravityStrength = updateGravityStrength;
 window.updateWaveIntensity = updateWaveIntensity;
 window.toggleGravityMode = toggleGravityMode;
+window.toggleAudioReactive = toggleAudioReactive;
+window.toggleMicrophone = toggleMicrophone;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application

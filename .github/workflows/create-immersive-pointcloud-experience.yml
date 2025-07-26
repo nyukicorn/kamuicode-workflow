@@ -90,6 +90,12 @@ on:
           - 'enhanced'  # 強調された深度
         default: 'auto'
       
+      point-size:
+        description: 'ポイントクラウドのサイズ'
+        required: false
+        type: string
+        default: '1.5'
+      
 
 permissions:
   contents: write
