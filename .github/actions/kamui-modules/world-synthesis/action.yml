@@ -168,7 +168,7 @@ runs:
         3. **$SYNTHESIS_DIR/final-settings.txt** - 設定値のみ (1行形式)
 
         **JSONフォーマット例**:
-        ```json
+        \`\`\`json
         {
           \"depth_mode\": \"enhanced\",
           \"atmosphere\": \"mysterious_peaceful\",
@@ -180,7 +180,7 @@ runs:
           \"primary_influence\": \"image\",
           \"reasoning\": \"Image analysis shows dramatic cave scene, music adds peaceful undertones\"
         }
-        ```
+        \`\`\`
 
         **重要な注意点**:
         1. 数値は必ず指定範囲内で設定してください
