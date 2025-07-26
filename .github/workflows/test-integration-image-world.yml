@@ -1,4 +1,4 @@
-name: 'Test Image-Planning to World-Synthesis Integration'
+name: 'Test Complete World Analysis Integration'
 
 on:
   workflow_dispatch:
@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: 'A mystical underground crystal cave with glowing purple crystals, dramatic lighting, deep caverns'
+      test-music-prompt:
+        description: 'テスト用音楽プロンプト'
+        required: true
+        type: string
+        default: 'Ambient electronic music with ethereal synthesizers, deep bass, mysterious atmosphere, slow tempo'
 
 jobs:
   test-integration:
@@ -20,14 +25,23 @@ jobs:
         id: timestamp
         run: echo "value=integration-test-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
       
-      - name: Step 1 - Image Planning Analysis
-        uses: ./.github/actions/kamui-modules/image-planning
+      - name: Step 1 - Image World Analysis
+        uses: ./.github/actions/kamui-modules/image-world-analysis
         with:
           image-prompt: ${{ inputs.test-image-prompt }}
           folder-name: ${{ steps.timestamp.outputs.value }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
         id: image-analysis
+      
+      - name: Step 2 - Music World Analysis
+        uses: ./.github/actions/kamui-modules/music-world-analysis
+        with:
+          music-prompt: ${{ inputs.test-music-prompt }}
+          folder-name: ${{ steps.timestamp.outputs.value }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+        id: music-analysis
       
       - name: Display Image Analysis Results
         run: |
@@ -38,8 +52,22 @@ jobs:
           echo "Lighting Style: ${{ steps.image-analysis.outputs.lighting-style }}"
           echo "Movement Energy: ${{ steps.image-analysis.outputs.movement-energy }}"
           echo "Color Temperature: ${{ steps.image-analysis.outputs.color-temperature }}"
+          echo "Artistic Style: ${{ steps.image-analysis.outputs.artistic-style }}"
+          echo "Cultural Context: ${{ steps.image-analysis.outputs.cultural-context }}"
       
-      - name: Step 2 - World Synthesis (Using Image Analysis Output)
+      - name: Display Music Analysis Results  
+        run: |
+          echo "🎵 Music Analysis Results:"
+          echo "Atmosphere: ${{ steps.music-analysis.outputs.atmosphere }}"
+          echo "Genre: ${{ steps.music-analysis.outputs.genre }}"
+          echo "Instrumentation: ${{ steps.music-analysis.outputs.instrumentation }}"
+          echo "Tempo: ${{ steps.music-analysis.outputs.tempo }}"
+          echo "Energy: ${{ steps.music-analysis.outputs.energy }}"
+          echo "Mood: ${{ steps.music-analysis.outputs.mood }}"
+          echo "Acoustic Space: ${{ steps.music-analysis.outputs.acoustic-space }}"
+          echo "Regional Style: ${{ steps.music-analysis.outputs.regional-style }}"
+      
+      - name: Step 3 - World Synthesis (Using Both Analyses)
         uses: ./.github/actions/kamui-modules/world-synthesis
         with:
           image-scene-type: ${{ steps.image-analysis.outputs.scene-type }}
@@ -48,9 +76,9 @@ jobs:
           image-lighting-style: ${{ steps.image-analysis.outputs.lighting-style }}
           image-movement-energy: ${{ steps.image-analysis.outputs.movement-energy }}
           image-color-temperature: ${{ steps.image-analysis.outputs.color-temperature }}
-          music-atmosphere: 'mystical'
-          music-energy: 'medium'
-          primary-weight: 'image'
+          music-atmosphere: ${{ steps.music-analysis.outputs.atmosphere }}
+          music-energy: ${{ steps.music-analysis.outputs.energy }}
+          primary-weight: 'balanced'
           folder-name: ${{ steps.timestamp.outputs.value }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
@@ -70,22 +98,24 @@ jobs:
       
       - name: Integration Test Summary
         run: |
-          echo "## 🔗 Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Complete World Analysis Integration Test Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📝 Test Input" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Test Inputs" >> $GITHUB_STEP_SUMMARY
           echo "**Image Prompt**: ${{ inputs.test-image-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Music Prompt**: ${{ inputs.test-music-prompt }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🎨 Image Analysis → World Synthesis Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎨🎵 Multi-Modal Analysis → World Synthesis Pipeline" >> $GITHUB_STEP_SUMMARY
           echo "1. **Image Analysis Completed**: ${{ steps.image-analysis.outputs.analysis-completed }}" >> $GITHUB_STEP_SUMMARY
-          echo "2. **World Synthesis Completed**: ${{ steps.world-synthesis.outputs.synthesis-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "2. **Music Analysis Completed**: ${{ steps.music-analysis.outputs.analysis-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "3. **World Synthesis Completed**: ${{ steps.world-synthesis.outputs.synthesis-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🎯 Final Settings" >> $GITHUB_STEP_SUMMARY
-          echo "- **Scene Type**: ${{ steps.image-analysis.outputs.scene-type }} → **Depth Mode**: ${{ steps.world-synthesis.outputs.final-depth-mode || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Atmosphere**: ${{ steps.image-analysis.outputs.atmosphere }} → **Final**: ${{ steps.world-synthesis.outputs.final-atmosphere || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Movement Energy**: ${{ steps.image-analysis.outputs.movement-energy }} → **Particle Energy**: ${{ steps.world-synthesis.outputs.particle-energy || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Analysis Results" >> $GITHUB_STEP_SUMMARY
+          echo "**Image World**: ${{ steps.image-analysis.outputs.scene-type }} scene, ${{ steps.image-analysis.outputs.atmosphere }} atmosphere" >> $GITHUB_STEP_SUMMARY
+          echo "**Music World**: ${{ steps.music-analysis.outputs.genre }} genre, ${{ steps.music-analysis.outputs.mood }} mood, energy ${{ steps.music-analysis.outputs.energy }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Final Synthesis**: ${{ steps.world-synthesis.outputs.final-atmosphere || 'N/A' }} → Depth: ${{ steps.world-synthesis.outputs.final-depth-mode || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.image-analysis.outputs.analysis-completed }}" = "true" ] && [ -n "${{ steps.world-synthesis.outputs.synthesis-completed }}" ]; then
-            echo "✅ **Integration Status**: Pipeline executed successfully" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.image-analysis.outputs.analysis-completed }}" = "true" ] && [ "${{ steps.music-analysis.outputs.analysis-completed }}" = "true" ]; then
+            echo "✅ **Integration Status**: Multi-modal pipeline executed successfully" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Integration Status**: Pipeline had issues" >> $GITHUB_STEP_SUMMARY
           fi
@@ -101,6 +131,22 @@ jobs:
             cat ${{ steps.timestamp.outputs.value }}/world-analysis/image-analysis.json
           else
             echo "Image analysis JSON not found"
+          fi
+          
+          echo ""
+          echo "📄 Music Analysis JSON:"
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-analysis/music-analysis.json" ]; then
+            cat ${{ steps.timestamp.outputs.value }}/world-analysis/music-analysis.json
+          else
+            echo "Music analysis JSON not found"
+          fi
+          
+          echo ""
+          echo "📄 Emotion Curves SRT:"
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-analysis/emotion-curves.srt" ]; then
+            head -20 ${{ steps.timestamp.outputs.value }}/world-analysis/emotion-curves.srt
+          else
+            echo "Emotion curves SRT not found"
           fi
           
           echo ""
