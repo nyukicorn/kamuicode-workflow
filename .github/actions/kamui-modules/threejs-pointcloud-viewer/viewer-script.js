@@ -26,10 +26,11 @@ let gravityRange = 100;     // Default range
 let waveIntensity = 0.0;    // Disable wave by default for better performance
 let particleVelocities = null; // Store particle velocities for wave effect
 
-// Trail mode variables
-let gravityMode = 'circle';  // 'circle' or 'trail'
-let mouseTrail = [];         // Store recent mouse positions
+// Gravity mode variables
+let gravityMode = 'circle';  // 'circle', 'flow', or 'magnet'
+let mouseTrail = [];         // Store recent mouse positions for flow mode
 const MAX_TRAIL_LENGTH = 15; // Number of positions to remember
+const MIN_MAGNET_DISTANCE = 8; // Minimum distance for magnet mode (particles within this don't move)
 
 // Initialize the viewer
 function init() {
@@ -330,14 +331,14 @@ function setupMouseInteraction() {
         // Convert to world coordinates
         updateMouseWorldPosition();
         
-        // Update mouse trail for trail mode
-        if (gravityMode === 'trail') {
+        // Update mouse trail for flow mode
+        if (gravityMode === 'flow') {
             updateMouseTrail();
         }
         
         // Debug log occasionally
         if (Math.random() < 0.01) {
-            const modeIcon = gravityMode === 'trail' ? '🌊' : '🎯';
+            const modeIcon = gravityMode === 'flow' ? '🌊' : gravityMode === 'magnet' ? '🧲' : '🎯';
             console.log(`${modeIcon} Mouse: screen(${event.clientX}, ${event.clientY}) mode: ${gravityMode}`);
         }
     });
@@ -435,8 +436,8 @@ function applyMouseGravity() {
                 particleVelocities[i + 2] += dz * amplifiedForce * 0.2;
             }
         }
-    } else if (gravityMode === 'trail' && mouseTrail.length > 0) {
-        // Trail mode - multiple points of attraction along mouse path
+    } else if (gravityMode === 'flow' && mouseTrail.length > 0) {
+        // Flow mode - multiple points of attraction along mouse path
         for (let i = 0; i < positionArray.length; i += 3) {
             const originalX = originalPositions[i];
             const originalY = originalPositions[i + 1];
@@ -474,6 +475,38 @@ function applyMouseGravity() {
                 particleVelocities[i] += totalForceX;
                 particleVelocities[i + 1] += totalForceY;
                 particleVelocities[i + 2] += totalForceZ;
+            }
+        }
+    } else if (gravityMode === 'magnet') {
+        // Magnet mode - particles are attracted to mouse like a real magnet
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
+            
+            // Calculate distance to mouse
+            const dx = mouseWorldPosition.x - originalX;
+            const dy = mouseWorldPosition.y - originalY;
+            const dz = mouseWorldPosition.z - originalZ;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            // Only apply force if particle is far enough from mouse (magnet behavior)
+            if (distance > MIN_MAGNET_DISTANCE && distance < maxDistance) {
+                affectedParticles++;
+                
+                // Normalize direction vector (consistent pull direction regardless of distance)
+                const dirX = dx / distance;
+                const dirY = dy / distance;
+                const dirZ = dz / distance;
+                
+                // Magnetic force with realistic falloff (inverse square law, but capped for usability)
+                const falloff = Math.max(0.1, (maxDistance - distance) / maxDistance);
+                const magneticForce = currentStrength * falloff * 1.5; // Slightly stronger than circle mode
+                
+                // Apply normalized force (particles move toward mouse, don't overshoot)
+                particleVelocities[i] += dirX * magneticForce * 0.15;
+                particleVelocities[i + 1] += dirY * magneticForce * 0.15;
+                particleVelocities[i + 2] += dirZ * magneticForce * 0.15;
             }
         }
     }
@@ -593,7 +626,15 @@ function toggleMouseGravity() {
 }
 
 function toggleGravityMode() {
-    gravityMode = gravityMode === 'circle' ? 'trail' : 'circle';
+    // Cycle through three modes: circle -> flow -> magnet -> circle
+    if (gravityMode === 'circle') {
+        gravityMode = 'flow';
+    } else if (gravityMode === 'flow') {
+        gravityMode = 'magnet';
+    } else {
+        gravityMode = 'circle';
+    }
+    
     const button = document.getElementById('gravityModeToggle');
     
     if (gravityMode === 'circle') {
@@ -601,10 +642,15 @@ function toggleGravityMode() {
         button.title = 'Circle mode - particles attracted to current mouse position';
         mouseTrail = []; // Clear trail
         console.log('🎯 Switched to Circle gravity mode');
-    } else {
-        button.innerHTML = '🌊 Trail';
-        button.title = 'Trail mode - particles follow mouse movement path';
-        console.log('🌊 Switched to Trail gravity mode');
+    } else if (gravityMode === 'flow') {
+        button.innerHTML = '🌊 Flow';
+        button.title = 'Flow mode - particles follow mouse movement path creating flowing effects';
+        console.log('🌊 Switched to Flow gravity mode');
+    } else if (gravityMode === 'magnet') {
+        button.innerHTML = '🧲 Magnet';
+        button.title = 'Magnet mode - particles gather toward mouse like iron filings to a magnet';
+        mouseTrail = []; // Clear trail
+        console.log('🧲 Switched to Magnet gravity mode');
     }
 }
 
