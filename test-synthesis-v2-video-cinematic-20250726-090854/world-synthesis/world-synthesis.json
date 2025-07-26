@@ -1,0 +1,13 @@
+{
+  "depth_mode": "enhanced",
+  "atmosphere": "dramatic_fantasy",
+  "brightness_level": 0.7,
+  "rotation_speed": 1.2,
+  "particle_energy": 0.8,
+  "auto_rotate": true,
+  "synthesis_confidence": 0.95,
+  "input_sources": ["video"],
+  "primary_influence": "video",
+  "reasoning": "ファンタジー・シネマティック動画の高エネルギー特性を最大限活用。dramatic lighting + cool palette に対応した brightness_level、energy_level 9/10 の dynamic movement に対応した高い rotation_speed と particle_energy、epic duration に適した auto_rotate を設定。",
+  "input_count": 1
+}

@@ -1,0 +1,18 @@
+{
+  "total_inputs": 1,
+  "input_types": ["video"],
+  "primary_source": "video",
+  "integration_strategy": "auto",
+  "video_analysis": {
+    "scene_type": "fantasy",
+    "atmosphere": "dramatic", 
+    "visual_style": "cinematic",
+    "energy_level": 9,
+    "movement_type": "dynamic",
+    "confidence": 0.95
+  },
+  "synthesis_approach": "single_input_maximization",
+  "conflicts_detected": false,
+  "resolution_method": "n/a",
+  "final_confidence": 0.95
+}

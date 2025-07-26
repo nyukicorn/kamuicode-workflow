@@ -1,0 +1,1 @@
+enhanced,dramatic_fantasy,0.7,1.2,0.8,true
