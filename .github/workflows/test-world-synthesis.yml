@@ -53,7 +53,7 @@ jobs:
           primary-weight: 'image'
           folder-name: ${{ steps.timestamp.outputs.value }}
           branch-name: ${{ github.ref_name }}
-          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
         id: synthesis
       
       - name: Display Synthesis Results
