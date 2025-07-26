@@ -1,0 +1,73 @@
+name: Test World Synthesis V2 - Speech Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      speech-type:
+        description: 'Speech type (calm/energetic/dramatic)'
+        required: false
+        default: 'dramatic'
+
+jobs:
+  test-speech-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SPEECH_TYPE="${{ github.event.inputs.speech-type || 'dramatic' }}"
+          FOLDER_NAME="test-synthesis-v2-speech-$SPEECH_TYPE-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          
+          # Create test folder
+          mkdir -p $FOLDER_NAME/world-analysis
+          
+          # Set speech content based on type
+          case "$SPEECH_TYPE" in
+            "calm")
+              SPEECH_CONTENT="Gentle female voice guiding a meditation session. Soft, soothing tones with long pauses for reflection. Speaking slowly about mindfulness and inner peace. Background of subtle nature sounds - distant ocean waves and soft wind through trees."
+              ;;
+            "energetic") 
+              SPEECH_CONTENT="Dynamic motivational speaker with enthusiastic, powerful voice. Fast-paced delivery with inspiring words about achieving goals and overcoming challenges. Strong, confident tone that energizes and motivates. Occasional applause and cheering from audience."
+              ;;
+            "dramatic")
+              SPEECH_CONTENT="Deep, commanding narrator voice telling epic tales of ancient heroes and mythical quests. Dramatic pauses and emphasis creating tension and wonder. Voice echoes as if in a grand hall or cathedral. Mysterious, otherworldly atmosphere with underlying mystical ambience."
+              ;;
+          esac
+          
+          echo "speech-content=$SPEECH_CONTENT" >> $GITHUB_OUTPUT
+          echo "Using speech type: $SPEECH_TYPE"
+      
+      - name: Run Speech World Analysis
+        uses: ./.github/actions/kamui-modules/speech-world-analysis
+        with:
+          speech-prompt: ${{ steps.setup.outputs.speech-content }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Run World Synthesis V2 - Speech Only
+        uses: ./.github/actions/kamui-modules/world-synthesis-v2
+        with:
+          speech-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/speech-analysis.json
+          primary-weight: 'auto'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking speech-only synthesis results in: $FOLDER_NAME/world-synthesis"
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.json" ]; then
+            echo "✅ Speech-only synthesis JSON found:"
+            cat "$FOLDER_NAME/world-synthesis/world-synthesis.json"
+          else
+            echo "❌ Speech-only synthesis JSON not found"
+            exit 1
+          fi

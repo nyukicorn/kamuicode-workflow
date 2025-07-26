@@ -1,0 +1,173 @@
+name: Test World Synthesis V2 - Multimodal Integration
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-scenario:
+        description: 'Test scenario (all-four/image-speech/music-video/three-inputs)'
+        required: false
+        default: 'all-four'
+
+jobs:
+  test-multimodal-synthesis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test scenario
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SCENARIO="${{ github.event.inputs.test-scenario || 'all-four' }}"
+          FOLDER_NAME="test-multimodal-synthesis-$SCENARIO-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "scenario=$SCENARIO" >> $GITHUB_OUTPUT
+          
+          # Create test folder
+          mkdir -p $FOLDER_NAME/world-analysis
+          
+          echo "Using test scenario: $SCENARIO"
+          echo "Test folder: $FOLDER_NAME"
+      
+      # 各分析モジュールを順次実行
+      - name: Run Image World Analysis
+        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'image') || contains(steps.setup.outputs.scenario, 'three')
+        uses: ./.github/actions/kamui-modules/image-world-analysis
+        with:
+          image-prompt: 'Dramatic underground cave system with glowing crystals embedded in the walls. Deep blue and purple ambient lighting creates mysterious shadows. Ancient stone formations and underground pools reflect the crystalline light. The atmosphere is mystical and otherworldly, with a sense of ancient secrets waiting to be discovered.'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Run Music World Analysis
+        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'music') || contains(steps.setup.outputs.scenario, 'three')
+        uses: ./.github/actions/kamui-modules/music-world-analysis
+        with:
+          music-prompt: 'Epic orchestral soundtrack with deep strings, ethereal choir, and dramatic percussion. Building from mysterious whispers to powerful crescendo. Celtic influences with mystical harp and flute melodies. Creates atmosphere of ancient magic and heroic adventure.'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Run Speech World Analysis
+        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'speech') || contains(steps.setup.outputs.scenario, 'three')
+        uses: ./.github/actions/kamui-modules/speech-world-analysis
+        with:
+          speech-prompt: 'Deep, resonant male narrator voice speaking in hushed, reverent tones about ancient legends and forgotten civilizations. Slow, deliberate pace with pauses for dramatic effect. Echoing slightly as if spoken in a vast chamber. The voice carries weight of centuries and hidden knowledge.'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Run Video World Analysis
+        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'video') || contains(steps.setup.outputs.scenario, 'three')
+        uses: ./.github/actions/kamui-modules/video-world-analysis
+        with:
+          video-prompt: 'Cinematic exploration of ancient temple ruins at twilight. Camera slowly moves through crumbling stone corridors illuminated by shafts of golden light. Dust particles dance in the air. Mysterious carvings on walls become visible as light shifts. Epic, contemplative atmosphere with natural ambient sounds and distant mystical music.'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Analysis Files
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          SCENARIO="${{ steps.setup.outputs.scenario }}"
+          
+          echo "Checking analysis files for scenario: $SCENARIO"
+          ls -la $FOLDER_NAME/world-analysis/
+          
+          # Count available analysis files
+          FILE_COUNT=0
+          IMAGE_JSON=""
+          MUSIC_JSON=""
+          SPEECH_JSON=""
+          VIDEO_JSON=""
+          
+          if [ -f "$FOLDER_NAME/world-analysis/image-analysis.json" ]; then
+            FILE_COUNT=$((FILE_COUNT + 1))
+            IMAGE_JSON="$FOLDER_NAME/world-analysis/image-analysis.json"
+            echo "✅ Image analysis found"
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/music-analysis.json" ]; then
+            FILE_COUNT=$((FILE_COUNT + 1))
+            MUSIC_JSON="$FOLDER_NAME/world-analysis/music-analysis.json"
+            echo "✅ Music analysis found"
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/speech-analysis.json" ]; then
+            FILE_COUNT=$((FILE_COUNT + 1))
+            SPEECH_JSON="$FOLDER_NAME/world-analysis/speech-analysis.json"
+            echo "✅ Speech analysis found"
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/video-analysis.json" ]; then
+            FILE_COUNT=$((FILE_COUNT + 1))
+            VIDEO_JSON="$FOLDER_NAME/world-analysis/video-analysis.json"
+            echo "✅ Video analysis found"
+          fi
+          
+          echo "Total analysis files: $FILE_COUNT"
+          
+          # Save paths for synthesis step
+          echo "image-json=$IMAGE_JSON" >> $GITHUB_ENV
+          echo "music-json=$MUSIC_JSON" >> $GITHUB_ENV
+          echo "speech-json=$SPEECH_JSON" >> $GITHUB_ENV
+          echo "video-json=$VIDEO_JSON" >> $GITHUB_ENV
+          echo "file-count=$FILE_COUNT" >> $GITHUB_ENV
+      
+      - name: Run World Synthesis V2 - Multimodal
+        uses: ./.github/actions/kamui-modules/world-synthesis-v2
+        with:
+          image-analysis-json: ${{ env.image-json }}
+          music-analysis-json: ${{ env.music-json }}
+          speech-analysis-json: ${{ env.speech-json }}
+          video-analysis-json: ${{ env.video-json }}
+          primary-weight: 'auto'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Synthesis Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          SCENARIO="${{ steps.setup.outputs.scenario }}"
+          FILE_COUNT="${{ env.file-count }}"
+          
+          echo "Verifying synthesis results for scenario: $SCENARIO"
+          echo "Input file count: $FILE_COUNT"
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.json" ]; then
+            echo "✅ Multimodal synthesis JSON found:"
+            cat "$FOLDER_NAME/world-synthesis/world-synthesis.json"
+            echo ""
+            
+            # Extract and display key values
+            INPUT_COUNT=$(grep -o '"input_count"[[:space:]]*:[[:space:]]*[0-9]*' "$FOLDER_NAME/world-synthesis/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+            PRIMARY_INFLUENCE=$(grep -o '"primary_influence"[[:space:]]*:[[:space:]]*"[^"]*"' "$FOLDER_NAME/world-synthesis/world-synthesis.json" | cut -d'"' -f4)
+            ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$FOLDER_NAME/world-synthesis/world-synthesis.json" | cut -d'"' -f4)
+            CONFIDENCE=$(grep -o '"synthesis_confidence"[[:space:]]*:[[:space:]]*[0-9.]*' "$FOLDER_NAME/world-synthesis/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+            
+            echo "📊 Synthesis Summary:"
+            echo "- Input count: $INPUT_COUNT (expected: $FILE_COUNT)"
+            echo "- Primary influence: $PRIMARY_INFLUENCE"
+            echo "- Final atmosphere: $ATMOSPHERE"
+            echo "- Synthesis confidence: $CONFIDENCE"
+            
+            if [ "$INPUT_COUNT" != "$FILE_COUNT" ]; then
+              echo "::warning::Input count mismatch: got $INPUT_COUNT, expected $FILE_COUNT"
+            fi
+          else
+            echo "❌ Multimodal synthesis JSON not found"
+            exit 1
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/input-summary.json" ]; then
+            echo "✅ Input summary found:"
+            cat "$FOLDER_NAME/world-synthesis/input-summary.json"
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.md" ]; then
+            echo "✅ Synthesis documentation found"
+            echo "First 20 lines:"
+            head -20 "$FOLDER_NAME/world-synthesis/world-synthesis.md"
+          fi

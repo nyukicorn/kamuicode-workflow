@@ -1,0 +1,76 @@
+name: Test World Synthesis V2 - Video Only
+
+on:
+  workflow_dispatch:
+    inputs:
+      video-type:
+        description: 'Video type (nature/urban/cinematic/action)'
+        required: false
+        default: 'cinematic'
+
+jobs:
+  test-video-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          VIDEO_TYPE="${{ github.event.inputs.video-type || 'cinematic' }}"
+          FOLDER_NAME="test-synthesis-v2-video-$VIDEO_TYPE-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          
+          # Create test folder
+          mkdir -p $FOLDER_NAME/world-analysis
+          
+          # Set video content based on type
+          case "$VIDEO_TYPE" in
+            "nature")
+              VIDEO_CONTENT="Peaceful mountain landscape at sunrise. Camera slowly pans across misty valleys and snow-capped peaks. Golden light gradually illuminates the scene. Birds chirping softly in the distance. Natural colors - greens, blues, and warm golden tones. Slow, contemplative pace creating sense of serenity and grandeur."
+              ;;
+            "urban")
+              VIDEO_CONTENT="Fast-paced nighttime city montage. Neon lights reflecting on wet streets, busy traffic, people walking quickly. Dynamic camera movements - tracking shots, quick cuts, aerial views. Electronic music with heavy bass. Vibrant colors - blues, purples, reds from city lights. High energy, modern urban atmosphere."
+              ;;
+            "cinematic")
+              VIDEO_CONTENT="Epic fantasy battle scene with dramatic lighting and sweeping camera movements. Heroes in flowing cloaks moving through ancient ruins under stormy skies. Lightning illuminates medieval architecture. Orchestral score with powerful drums and strings. Rich, saturated colors with deep contrasts. Heroic, larger-than-life atmosphere."
+              ;;
+            "action")
+              VIDEO_CONTENT="High-speed chase sequence through narrow city streets. Rapid camera movements, quick cuts, dynamic angles. Engines roaring, tires screeching. Fast electronic soundtrack with intense rhythm. Motion blur effects, high contrast lighting. Adrenaline-pumping pace with constant movement and tension."
+              ;;
+          esac
+          
+          echo "video-content=$VIDEO_CONTENT" >> $GITHUB_OUTPUT
+          echo "Using video type: $VIDEO_TYPE"
+      
+      - name: Run Video World Analysis
+        uses: ./.github/actions/kamui-modules/video-world-analysis
+        with:
+          video-prompt: ${{ steps.setup.outputs.video-content }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Run World Synthesis V2 - Video Only
+        uses: ./.github/actions/kamui-modules/world-synthesis-v2
+        with:
+          video-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/video-analysis.json
+          primary-weight: 'auto'
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking video-only synthesis results in: $FOLDER_NAME/world-synthesis"
+          
+          if [ -f "$FOLDER_NAME/world-synthesis/world-synthesis.json" ]; then
+            echo "✅ Video-only synthesis JSON found:"
+            cat "$FOLDER_NAME/world-synthesis/world-synthesis.json"
+          else
+            echo "❌ Video-only synthesis JSON not found"
+            exit 1
+          fi
