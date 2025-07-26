@@ -1,0 +1,22 @@
+{
+  "atmosphere": "energetic",
+  "genre": "electronic",
+  "instrumentation": "synthesizers,drums,bass",
+  "tempo": "fast",
+  "energy": 8,
+  "mood": "uplifting",
+  "color_temperature": "warm",
+  "acoustic_space": "wide",
+  "reverb_depth": "moderate",
+  "distance_feel": "close",
+  "complexity_level": "complex",
+  "change_rate": "dynamic",
+  "predictability": "varied",
+  "regional_style": "western",
+  "era_style": "contemporary",
+  "artistic_style": "commercial",
+  "production_quality": "hi-fi",
+  "processing_level": "heavily_processed",
+  "confidence": 0.95,
+  "analysis_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+}

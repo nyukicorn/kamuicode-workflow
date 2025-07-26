@@ -1,0 +1,15 @@
+1
+00:00:00,000 --> 00:00:15,000
+energy: 6, mood: building, atmosphere: anticipation, tempo: medium, intensity: 5
+
+2
+00:00:15,000 --> 00:00:30,000
+energy: 8, mood: energetic, atmosphere: explosive, tempo: fast, intensity: 8
+
+3
+00:00:30,000 --> 00:00:45,000
+energy: 9, mood: euphoric, atmosphere: climactic, tempo: fast, intensity: 9
+
+4
+00:00:45,000 --> 00:01:00,000
+energy: 7, mood: uplifting, atmosphere: soaring, tempo: fast, intensity: 7
