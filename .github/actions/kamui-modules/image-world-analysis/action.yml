@@ -21,6 +21,10 @@ inputs:
   oauth-token:
     description: 'Claude Code OAuth token'
     required: true
+  skip-commit:
+    description: 'Skip commit and push step (for multimodal workflows)'
+    required: false
+    default: 'false'
 
 outputs:
   analysis-completed:
@@ -299,6 +303,7 @@ runs:
         echo "::endgroup::"
     
     - name: Commit and push analysis
+      if: ${{ inputs.skip-commit != 'true' }}
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -323,3 +328,9 @@ runs:
             sleep 5
           done
         fi
+    
+    - name: Skip commit message
+      if: ${{ inputs.skip-commit == 'true' }}
+      shell: bash
+      run: |
+        echo "::notice::⏭️ Commit and push skipped for multimodal workflow"
