@@ -170,6 +170,7 @@ runs:
           echo "    playButton.addEventListener('click', () => {" >> /tmp/music_functions.js
           echo "        if (!audio) {" >> /tmp/music_functions.js
           echo "            audio = new Audio('assets/$MUSIC_FILENAME');" >> /tmp/music_functions.js
+          echo "            audioElement = audio; // Set global reference" >> /tmp/music_functions.js
           echo "            audio.loop = true;" >> /tmp/music_functions.js
           echo "            audio.volume = 0.7;" >> /tmp/music_functions.js
           echo "            audio.crossOrigin = 'anonymous';" >> /tmp/music_functions.js

@@ -261,14 +261,14 @@ function toggleBrightness() {
         // Make it bright - much brighter lighting + lighter background
         brightnessLevel = 1.2;
         scene.background = new THREE.Color('#404040'); // Dark gray instead of black
-        button.innerHTML = '🌙 Dark';
-        button.title = 'Switch to dark mode';
+        button.innerHTML = '☀️ Light Mode';
+        button.title = 'Currently in light mode (click for dark)';
     } else {
         // Make it dim - keep original dark appearance
         brightnessLevel = 0.3;
         scene.background = new THREE.Color('BACKGROUND_COLOR_PLACEHOLDER');
-        button.innerHTML = '☀️ Light';
-        button.title = 'Switch to light mode';
+        button.innerHTML = '🌙 Dark Mode';
+        button.title = 'Currently in dark mode (click for light)';
     }
     
     // Apply enhanced brightness change
@@ -653,12 +653,12 @@ function toggleMouseGravity() {
     const button = document.getElementById('gravityToggle');
     
     if (mouseGravityEnabled) {
-        button.innerHTML = '🧲 Gravity';
-        button.title = 'Mouse gravity enabled - move mouse to attract particles';
+        button.innerHTML = '🧲 Gravity ON';
+        button.title = 'Gravity is ON (click to disable)';
         console.log('🧲 Mouse gravity enabled');
     } else {
-        button.innerHTML = '❌ No Gravity';
-        button.title = 'Mouse gravity disabled';
+        button.innerHTML = '🚫 Gravity OFF';
+        button.title = 'Gravity is OFF (click to enable)';
         console.log('❌ Mouse gravity disabled');
         
         // Reset particles to original positions when disabled
@@ -879,12 +879,16 @@ function toggleAudioReactive() {
     const button = document.getElementById('audioReactiveToggle');
     
     if (audioReactiveEnabled) {
-        button.innerHTML = '🎵 Audio ON';
-        button.title = 'Audio-reactive mode enabled';
+        button.innerHTML = '🎵 Audio React ON';
+        button.title = 'Audio reactive is ON (click to disable)';
         console.log('🎵 Audio-reactive mode enabled');
+        // Setup audio analysis for the music element if it exists
+        if (audioElement && !musicAnalyser) {
+            setupMusicAnalysis(audioElement);
+        }
     } else {
-        button.innerHTML = '🔇 Audio OFF';
-        button.title = 'Audio-reactive mode disabled';
+        button.innerHTML = '🔇 Audio React OFF';
+        button.title = 'Audio reactive is OFF (click to enable)';
         console.log('🔇 Audio-reactive mode disabled');
     }
 }
@@ -895,7 +899,7 @@ function toggleMicrophone() {
             if (success) {
                 const button = document.getElementById('microphoneToggle');
                 button.innerHTML = '🎤 Mic ON';
-                button.title = 'Microphone enabled';
+                button.title = 'Microphone is ON (click to disable)';
                 console.log('🎤 Microphone enabled');
             }
         });
@@ -905,8 +909,8 @@ function toggleMicrophone() {
             microphoneSource.disconnect();
         }
         const button = document.getElementById('microphoneToggle');
-        button.innerHTML = '🎤 Mic OFF';
-        button.title = 'Microphone disabled';
+        button.innerHTML = '🎙️ Mic OFF';
+        button.title = 'Microphone is OFF (click to enable)';
         console.log('🎤 Microphone disabled');
     }
 }
