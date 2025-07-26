@@ -395,42 +395,15 @@ function enhance3DAppearance(geometry) {
     const positionArray = positions.array;
     const colorArray = colors.array;
     
-    // Calculate center point for depth reference
-    const box = new THREE.Box3().setFromBufferAttribute(positions);
-    const center = box.getCenter(new THREE.Vector3());
-    const maxDistance = center.distanceTo(box.max);
-    
-    // Store original colors for depth enhancement
+    // Store original colors for later depth calculations
     if (!geometry.userData) geometry.userData = {};
     geometry.userData.originalColors = new Float32Array(colorArray);
     
-    // Apply depth-based effects
-    for (let i = 0; i < positionArray.length; i += 3) {
-        const x = positionArray[i];
-        const y = positionArray[i + 1];
-        const z = positionArray[i + 2];
-        
-        // Calculate distance from center (for depth effect)
-        const distanceFromCenter = Math.sqrt(
-            (x - center.x) ** 2 + 
-            (y - center.y) ** 2 + 
-            (z - center.z) ** 2
-        );
-        
-        // Depth factor (0 = center, 1 = edge)
-        const depthFactor = Math.min(distanceFromCenter / maxDistance, 1.0);
-        
-        // Apply depth-based color modification (darken distant points)
-        const colorIndex = i; // Colors are also arranged as xyz
-        const depthIntensity = 0.4 + (0.6 * (1 - depthFactor)); // 0.4 to 1.0 range
-        
-        colorArray[colorIndex] *= depthIntensity;     // R
-        colorArray[colorIndex + 1] *= depthIntensity; // G  
-        colorArray[colorIndex + 2] *= depthIntensity; // B
-    }
+    // Don't apply any initial depth effects here - let dynamic updates handle it
+    // This ensures depth is always calculated from current camera position
     
     colors.needsUpdate = true;
-    console.log('🎆 Enhanced 3D appearance with depth-based coloring applied');
+    console.log('🎆 3D appearance system initialized - dynamic depth will be applied in real-time');
 }
 
 function storeOriginalPositions() {
@@ -719,68 +692,65 @@ function updateDynamic3DEffects() {
     const cameraPosition = camera.position;
     const material = pointCloud.material;
     
-    // Calculate scene bounds for depth normalization
-    const box = new THREE.Box3().setFromObject(pointCloud);
-    const sceneSize = box.getSize(new THREE.Vector3()).length();
-    const maxViewDistance = sceneSize * 1.5; // Scale based on scene size
+    // Calculate proper depth range based on camera distance
+    let minCameraDistance = Infinity;
+    let maxCameraDistance = -Infinity;
     
-    let minDistance = Infinity;
-    let maxDistance = -Infinity;
-    
-    // First pass: find min/max distances for better normalization
-    for (let i = 0; i < positionArray.length; i += 90) { // Quick sampling
+    // Sample particles to find actual min/max camera distances
+    for (let i = 0; i < positionArray.length; i += 60) {
         const x = positionArray[i];
         const y = positionArray[i + 1];
         const z = positionArray[i + 2];
         
-        const distance = Math.sqrt(
+        const cameraDistance = Math.sqrt(
             (x - cameraPosition.x) ** 2 + 
             (y - cameraPosition.y) ** 2 + 
             (z - cameraPosition.z) ** 2
         );
         
-        minDistance = Math.min(minDistance, distance);
-        maxDistance = Math.min(maxDistance, maxViewDistance);
+        minCameraDistance = Math.min(minCameraDistance, cameraDistance);
+        maxCameraDistance = Math.max(maxCameraDistance, cameraDistance);
     }
     
-    const distanceRange = maxDistance - minDistance;
+    const depthRange = maxCameraDistance - minCameraDistance;
     
-    // Update every 15th particle for better performance with enhanced effects
-    for (let i = 0; i < positionArray.length; i += 45) { // Process every 15th particle
+    // Apply true camera-based depth effects to every particle (improved sampling)
+    for (let i = 0; i < positionArray.length; i += 30) { // Process every 10th particle
         const x = positionArray[i];
         const y = positionArray[i + 1];
         const z = positionArray[i + 2];
         
-        // Calculate distance from camera
-        const distanceFromCamera = Math.sqrt(
+        // Calculate actual distance from camera (true 3D depth)
+        const cameraDistance = Math.sqrt(
             (x - cameraPosition.x) ** 2 + 
             (y - cameraPosition.y) ** 2 + 
             (z - cameraPosition.z) ** 2
         );
         
-        // Enhanced depth factor calculation (closer = brighter, further = dimmer)
-        const normalizedDistance = Math.max(0, Math.min(1, (distanceFromCamera - minDistance) / distanceRange));
-        const depthFactor = 0.2 + (0.8 * (1 - normalizedDistance)); // 0.2 to 1.0 range
+        // Normalize distance for depth factor (0 = closest, 1 = farthest)
+        const normalizedDepth = depthRange > 0 ? 
+            Math.max(0, Math.min(1, (cameraDistance - minCameraDistance) / depthRange)) : 0;
         
-        // Apply enhanced depth-based coloring with more dramatic effect
+        // Natural depth intensity (closer = brighter, farther = darker)
+        const depthIntensity = 0.3 + (0.7 * (1 - normalizedDepth)); // 0.3 to 1.0 range
+        
+        // Apply natural color darkening (no artificial color tints)
         const colorIndex = i;
         if (colorIndex + 2 < colorArray.length) {
-            // Enhanced color depth with slight blue tint for distant particles (atmospheric perspective)
-            const atmosphericEffect = normalizedDistance * 0.1;
-            colorArray[colorIndex] = originalColors[colorIndex] * depthFactor * (1 - atmosphericEffect); // Red
-            colorArray[colorIndex + 1] = originalColors[colorIndex + 1] * depthFactor * (1 - atmosphericEffect * 0.5); // Green  
-            colorArray[colorIndex + 2] = originalColors[colorIndex + 2] * depthFactor * (1 + atmosphericEffect); // Blue (enhanced for distance)
+            colorArray[colorIndex] = originalColors[colorIndex] * depthIntensity;         // R
+            colorArray[colorIndex + 1] = originalColors[colorIndex + 1] * depthIntensity; // G  
+            colorArray[colorIndex + 2] = originalColors[colorIndex + 2] * depthIntensity; // B
         }
     }
     
-    // Dynamic size adjustment based on average camera distance
-    const avgCameraDistance = (minDistance + maxDistance) / 2;
-    const baseSizeMultiplier = Math.max(0.5, Math.min(2.0, 100 / avgCameraDistance));
-    material.size = pointSize * baseSizeMultiplier;
+    // Dynamic size based on average viewing distance
+    const avgCameraDistance = (minCameraDistance + maxCameraDistance) / 2;
+    const sizeMultiplier = Math.max(0.4, Math.min(3.0, 150 / avgCameraDistance));
+    material.size = pointSize * sizeMultiplier;
     
-    // Subtle opacity adjustment for depth (very subtle to avoid performance issues)
-    const depthOpacity = Math.max(0.7, Math.min(1.0, 1.0 - (avgCameraDistance / maxViewDistance) * 0.3));
-    material.opacity = depthOpacity;
+    // Subtle opacity for extreme depth (very conservative)
+    const globalOpacity = Math.max(0.8, Math.min(1.0, 1.0 - (avgCameraDistance / (maxCameraDistance * 1.5)) * 0.2));
+    material.opacity = globalOpacity;
     
     colors.needsUpdate = true;
     material.needsUpdate = true;
