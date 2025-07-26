@@ -1,0 +1,26 @@
+{
+  "depth_mode": "enhanced",
+  "atmosphere": "ethereal_fantasy",
+  "brightness_level": 0.7,
+  "rotation_speed": 0.3,
+  "particle_energy": 0.7,
+  "auto_rotate": true,
+  "synthesis_confidence": 0.92,
+  "input_sources": ["image"],
+  "primary_influence": "image_dominant",
+  "reasoning": "Based on fantasy scene with ethereal atmosphere and high movement energy (7/10). Enhanced depth mode chosen for volumetric approach with sparse object density. Moderate rotation speed and high particle energy to match the dynamic celestial background while maintaining the soft, ethereal quality. Warm color temperature and aerial perspective suggest gentle auto-rotation movement.",
+  "input_count": 1,
+  "scene_characteristics": {
+    "scene_type": "fantasy",
+    "lighting_approach": "soft_glow",
+    "spatial_scale": "vast",
+    "temporal_style": "timeless",
+    "artistic_influence": "impressionistic_volumetric"
+  },
+  "technical_parameters": {
+    "depth_rendering": "volumetric",
+    "particle_system": "ethereal_clouds",
+    "rotation_axis": "gentle_aerial",
+    "brightness_adaptation": "warm_glow"
+  }
+}

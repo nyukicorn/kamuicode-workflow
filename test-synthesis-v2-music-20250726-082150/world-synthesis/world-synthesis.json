@@ -1,0 +1,16 @@
+{
+  "depth_mode": "enhanced",
+  "atmosphere": "energetic_uplifting",
+  "brightness_level": 0.8,
+  "rotation_speed": 1.2,
+  "particle_energy": 0.8,
+  "auto_rotate": true,
+  "synthesis_confidence": 0.95,
+  "input_sources": ["music"],
+  "primary_influence": "music_driven",
+  "reasoning": "エネルギッシュなエレクトロニック音楽（エネルギー8、ファストテンポ、複雑構造）の特性を反映。感情曲線は建設的から爆発的、クライマックスへと変化し、高い動的性能を要求。温かい色温度とワイドな音響空間により、明るく開放的な3D体験を実現。",
+  "input_count": 1,
+  "emotion_peak_intensity": 9,
+  "tempo_classification": "fast",
+  "dynamic_range": "high"
+}
