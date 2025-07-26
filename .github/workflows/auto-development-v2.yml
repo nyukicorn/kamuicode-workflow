@@ -64,21 +64,21 @@ jobs:
           REQUIREMENTS_CONTENT=$(cat "${{ inputs.requirements_file }}")
           
           ANALYSIS_PROMPT=$(cat <<'EOF'
-GitHub Actions自動開発システムの実験です。
+GitHub Actions Automatic Development System Experiment.
 
-要件定義書を分析し、詳細な技術設計書を作成してください。
+Analyze the requirements document and create detailed technical design documents.
 
-**要件定義書**:
+**Requirements Document**:
 $REQUIREMENTS_CONTENT
 
-**作成するファイル**:
-- docs/design/${{ inputs.target_module }}-design.md (詳細設計書)
-- docs/design/${{ inputs.target_module }}-implementation-plan.md (実装計画)
+**Files to Create**:
+- docs/design/${{ inputs.target_module }}-design.md (Detailed Design Document)
+- docs/design/${{ inputs.target_module }}-implementation-plan.md (Implementation Plan)
 
-**重要**: 
-- 既存のimage-generation/action.ymlを必ず読み込んで分析
-- 後方互換性を厳格に維持
-- GitHub Actionsのbest practicesに従う
+**Important**: 
+- Must read and analyze existing image-generation/action.yml
+- Strictly maintain backward compatibility
+- Follow GitHub Actions best practices
 EOF
 )
           
@@ -107,21 +107,21 @@ EOF
           echo "🛠️ Phase 2: Implementation"
           
           IMPLEMENTATION_PROMPT=$(cat <<'EOF'
-GitHub Actions自動開発システム - Phase 2: 実装フェーズ
+GitHub Actions Automatic Development System - Phase 2: Implementation Phase
 
-設計書に基づいて実装を行ってください:
+Implement based on the design documents:
 
-**実装タスク**:
-1. 設計書の内容確認
-2. 新しいモジュール .github/actions/kamui-modules/${{ inputs.target_module }}/ の作成
-3. action.yml の実装
-4. README.md の作成
+**Implementation Tasks**:
+1. Review design document contents
+2. Create new module .github/actions/kamui-modules/${{ inputs.target_module }}/
+3. Implement action.yml
+4. Create README.md
 
-**実装要件**:
-- 既存のimage-generationモジュールとの互換性維持
-- 新機能（N枚生成、モデル比較）の完全実装
-- 適切なエラーハンドリング
-- GitHub Actions best practices準拠
+**Implementation Requirements**:
+- Maintain compatibility with existing image-generation module
+- Complete implementation of new features (N-image generation, model comparison)
+- Proper error handling
+- Follow GitHub Actions best practices
 EOF
 )
           
@@ -150,30 +150,30 @@ EOF
           echo "🧪 Phase 3: Testing and Validation"
           
           TESTING_PROMPT=$(cat <<'EOF'
-GitHub Actions自動開発システム - Phase 3: テスト・検証フェーズ
+GitHub Actions Automatic Development System - Phase 3: Testing and Validation Phase
 
-実装されたモジュールの品質確認を行ってください:
+Perform quality assurance for the implemented module:
 
-**テスト項目**:
-1. action.yml構文チェック
-2. 必要な入力パラメータの確認
-3. 出力仕様の検証
-4. エラーハンドリングの確認
-5. ドキュメントの完整性チェック
+**Test Items**:
+1. action.yml syntax check
+2. Required input parameter verification
+3. Output specification validation
+4. Error handling verification
+5. Documentation completeness check
 
-**品質チェック**:
-- コードレビュー（ベストプラクティス準拠）
-- セキュリティチェック
-- パフォーマンス考慮点の確認
+**Quality Checks**:
+- Code review (best practices compliance)
+- Security check
+- Performance considerations verification
 
-**レポート作成**:
-- テスト結果レポート作成
-- 問題点と改善提案
-- 実装完了サマリー
+**Report Creation**:
+- Test results report creation
+- Issues and improvement suggestions
+- Implementation completion summary
 
-**もし問題が見つかった場合**:
-- 自動的に修正を実施
-- 修正内容をレポートに記録
+**If Issues Are Found**:
+- Automatically implement fixes
+- Record fix details in report
 EOF
 )
           
