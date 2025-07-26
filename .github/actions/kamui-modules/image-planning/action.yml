@@ -1,0 +1,209 @@
+name: 'Image World Analysis'
+description: 'Analyze image prompts to extract world atmosphere and visual characteristics'
+author: 'KamuiCode Workflow'
+
+inputs:
+  image-prompt:
+    description: 'The image prompt to analyze for world building'
+    required: true
+  folder-name:
+    description: 'The folder name for storing analysis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  analysis-completed:
+    description: 'Whether analysis was completed successfully'
+    value: ${{ steps.analysis.outputs.completed }}
+  scene-type:
+    description: 'Analyzed scene type (static/dynamic/dramatic)'
+    value: ${{ steps.analysis.outputs.scene-type }}
+  atmosphere:
+    description: 'Overall atmosphere (peaceful/energetic/mysterious/etc)'
+    value: ${{ steps.analysis.outputs.atmosphere }}
+  depth-mode:
+    description: 'Recommended depth enhancement (normal/enhanced)'
+    value: ${{ steps.analysis.outputs.depth-mode }}
+  lighting-style:
+    description: 'Lighting characteristics (soft/bright/dramatic/etc)'
+    value: ${{ steps.analysis.outputs.lighting-style }}
+  movement-energy:
+    description: 'Movement energy level (1-10 scale)'
+    value: ${{ steps.analysis.outputs.movement-energy }}
+  color-temperature:
+    description: 'Color temperature (warm/cool/neutral)'
+    value: ${{ steps.analysis.outputs.color-temperature }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 画像世界観分析エージェント
+      id: analysis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Image World Analysis Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        IMAGE_PROMPT="${{ inputs.image-prompt }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        ANALYSIS_DIR="$FOLDER_NAME/world-analysis"
+        
+        echo "Image prompt: $IMAGE_PROMPT"
+        echo "Analysis folder: $ANALYSIS_DIR"
+        
+        # 分析フォルダを事前に作成
+        if [ ! -d "$ANALYSIS_DIR" ]; then
+          mkdir -p "$ANALYSIS_DIR"
+          echo "📁 Created analysis folder: $ANALYSIS_DIR"
+        fi
+        
+        # プロンプトの構築
+        PROMPT="あなたは画像プロンプトから世界観を分析する専門家です。与えられた画像プロンプトを詳細に分析し、3Dポイントクラウド体験に最適な設定を提案してください。
+
+        **分析対象画像プロンプト**: $IMAGE_PROMPT
+
+        **分析タスク**:
+        1. **シーンタイプ分析**: 静的(static)/動的(dynamic)/劇的(dramatic)のいずれかを判定
+        2. **雰囲気分析**: peaceful/energetic/mysterious/dramatic/romantic/adventurous等を特定
+        3. **深度推奨**: normal(標準)/enhanced(強調)のどちらが適切かを判定
+        4. **光の特性**: soft/bright/dramatic/dim/warm/cool等の照明スタイル
+        5. **動きのエネルギー**: 1-10のスケールで動きの激しさを評価
+        6. **色温度**: warm(暖色系)/cool(寒色系)/neutral(中性)を判定
+
+        **分析基準**:
+        - **静的シーン**: 庭園、建築物、静物等 → depth: normal
+        - **動的シーン**: 海、風景、自然現象等 → depth: enhanced
+        - **劇的シーン**: 洞窟、峡谷、山岳等 → depth: enhanced
+        
+        **必須出力ファイル**:
+        1. **$ANALYSIS_DIR/image-analysis.json** - 機械処理用の構造化データ
+        2. **$ANALYSIS_DIR/image-analysis.md** - 人間確認用の詳細分析結果
+        3. **$ANALYSIS_DIR/recommendations.txt** - 設定推奨値（1行形式）
+
+        **JSONフォーマット例**:
+        ```json
+        {
+          \"scene_type\": \"dynamic\",
+          \"atmosphere\": \"peaceful\",
+          \"depth_mode\": \"enhanced\",
+          \"lighting_style\": \"soft\",
+          \"movement_energy\": 3,
+          \"color_temperature\": \"warm\",
+          \"confidence\": 0.85
+        }
+        ```
+
+        **重要な注意点**:
+        1. 必ず3つのファイルすべてを作成してください
+        2. JSON形式は厳密に従ってください（機械処理用）
+        3. 分析理由を明確に記述してください
+        4. 360度パノラマ・ポイントクラウド体験に最適化した推奨を行ってください
+        5. ファイル作成後、ファイルパスを確認・報告してください"
+        
+        echo "🚀 Starting Image World Analysis Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 15 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された分析結果の確認
+        echo ""
+        echo "📋 Checking generated analysis files..."
+        
+        # JSON分析結果の確認と出力設定
+        if [ -f "$ANALYSIS_DIR/image-analysis.json" ]; then
+          echo "::notice::✅ Image analysis JSON generated"
+          
+          # jqがない場合の代替手段でJSONから値を抽出
+          SCENE_TYPE=$(grep -o '"scene_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/image-analysis.json" | cut -d'"' -f4)
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/image-analysis.json" | cut -d'"' -f4)
+          DEPTH_MODE=$(grep -o '"depth_mode"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/image-analysis.json" | cut -d'"' -f4)
+          LIGHTING_STYLE=$(grep -o '"lighting_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/image-analysis.json" | cut -d'"' -f4)
+          MOVEMENT_ENERGY=$(grep -o '"movement_energy"[[:space:]]*:[[:space:]]*[0-9]*' "$ANALYSIS_DIR/image-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          COLOR_TEMPERATURE=$(grep -o '"color_temperature"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/image-analysis.json" | cut -d'"' -f4)
+          
+          echo "Scene type: $SCENE_TYPE"
+          echo "Atmosphere: $ATMOSPHERE"
+          echo "Depth mode: $DEPTH_MODE"
+          echo "Lighting style: $LIGHTING_STYLE"
+          echo "Movement energy: $MOVEMENT_ENERGY"
+          echo "Color temperature: $COLOR_TEMPERATURE"
+          
+          # GitHub Outputに設定
+          echo "scene-type=$SCENE_TYPE" >> $GITHUB_OUTPUT
+          echo "atmosphere=$ATMOSPHERE" >> $GITHUB_OUTPUT
+          echo "depth-mode=$DEPTH_MODE" >> $GITHUB_OUTPUT
+          echo "lighting-style=$LIGHTING_STYLE" >> $GITHUB_OUTPUT
+          echo "movement-energy=$MOVEMENT_ENERGY" >> $GITHUB_OUTPUT
+          echo "color-temperature=$COLOR_TEMPERATURE" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Image analysis JSON file not found"
+          exit 1
+        fi
+        
+        # 推奨設定の確認
+        if [ -f "$ANALYSIS_DIR/recommendations.txt" ]; then
+          echo "::notice::✅ Recommendations generated"
+          echo "Recommendations:"
+          cat "$ANALYSIS_DIR/recommendations.txt"
+        else
+          echo "::warning::⚠️ Recommendations file not found"
+        fi
+        
+        # 分析文書の確認
+        if [ -f "$ANALYSIS_DIR/image-analysis.md" ]; then
+          echo "::notice::✅ Analysis document generated"
+          echo "First 10 lines of analysis:"
+          head -10 "$ANALYSIS_DIR/image-analysis.md"
+        else
+          echo "::warning::⚠️ Analysis document not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push analysis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No analysis files to commit"
+        else
+          git commit -m "Add image world analysis for: ${{ inputs.image-prompt }}"
+          git push origin ${{ inputs.branch-name }}
+        fi

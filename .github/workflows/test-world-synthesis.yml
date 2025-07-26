@@ -1,0 +1,78 @@
+name: 'Test World Synthesis Module'
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-scene-type:
+        description: 'テスト用シーンタイプ'
+        required: true
+        type: choice
+        options:
+          - 'static'
+          - 'dynamic' 
+          - 'dramatic'
+        default: 'dramatic'
+      
+      test-atmosphere:
+        description: 'テスト用雰囲気'
+        required: true
+        type: string
+        default: 'mysterious'
+      
+      test-depth-mode:
+        description: 'テスト用深度モード'
+        required: true
+        type: choice
+        options:
+          - 'normal'
+          - 'enhanced'
+        default: 'enhanced'
+
+jobs:
+  test-world-synthesis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate test timestamp
+        id: timestamp
+        run: echo "value=test-synthesis-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Test World Synthesis Module
+        uses: ./.github/actions/kamui-modules/world-synthesis
+        with:
+          image-scene-type: ${{ inputs.test-scene-type }}
+          image-atmosphere: ${{ inputs.test-atmosphere }}
+          image-depth-mode: ${{ inputs.test-depth-mode }}
+          image-lighting-style: 'dramatic'
+          image-movement-energy: '7'
+          image-color-temperature: 'cool'
+          music-atmosphere: 'mystical'
+          music-energy: 'medium'
+          primary-weight: 'image'
+          folder-name: ${{ steps.timestamp.outputs.value }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        id: synthesis
+      
+      - name: Display Synthesis Results
+        run: |
+          echo "🌍 World Synthesis Test Results:"
+          echo "Final Depth Mode: ${{ steps.synthesis.outputs.final-depth-mode }}"
+          echo "Final Atmosphere: ${{ steps.synthesis.outputs.final-atmosphere }}"
+          echo "Brightness Level: ${{ steps.synthesis.outputs.brightness-level }}"
+          echo "Rotation Speed: ${{ steps.synthesis.outputs.rotation-speed }}"
+          echo "Particle Energy: ${{ steps.synthesis.outputs.particle-energy }}"
+          echo "Auto Rotate: ${{ steps.synthesis.outputs.auto-rotate }}"
+          echo "Synthesis Completed: ${{ steps.synthesis.outputs.synthesis-completed }}"
+      
+      - name: Show Synthesis Files
+        run: |
+          echo "📁 Generated Files:"
+          ls -la ${{ steps.timestamp.outputs.value }}/world-synthesis/ || echo "No synthesis files found"
+          
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-synthesis/world-synthesis.json" ]; then
+            echo "📄 JSON Content:"
+            cat ${{ steps.timestamp.outputs.value }}/world-synthesis/world-synthesis.json
+          fi

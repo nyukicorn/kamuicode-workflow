@@ -1,0 +1,266 @@
+name: 'World Synthesis'
+description: 'Synthesize multiple world analyses into unified settings for immersive experience'
+author: 'KamuiCode Workflow'
+
+inputs:
+  image-scene-type:
+    description: 'Scene type from image analysis'
+    required: true
+  image-atmosphere:
+    description: 'Atmosphere from image analysis'
+    required: true
+  image-depth-mode:
+    description: 'Depth mode from image analysis'
+    required: true
+  image-lighting-style:
+    description: 'Lighting style from image analysis'
+    required: true
+  image-movement-energy:
+    description: 'Movement energy from image analysis'
+    required: true
+  image-color-temperature:
+    description: 'Color temperature from image analysis'
+    required: true
+  music-atmosphere:
+    description: 'Atmosphere from music analysis (optional)'
+    required: false
+    default: ''
+  music-energy:
+    description: 'Energy level from music analysis (optional)'
+    required: false
+    default: ''
+  primary-weight:
+    description: 'Primary analysis weight (image/music/balanced)'
+    required: false
+    default: 'image'
+  folder-name:
+    description: 'The folder name for storing synthesis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  synthesis-completed:
+    description: 'Whether synthesis was completed successfully'
+    value: ${{ steps.synthesis.outputs.completed }}
+  final-depth-mode:
+    description: 'Final depth enhancement recommendation'
+    value: ${{ steps.synthesis.outputs.depth-mode }}
+  final-atmosphere:
+    description: 'Synthesized atmosphere'
+    value: ${{ steps.synthesis.outputs.atmosphere }}
+  brightness-level:
+    description: 'Recommended brightness level (0.3-1.2)'
+    value: ${{ steps.synthesis.outputs.brightness-level }}
+  rotation-speed:
+    description: 'Recommended rotation speed (0.1-2.0)'
+    value: ${{ steps.synthesis.outputs.rotation-speed }}
+  particle-energy:
+    description: 'Recommended particle interaction energy (0.1-1.0)'
+    value: ${{ steps.synthesis.outputs.particle-energy }}
+  auto-rotate:
+    description: 'Whether auto-rotation should be enabled'
+    value: ${{ steps.synthesis.outputs.auto-rotate }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 世界観統合エージェント
+      id: synthesis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🌍 World Synthesis Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        SYNTHESIS_DIR="$FOLDER_NAME/world-synthesis"
+        PRIMARY_WEIGHT="${{ inputs.primary-weight }}"
+        
+        echo "Synthesis folder: $SYNTHESIS_DIR"
+        echo "Primary weight: $PRIMARY_WEIGHT"
+        
+        # 統合フォルダを事前に作成
+        if [ ! -d "$SYNTHESIS_DIR" ]; then
+          mkdir -p "$SYNTHESIS_DIR"
+          echo "📁 Created synthesis folder: $SYNTHESIS_DIR"
+        fi
+        
+        # 入力データの整理
+        IMAGE_DATA="Scene Type: ${{ inputs.image-scene-type }}
+        Atmosphere: ${{ inputs.image-atmosphere }}
+        Depth Mode: ${{ inputs.image-depth-mode }}
+        Lighting Style: ${{ inputs.image-lighting-style }}
+        Movement Energy: ${{ inputs.image-movement-energy }}
+        Color Temperature: ${{ inputs.image-color-temperature }}"
+        
+        MUSIC_DATA="Atmosphere: ${{ inputs.music-atmosphere }}
+        Energy: ${{ inputs.music-energy }}"
+        
+        echo "Image analysis data:"
+        echo "$IMAGE_DATA"
+        echo ""
+        echo "Music analysis data:"
+        echo "$MUSIC_DATA"
+        
+        # プロンプトの構築
+        PROMPT="あなたは複数の世界観分析を統合して、最適な3Dポイントクラウド体験設定を決定する専門家です。
+
+        **統合対象データ**:
+
+        **画像分析結果**:
+        $IMAGE_DATA
+
+        **音楽分析結果** (利用可能な場合):
+        $MUSIC_DATA
+
+        **統合重み**: $PRIMARY_WEIGHT (image=画像重視6:4, music=音楽重視4:6, balanced=均等5:5)
+
+        **統合タスク**:
+        1. **深度モード決定**: normal/enhanced の最終決定
+        2. **雰囲気統合**: 複数の雰囲気を統合した最終的な世界観
+        3. **明度レベル**: Three.jsの明度設定 (0.3-1.2) を決定
+        4. **回転速度**: 自動回転速度 (0.1-2.0) を決定  
+        5. **パーティクル活性度**: マウス重力等の反応度 (0.1-1.0) を決定
+        6. **自動回転**: 有効/無効の決定
+
+        **統合ルール**:
+        - **depth-mode**: dynamic/dramatic → enhanced, static → normal
+        - **brightness-level**: 
+          * peaceful/soft → 0.8-1.0 (明るめ)
+          * dramatic/mysterious → 0.4-0.6 (暗め)
+          * energetic → 1.0-1.2 (最大明度)
+        - **rotation-speed**:
+          * peaceful → 0.2-0.5 (ゆっくり)
+          * energetic → 0.8-1.5 (速め)
+          * dramatic → 0.1-0.3 (非常にゆっくり)
+        - **particle-energy**:
+          * movement-energy 1-3 → 0.2-0.4
+          * movement-energy 4-6 → 0.4-0.7  
+          * movement-energy 7-10 → 0.7-1.0
+        - **auto-rotate**: 
+          * static scenes → true (自動回転で変化をつける)
+          * dynamic scenes → false (手動で探索)
+
+        **必須出力ファイル**:
+        1. **$SYNTHESIS_DIR/world-synthesis.json** - 最終設定の構造化データ
+        2. **$SYNTHESIS_DIR/world-synthesis.md** - 統合過程の詳細解説
+        3. **$SYNTHESIS_DIR/final-settings.txt** - 設定値のみ (1行形式)
+
+        **JSONフォーマット例**:
+        ```json
+        {
+          \"depth_mode\": \"enhanced\",
+          \"atmosphere\": \"mysterious_peaceful\",
+          \"brightness_level\": 0.7,
+          \"rotation_speed\": 0.3,
+          \"particle_energy\": 0.5,
+          \"auto_rotate\": true,
+          \"synthesis_confidence\": 0.9,
+          \"primary_influence\": \"image\",
+          \"reasoning\": \"Image analysis shows dramatic cave scene, music adds peaceful undertones\"
+        }
+        ```
+
+        **重要な注意点**:
+        1. 数値は必ず指定範囲内で設定してください
+        2. 統合過程の論理的根拠を明確に記述してください
+        3. 相反する要素がある場合は、primary-weight に従って調整してください
+        4. ファイル作成後、ファイルパスを確認・報告してください"
+        
+        echo "🚀 Starting World Synthesis Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 15 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された統合結果の確認
+        echo ""
+        echo "📋 Checking generated synthesis files..."
+        
+        # JSON統合結果の確認と出力設定
+        if [ -f "$SYNTHESIS_DIR/world-synthesis.json" ]; then
+          echo "::notice::✅ World synthesis JSON generated"
+          
+          # JSONから値を抽出
+          DEPTH_MODE=$(grep -o '"depth_mode"[[:space:]]*:[[:space:]]*"[^"]*"' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d'"' -f4)
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d'"' -f4)
+          BRIGHTNESS_LEVEL=$(grep -o '"brightness_level"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          ROTATION_SPEED=$(grep -o '"rotation_speed"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          PARTICLE_ENERGY=$(grep -o '"particle_energy"[[:space:]]*:[[:space:]]*[0-9.]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          AUTO_ROTATE=$(grep -o '"auto_rotate"[[:space:]]*:[[:space:]]*[a-z]*' "$SYNTHESIS_DIR/world-synthesis.json" | cut -d':' -f2 | tr -d ' ')
+          
+          echo "Final depth mode: $DEPTH_MODE"
+          echo "Final atmosphere: $ATMOSPHERE"
+          echo "Brightness level: $BRIGHTNESS_LEVEL"
+          echo "Rotation speed: $ROTATION_SPEED"
+          echo "Particle energy: $PARTICLE_ENERGY"
+          echo "Auto rotate: $AUTO_ROTATE"
+          
+          # GitHub Outputに設定
+          echo "depth-mode=$DEPTH_MODE" >> $GITHUB_OUTPUT
+          echo "atmosphere=$ATMOSPHERE" >> $GITHUB_OUTPUT
+          echo "brightness-level=${BRIGHTNESS_LEVEL:-0.8}" >> $GITHUB_OUTPUT
+          echo "rotation-speed=${ROTATION_SPEED:-0.5}" >> $GITHUB_OUTPUT
+          echo "particle-energy=${PARTICLE_ENERGY:-0.3}" >> $GITHUB_OUTPUT
+          echo "auto-rotate=${AUTO_ROTATE:-true}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ World synthesis JSON file not found"
+          exit 1
+        fi
+        
+        # 統合文書の確認
+        if [ -f "$SYNTHESIS_DIR/world-synthesis.md" ]; then
+          echo "::notice::✅ Synthesis document generated"
+          echo "First 10 lines of synthesis:"
+          head -10 "$SYNTHESIS_DIR/world-synthesis.md"
+        else
+          echo "::warning::⚠️ Synthesis document not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push synthesis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No synthesis files to commit"
+        else
+          git commit -m "Add world synthesis results"
+          git push origin ${{ inputs.branch-name }}
+        fi

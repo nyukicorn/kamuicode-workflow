@@ -1,0 +1,51 @@
+name: 'Test Image Planning Module'
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-image-prompt:
+        description: 'テスト用画像プロンプト'
+        required: true
+        type: string
+        default: 'A mystical underground crystal cave with glowing purple crystals, dramatic lighting, deep caverns'
+
+jobs:
+  test-image-planning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate test timestamp
+        id: timestamp
+        run: echo "value=test-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Test Image Planning Module
+        uses: ./.github/actions/kamui-modules/image-planning
+        with:
+          image-prompt: ${{ inputs.test-image-prompt }}
+          folder-name: ${{ steps.timestamp.outputs.value }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        id: image-analysis
+      
+      - name: Display Results
+        run: |
+          echo "🎨 Image Planning Test Results:"
+          echo "Scene Type: ${{ steps.image-analysis.outputs.scene-type }}"
+          echo "Atmosphere: ${{ steps.image-analysis.outputs.atmosphere }}"
+          echo "Depth Mode: ${{ steps.image-analysis.outputs.depth-mode }}"
+          echo "Lighting Style: ${{ steps.image-analysis.outputs.lighting-style }}"
+          echo "Movement Energy: ${{ steps.image-analysis.outputs.movement-energy }}"
+          echo "Color Temperature: ${{ steps.image-analysis.outputs.color-temperature }}"
+          echo "Analysis Completed: ${{ steps.image-analysis.outputs.analysis-completed }}"
+      
+      - name: Show Analysis Files
+        run: |
+          echo "📁 Generated Files:"
+          ls -la ${{ steps.timestamp.outputs.value }}/world-analysis/ || echo "No analysis files found"
+          
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-analysis/image-analysis.json" ]; then
+            echo "📄 JSON Content:"
+            cat ${{ steps.timestamp.outputs.value }}/world-analysis/image-analysis.json
+          fi
