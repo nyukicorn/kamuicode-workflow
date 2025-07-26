@@ -90,12 +90,6 @@ on:
           - 'enhanced'  # 強調された深度
         default: 'auto'
       
-      point-size:
-        description: 'ポイントクラウドのサイズ'
-        required: false
-        type: string
-        default: '1.5'
-      
 
 permissions:
   contents: write
@@ -253,7 +247,7 @@ jobs:
           viewer-title: 'Immersive 3D Point Cloud Experience'
           camera-position: '0,0,150'
           background-color: ${{ steps.bg-color.outputs.color }}
-          point-size: ${{ inputs.point-size }}
+          point-size: '1.5'
           animation-speed: '1.0'
           music-file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
           branch-name: 'main'
