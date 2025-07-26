@@ -111,16 +111,39 @@ runs:
         INPUT_COUNT=0
         AVAILABLE_INPUTS=""
         
-        if [ -n "$IMAGE_JSON" ] && [ -f "$IMAGE_JSON" ]; then
-          INPUT_COUNT=$((INPUT_COUNT + 1))
-          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}image "
-          echo "✅ Image analysis JSON found: $IMAGE_JSON"
+        # デバッグ：入力変数の確認
+        echo "🔍 Debug: IMAGE_JSON='$IMAGE_JSON'"
+        echo "🔍 Debug: MUSIC_JSON='$MUSIC_JSON'"
+        echo "🔍 Debug: SPEECH_JSON='$SPEECH_JSON'"
+        echo "🔍 Debug: VIDEO_JSON='$VIDEO_JSON'"
+        echo "🔍 Debug: Current directory: $(pwd)"
+        echo "🔍 Debug: Directory contents:"
+        ls -la || true
+        
+        if [ -n "$IMAGE_JSON" ]; then
+          echo "🔍 IMAGE_JSON is not empty: '$IMAGE_JSON'"
+          if [ -f "$IMAGE_JSON" ]; then
+            INPUT_COUNT=$((INPUT_COUNT + 1))
+            AVAILABLE_INPUTS="${AVAILABLE_INPUTS}image "
+            echo "✅ Image analysis JSON found: $IMAGE_JSON"
+          else
+            echo "❌ Image analysis JSON file not found: $IMAGE_JSON"
+          fi
+        else
+          echo "🔍 IMAGE_JSON is empty or null"
         fi
         
-        if [ -n "$MUSIC_JSON" ] && [ -f "$MUSIC_JSON" ]; then
-          INPUT_COUNT=$((INPUT_COUNT + 1))
-          AVAILABLE_INPUTS="${AVAILABLE_INPUTS}music "
-          echo "✅ Music analysis JSON found: $MUSIC_JSON"
+        if [ -n "$MUSIC_JSON" ]; then
+          echo "🔍 MUSIC_JSON is not empty: '$MUSIC_JSON'"
+          if [ -f "$MUSIC_JSON" ]; then
+            INPUT_COUNT=$((INPUT_COUNT + 1))
+            AVAILABLE_INPUTS="${AVAILABLE_INPUTS}music "
+            echo "✅ Music analysis JSON found: $MUSIC_JSON"
+          else
+            echo "❌ Music analysis JSON file not found: $MUSIC_JSON"
+          fi
+        else
+          echo "🔍 MUSIC_JSON is empty or null"
         fi
         
         if [ -n "$SPEECH_JSON" ] && [ -f "$SPEECH_JSON" ]; then
