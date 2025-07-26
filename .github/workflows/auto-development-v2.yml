@@ -65,22 +65,22 @@ jobs:
           REQUIREMENTS_CONTENT=$(cat "${{ inputs.requirements_file }}")
           
           ANALYSIS_PROMPT=$(cat <<'EOF'
-GitHub Actions Automatic Development System Experiment.
-
-Analyze the requirements document and create detailed technical design documents.
-
-Requirements Document - $REQUIREMENTS_CONTENT
-
-Files to Create -
-- docs/design/${{ inputs.target_module }}-design.md (Detailed Design Document)
-- docs/design/${{ inputs.target_module }}-implementation-plan.md (Implementation Plan)
-
-**Important**: 
-- Must read and analyze existing image-generation/action.yml
-- Strictly maintain backward compatibility
-- Follow GitHub Actions best practices
+          GitHub Actions Automatic Development System Experiment.
+          
+          Analyze the requirements document and create detailed technical design documents.
+          
+          Requirements Document - $REQUIREMENTS_CONTENT
+          
+          Files to Create -
+          - docs/design/${{ inputs.target_module }}-design.md (Detailed Design Document)
+          - docs/design/${{ inputs.target_module }}-implementation-plan.md (Implementation Plan)
+          
+          Important: 
+          - Must read and analyze existing image-generation/action.yml
+          - Strictly maintain backward compatibility
+          - Follow GitHub Actions best practices
 EOF
-)
+          )
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Bash,Glob,Grep" \
@@ -107,23 +107,23 @@ EOF
           echo "🛠️ Phase 2: Implementation"
           
           IMPLEMENTATION_PROMPT=$(cat <<'EOF'
-GitHub Actions Automatic Development System - Phase 2: Implementation Phase
-
-Implement based on the design documents:
-
-**Implementation Tasks**:
-1. Review design document contents
-2. Create new module .github/actions/kamui-modules/${{ inputs.target_module }}/
-3. Implement action.yml
-4. Create README.md
-
-**Implementation Requirements**:
-- Maintain compatibility with existing image-generation module
-- Complete implementation of new features (N-image generation, model comparison)
-- Proper error handling
-- Follow GitHub Actions best practices
+          GitHub Actions Automatic Development System - Phase 2: Implementation Phase
+          
+          Implement based on the design documents:
+          
+          Implementation Tasks:
+          1. Review design document contents
+          2. Create new module .github/actions/kamui-modules/${{ inputs.target_module }}/
+          3. Implement action.yml
+          4. Create README.md
+          
+          Implementation Requirements:
+          - Maintain compatibility with existing image-generation module
+          - Complete implementation of new features (N-image generation, model comparison)
+          - Proper error handling
+          - Follow GitHub Actions best practices
 EOF
-)
+          )
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
@@ -150,32 +150,32 @@ EOF
           echo "🧪 Phase 3: Testing and Validation"
           
           TESTING_PROMPT=$(cat <<'EOF'
-GitHub Actions Automatic Development System - Phase 3: Testing and Validation Phase
-
-Perform quality assurance for the implemented module:
-
-**Test Items**:
-1. action.yml syntax check
-2. Required input parameter verification
-3. Output specification validation
-4. Error handling verification
-5. Documentation completeness check
-
-**Quality Checks**:
-- Code review (best practices compliance)
-- Security check
-- Performance considerations verification
-
-**Report Creation**:
-- Test results report creation
-- Issues and improvement suggestions
-- Implementation completion summary
-
-**If Issues Are Found**:
-- Automatically implement fixes
-- Record fix details in report
+          GitHub Actions Automatic Development System - Phase 3: Testing and Validation Phase
+          
+          Perform quality assurance for the implemented module:
+          
+          Test Items:
+          1. action.yml syntax check
+          2. Required input parameter verification
+          3. Output specification validation
+          4. Error handling verification
+          5. Documentation completeness check
+          
+          Quality Checks:
+          - Code review (best practices compliance)
+          - Security check
+          - Performance considerations verification
+          
+          Report Creation:
+          - Test results report creation
+          - Issues and improvement suggestions
+          - Implementation completion summary
+          
+          If Issues Are Found:
+          - Automatically implement fixes
+          - Record fix details in report
 EOF
-)
+          )
           
           npx @anthropic-ai/claude-code \
             --allowedTools "Read,Write,Edit,Bash,Glob,Grep" \
