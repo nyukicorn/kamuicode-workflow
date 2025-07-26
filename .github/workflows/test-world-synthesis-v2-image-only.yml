@@ -51,6 +51,15 @@ jobs:
           
           echo "Created image analysis at: $FOLDER_NAME/world-analysis/image-analysis.json"
       
+      - name: Commit test data
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add $FOLDER_NAME/
+          git commit -m "Add test data for world-synthesis-v2 image-only test"
+          git push origin main
+      
       - name: Run World Synthesis V2 - Image Only
         uses: ./.github/actions/kamui-modules/world-synthesis-v2
         with:
