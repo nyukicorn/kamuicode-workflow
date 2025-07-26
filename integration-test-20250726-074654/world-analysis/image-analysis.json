@@ -1,0 +1,21 @@
+{
+  "scene_type": "dramatic",
+  "atmosphere": "mysterious",
+  "depth_mode": "enhanced",
+  "lighting_style": "dramatic",
+  "movement_energy": 4,
+  "color_temperature": "cool",
+  "perspective_depth": "deep",
+  "subject_distance": "medium",
+  "environmental_scale": "vast",
+  "implied_movement": "still",
+  "visual_complexity": "moderate",
+  "composition_balance": "stable",
+  "artistic_style": "realistic",
+  "cultural_context": "western",
+  "time_period": "contemporary",
+  "image_quality": "hi-fi",
+  "artistic_processing": "natural",
+  "confidence": 0.87,
+  "input_type": "prompt"
+}
