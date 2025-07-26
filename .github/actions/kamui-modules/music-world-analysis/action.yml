@@ -1,0 +1,357 @@
+name: 'Music World Analysis'
+description: 'Analyze music (prompts/URLs/files) to extract comprehensive world characteristics and temporal emotion curves'
+author: 'KamuiCode Workflow'
+
+inputs:
+  music-prompt:
+    description: 'The music prompt to analyze for world building'
+    required: false
+  music-url:
+    description: 'URL of music to analyze for world characteristics'
+    required: false
+  music-file:
+    description: 'Path to local music file for analysis'
+    required: false
+  folder-name:
+    description: 'The folder name for storing analysis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  analysis-completed:
+    description: 'Whether analysis was completed successfully'
+    value: ${{ steps.analysis.outputs.completed }}
+  atmosphere:
+    description: 'Overall atmosphere (peaceful/energetic/mysterious/etc)'
+    value: ${{ steps.analysis.outputs.atmosphere }}
+  genre:
+    description: 'Musical genre (classical/electronic/ambient/rock/etc)'
+    value: ${{ steps.analysis.outputs.genre }}
+  instrumentation:
+    description: 'Primary instruments (piano/strings/vocals/synth/etc)'
+    value: ${{ steps.analysis.outputs.instrumentation }}
+  tempo:
+    description: 'Tempo classification (slow/moderate/fast/variable)'
+    value: ${{ steps.analysis.outputs.tempo }}
+  energy:
+    description: 'Energy level (1-10 scale)'
+    value: ${{ steps.analysis.outputs.energy }}
+  mood:
+    description: 'Emotional mood (happy/melancholic/dramatic/serene/etc)'
+    value: ${{ steps.analysis.outputs.mood }}
+  color-temperature:
+    description: 'Musical color temperature (warm/cool/neutral)'
+    value: ${{ steps.analysis.outputs.color-temperature }}
+  acoustic-space:
+    description: 'Acoustic space feel (intimate/spacious/vast)'
+    value: ${{ steps.analysis.outputs.acoustic-space }}
+  complexity-level:
+    description: 'Musical complexity (simple/moderate/complex)'
+    value: ${{ steps.analysis.outputs.complexity-level }}
+  regional-style:
+    description: 'Regional style (western/eastern/global/fusion)'
+    value: ${{ steps.analysis.outputs.regional-style }}
+  era-style:
+    description: 'Era style (vintage/contemporary/futuristic)'
+    value: ${{ steps.analysis.outputs.era-style }}
+  production-quality:
+    description: 'Production quality (lo-fi/hi-fi/professional)'
+    value: ${{ steps.analysis.outputs.production-quality }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 音楽世界観分析エージェント
+      id: analysis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎵 Music World Analysis Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定と入力形式判定
+        MUSIC_PROMPT="${{ inputs.music-prompt }}"
+        MUSIC_URL="${{ inputs.music-url }}"
+        MUSIC_FILE="${{ inputs.music-file }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        ANALYSIS_DIR="$FOLDER_NAME/world-analysis"
+        
+        # 入力形式の判定
+        INPUT_TYPE=""
+        INPUT_SOURCE=""
+        if [ -n "$MUSIC_PROMPT" ]; then
+          INPUT_TYPE="prompt"
+          INPUT_SOURCE="$MUSIC_PROMPT"
+          echo "Input type: Text prompt"
+          echo "Music prompt: $MUSIC_PROMPT"
+        elif [ -n "$MUSIC_URL" ]; then
+          INPUT_TYPE="url"
+          INPUT_SOURCE="$MUSIC_URL"
+          echo "Input type: Music URL"
+          echo "Music URL: $MUSIC_URL"
+        elif [ -n "$MUSIC_FILE" ]; then
+          INPUT_TYPE="file"
+          INPUT_SOURCE="$MUSIC_FILE"
+          echo "Input type: Music file"
+          echo "Music file: $MUSIC_FILE"
+        else
+          echo "::error::❌ No input provided. Please specify music-prompt, music-url, or music-file"
+          exit 1
+        fi
+        
+        echo "Analysis folder: $ANALYSIS_DIR"
+        
+        # 分析フォルダを事前に作成
+        if [ ! -d "$ANALYSIS_DIR" ]; then
+          mkdir -p "$ANALYSIS_DIR"
+          echo "📁 Created analysis folder: $ANALYSIS_DIR"
+        fi
+        
+        # プロンプトの構築
+        PROMPT="あなたは音楽から包括的な世界観特性と感情の時系列変化を抽出する専門家です。入力形式に応じて適切に分析し、汎用的な音楽世界観データを生成してください。
+
+        **入力情報**:
+        - **入力形式**: $INPUT_TYPE ($INPUT_TYPE = prompt/url/file)
+        - **分析対象**: $INPUT_SOURCE
+
+        **包括的分析タスク**:
+        
+        **基本世界観特性**:
+        1. **雰囲気**: peaceful/energetic/mysterious/dramatic/romantic/adventurous等を特定
+        2. **ジャンル**: classical/electronic/ambient/rock/jazz/folk等を判定
+        3. **楽器構成**: piano/strings/vocals/synth/drums/guitar等の主要楽器
+        4. **テンポ**: slow/moderate/fast/variable のテンポ分類
+        5. **エネルギー**: 1-10のスケールでエネルギーレベルを評価
+        6. **ムード**: happy/melancholic/dramatic/serene/tense等の感情的ムード
+        7. **色温度**: warm(暖かい)/cool(クール)/neutral(中性)の音色温度
+
+        **新規追加分析要素**:
+        8. **空間特性**: 
+           - acoustic_space: intimate/spacious/vast (音響空間の広がり)
+           - reverb_depth: dry/moderate/deep (残響の深さ)
+           - distance_feel: close/medium/distant (音源との距離感)
+        9. **動的特性**:
+           - complexity_level: simple/moderate/complex (音楽的複雑度)
+           - change_rate: gradual/sudden/rhythmic (変化の速度)
+           - predictability: predictable/surprising/chaotic (予測可能性)
+        10. **文化特性**:
+            - regional_style: western/eastern/global/fusion (地域的スタイル)
+            - era_style: vintage/contemporary/futuristic (時代的スタイル)
+            - artistic_style: commercial/artistic/experimental (芸術性)
+        11. **技術特性**:
+            - production_quality: lo-fi/hi-fi/professional (制作品質)
+            - processing_level: natural/processed/heavily_modified (加工度)
+
+        **時系列感情曲線分析**:
+        12. **感情アーク**: 時間軸での感情変化をSRT形式で記録
+        13. **エネルギー曲線**: エネルギーレベルの時系列変化
+        14. **テンポ曲線**: テンポ変化の時系列データ
+        15. **強度曲線**: 音楽的強度の時系列変化
+
+        **入力形式別処理**:
+        - **prompt**: テキスト内容から音楽世界観を推論・感情アーク想定
+        - **url**: 指定URLの音源を取得・分析（可能な場合）
+        - **file**: 指定ファイルパスの音源を分析（可能な場合）
+
+        **エラー耐性**: 分析困難な要素は\"moderate\"や\"unknown\"等のデフォルト値を使用
+        
+        **必須出力ファイル**:
+        1. **$ANALYSIS_DIR/music-analysis.json** - 機械処理用の構造化データ
+        2. **$ANALYSIS_DIR/music-analysis.md** - 人間確認用の詳細分析結果
+        3. **$ANALYSIS_DIR/emotion-curves.srt** - 感情曲線のSRT形式時系列データ
+        4. **$ANALYSIS_DIR/emotion-curves.json** - 感情曲線のJSON形式時系列データ
+        5. **$ANALYSIS_DIR/recommendations.txt** - 設定推奨値（1行形式）
+
+        **JSONフォーマット例**:
+        \`\`\`json
+        {
+          \"atmosphere\": \"peaceful\",
+          \"genre\": \"ambient\",
+          \"instrumentation\": \"piano,strings\",
+          \"tempo\": \"slow\",
+          \"energy\": 3,
+          \"mood\": \"serene\",
+          \"color_temperature\": \"warm\",
+          \"acoustic_space\": \"spacious\",
+          \"reverb_depth\": \"moderate\",
+          \"distance_feel\": \"medium\",
+          \"complexity_level\": \"simple\",
+          \"change_rate\": \"gradual\",
+          \"predictability\": \"predictable\",
+          \"regional_style\": \"western\",
+          \"era_style\": \"contemporary\",
+          \"artistic_style\": \"artistic\",
+          \"production_quality\": \"hi-fi\",
+          \"processing_level\": \"natural\",
+          \"confidence\": 0.85,
+          \"input_type\": \"$INPUT_TYPE\"
+        }
+        \`\`\`
+
+        **SRT感情曲線フォーマット例**:
+        \`\`\`srt
+        1
+        00:00:00,000 --> 00:00:10,000
+        energy: 2, mood: serene, atmosphere: peaceful
+
+        2
+        00:00:10,000 --> 00:00:20,000
+        energy: 4, mood: uplifting, atmosphere: hopeful
+        \`\`\`
+
+        **重要な注意点**:
+        1. 必ず5つのファイルすべてを作成してください
+        2. JSON形式は厳密に従ってください（機械処理用）
+        3. SRT形式で時系列の感情変化を記録してください
+        4. 分析理由を明確に記述してください
+        5. 汎用的な用途で活用可能な特性を抽出してください
+        6. ファイル作成後、ファイルパスを確認・報告してください"
+        
+        echo "🚀 Starting Music World Analysis Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 20 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された分析結果の確認
+        echo ""
+        echo "📋 Checking generated analysis files..."
+        
+        # JSON分析結果の確認と出力設定
+        if [ -f "$ANALYSIS_DIR/music-analysis.json" ]; then
+          echo "::notice::✅ Music analysis JSON generated"
+          
+          # jqがない場合の代替手段でJSONから値を抽出
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          GENRE=$(grep -o '"genre"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          INSTRUMENTATION=$(grep -o '"instrumentation"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          TEMPO=$(grep -o '"tempo"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          ENERGY=$(grep -o '"energy"[[:space:]]*:[[:space:]]*[0-9]*' "$ANALYSIS_DIR/music-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          MOOD=$(grep -o '"mood"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          COLOR_TEMPERATURE=$(grep -o '"color_temperature"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          
+          # 新規追加要素の抽出
+          ACOUSTIC_SPACE=$(grep -o '"acoustic_space"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          COMPLEXITY_LEVEL=$(grep -o '"complexity_level"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          REGIONAL_STYLE=$(grep -o '"regional_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          ERA_STYLE=$(grep -o '"era_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          PRODUCTION_QUALITY=$(grep -o '"production_quality"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/music-analysis.json" | cut -d'"' -f4)
+          
+          echo "Atmosphere: $ATMOSPHERE"
+          echo "Genre: $GENRE"
+          echo "Instrumentation: $INSTRUMENTATION"
+          echo "Tempo: $TEMPO"
+          echo "Energy: $ENERGY"
+          echo "Mood: $MOOD"
+          echo "Color temperature: $COLOR_TEMPERATURE"
+          echo "Acoustic space: $ACOUSTIC_SPACE"
+          echo "Complexity level: $COMPLEXITY_LEVEL"
+          echo "Regional style: $REGIONAL_STYLE"
+          echo "Era style: $ERA_STYLE"
+          echo "Production quality: $PRODUCTION_QUALITY"
+          
+          # GitHub Outputに設定（基本要素）
+          echo "atmosphere=$ATMOSPHERE" >> $GITHUB_OUTPUT
+          echo "genre=$GENRE" >> $GITHUB_OUTPUT
+          echo "instrumentation=$INSTRUMENTATION" >> $GITHUB_OUTPUT
+          echo "tempo=$TEMPO" >> $GITHUB_OUTPUT
+          echo "energy=$ENERGY" >> $GITHUB_OUTPUT
+          echo "mood=$MOOD" >> $GITHUB_OUTPUT
+          echo "color-temperature=$COLOR_TEMPERATURE" >> $GITHUB_OUTPUT
+          
+          # GitHub Outputに設定（新規追加要素）
+          echo "acoustic-space=${ACOUSTIC_SPACE:-spacious}" >> $GITHUB_OUTPUT
+          echo "complexity-level=${COMPLEXITY_LEVEL:-moderate}" >> $GITHUB_OUTPUT
+          echo "regional-style=${REGIONAL_STYLE:-global}" >> $GITHUB_OUTPUT
+          echo "era-style=${ERA_STYLE:-contemporary}" >> $GITHUB_OUTPUT
+          echo "production-quality=${PRODUCTION_QUALITY:-hi-fi}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Music analysis JSON file not found"
+          exit 1
+        fi
+        
+        # 感情曲線ファイルの確認
+        if [ -f "$ANALYSIS_DIR/emotion-curves.srt" ]; then
+          echo "::notice::✅ Emotion curves SRT generated"
+          echo "First 10 lines of emotion curves:"
+          head -10 "$ANALYSIS_DIR/emotion-curves.srt"
+        else
+          echo "::warning::⚠️ Emotion curves SRT not found"
+        fi
+        
+        if [ -f "$ANALYSIS_DIR/emotion-curves.json" ]; then
+          echo "::notice::✅ Emotion curves JSON generated"
+        else
+          echo "::warning::⚠️ Emotion curves JSON not found"
+        fi
+        
+        # 推奨設定の確認
+        if [ -f "$ANALYSIS_DIR/recommendations.txt" ]; then
+          echo "::notice::✅ Recommendations generated"
+          echo "Recommendations:"
+          cat "$ANALYSIS_DIR/recommendations.txt"
+        else
+          echo "::warning::⚠️ Recommendations file not found"
+        fi
+        
+        # 分析文書の確認
+        if [ -f "$ANALYSIS_DIR/music-analysis.md" ]; then
+          echo "::notice::✅ Analysis document generated"
+          echo "First 10 lines of analysis:"
+          head -10 "$ANALYSIS_DIR/music-analysis.md"
+        else
+          echo "::warning::⚠️ Analysis document not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push analysis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No analysis files to commit"
+        else
+          if [ -n "${{ inputs.music-prompt }}" ]; then
+            git commit -m "Add music world analysis for prompt: ${{ inputs.music-prompt }}"
+          elif [ -n "${{ inputs.music-url }}" ]; then
+            git commit -m "Add music world analysis for URL: ${{ inputs.music-url }}"
+          else
+            git commit -m "Add music world analysis for file: ${{ inputs.music-file }}"
+          fi
+          git push origin ${{ inputs.branch-name }}
+        fi
