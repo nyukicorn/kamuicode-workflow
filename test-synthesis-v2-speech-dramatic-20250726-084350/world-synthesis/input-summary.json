@@ -1,0 +1,36 @@
+{
+  "total_inputs": 1,
+  "input_types": ["speech"],
+  "integration_strategy": "auto",
+  "primary_weight": "speech_single",
+  "sources": [
+    {
+      "type": "speech",
+      "path": "test-synthesis-v2-speech-dramatic-20250726-084350/world-analysis/speech-analysis.json",
+      "confidence": 0.92,
+      "key_characteristics": {
+        "atmosphere": "dramatic",
+        "emotion": "contemplative", 
+        "tone": "authoritative",
+        "energy": 8,
+        "pace": "slow",
+        "space": "vast",
+        "time": "historical"
+      },
+      "influence_weight": 1.0
+    }
+  ],
+  "synthesis_outcome": {
+    "dominant_theme": "dramatic_contemplative",
+    "energy_profile": "high_potential_controlled",
+    "spatial_character": "vast_historical",
+    "movement_pattern": "deliberate_powerful",
+    "final_confidence": 0.92
+  },
+  "adaptation_notes": [
+    "Single input allows full characteristic utilization",
+    "No conflicts to resolve - pure speech world interpretation",
+    "High energy + slow pace = controlled power aesthetic",
+    "Enhanced depth mode optimal for vast spatial impression"
+  ]
+}

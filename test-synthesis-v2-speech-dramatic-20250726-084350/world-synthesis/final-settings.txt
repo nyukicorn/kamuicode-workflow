@@ -1,0 +1,1 @@
+depth_mode=enhanced,atmosphere=dramatic_contemplative,brightness_level=0.4,rotation_speed=0.2,particle_energy=0.8,auto_rotate=true
