@@ -21,7 +21,7 @@ jobs:
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           SCENARIO="${{ github.event.inputs.test-scenario || 'all-four' }}"
           FOLDER_NAME="test-multimodal-synthesis-$SCENARIO-$TIMESTAMP"
-          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          echo "folder_name=$FOLDER_NAME" >> $GITHUB_OUTPUT
           echo "scenario=$SCENARIO" >> $GITHUB_OUTPUT
           
           # Create test folder
@@ -36,7 +36,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-world-analysis
         with:
           image-prompt: 'Dramatic underground cave system with glowing crystals embedded in the walls. Deep blue and purple ambient lighting creates mysterious shadows. Ancient stone formations and underground pools reflect the crystalline light. The atmosphere is mystical and otherworldly, with a sense of ancient secrets waiting to be discovered.'
-          folder-name: ${{ steps.setup.outputs.folder-name }}
+          folder-name: ${{ steps.setup.outputs.folder_name }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           skip-commit: 'true'
@@ -46,7 +46,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/music-world-analysis
         with:
           music-prompt: 'Epic orchestral soundtrack with deep strings, ethereal choir, and dramatic percussion. Building from mysterious whispers to powerful crescendo. Celtic influences with mystical harp and flute melodies. Creates atmosphere of ancient magic and heroic adventure.'
-          folder-name: ${{ steps.setup.outputs.folder-name }}
+          folder-name: ${{ steps.setup.outputs.folder_name }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           skip-commit: 'true'
@@ -56,7 +56,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/speech-world-analysis
         with:
           speech-prompt: 'Deep, resonant male narrator voice speaking in hushed, reverent tones about ancient legends and forgotten civilizations. Slow, deliberate pace with pauses for dramatic effect. Echoing slightly as if spoken in a vast chamber. The voice carries weight of centuries and hidden knowledge.'
-          folder-name: ${{ steps.setup.outputs.folder-name }}
+          folder-name: ${{ steps.setup.outputs.folder_name }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           skip-commit: 'true'
@@ -66,14 +66,14 @@ jobs:
         uses: ./.github/actions/kamui-modules/video-world-analysis
         with:
           video-prompt: 'Cinematic exploration of ancient temple ruins at twilight. Camera slowly moves through crumbling stone corridors illuminated by shafts of golden light. Dust particles dance in the air. Mysterious carvings on walls become visible as light shifts. Epic, contemplative atmosphere with natural ambient sounds and distant mystical music.'
-          folder-name: ${{ steps.setup.outputs.folder-name }}
+          folder-name: ${{ steps.setup.outputs.folder_name }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           skip-commit: 'true'
       
       - name: Verify Analysis Files
         run: |
-          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder_name }}"
           SCENARIO="${{ steps.setup.outputs.scenario }}"
           
           echo "Checking analysis files for scenario: $SCENARIO"
@@ -122,18 +122,18 @@ jobs:
       - name: Run World Synthesis V2 - Multimodal
         uses: ./.github/actions/kamui-modules/world-synthesis-v2
         with:
-          image-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/image-analysis.json
-          music-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/music-analysis.json
-          speech-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/speech-analysis.json
-          video-analysis-json: ${{ steps.setup.outputs.folder-name }}/world-analysis/video-analysis.json
+          image-analysis-json: ${{ steps.setup.outputs.folder_name }}/world-analysis/image-analysis.json
+          music-analysis-json: ${{ steps.setup.outputs.folder_name }}/world-analysis/music-analysis.json
+          speech-analysis-json: ${{ steps.setup.outputs.folder_name }}/world-analysis/speech-analysis.json
+          video-analysis-json: ${{ steps.setup.outputs.folder_name }}/world-analysis/video-analysis.json
           primary-weight: 'auto'
-          folder-name: ${{ steps.setup.outputs.folder-name }}
+          folder-name: ${{ steps.setup.outputs.folder_name }}
           branch-name: ${{ github.ref_name }}
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
       
       - name: Verify Synthesis Results
         run: |
-          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder_name }}"
           SCENARIO="${{ steps.setup.outputs.scenario }}"
           FILE_COUNT="${{ env.file-count }}"
           
@@ -178,7 +178,7 @@ jobs:
       
       - name: Commit all multimodal analysis results
         run: |
-          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          FOLDER_NAME="${{ steps.setup.outputs.folder_name }}"
           SCENARIO="${{ steps.setup.outputs.scenario }}"
           
           git config user.name "github-actions[bot]"
