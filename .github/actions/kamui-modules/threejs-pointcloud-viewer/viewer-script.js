@@ -112,12 +112,16 @@ function loadPointCloud() {
         geometry.computeBoundingBox();
         geometry.center();
         
+        // Enhance 3D appearance with depth-based effects
+        enhance3DAppearance(geometry);
+        
         // Create point cloud material
         const material = new THREE.PointsMaterial({
             vertexColors: true,
             size: pointSize,
             sizeAttenuation: true,
-            transparent: false
+            transparent: true,  // Enable transparency for depth effects
+            opacity: 1.0
         });
         
         // Create point cloud
@@ -385,6 +389,50 @@ function updateMouseTrail() {
     }
 }
 
+function enhance3DAppearance(geometry) {
+    const positions = geometry.attributes.position;
+    const colors = geometry.attributes.color;
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    
+    // Calculate center point for depth reference
+    const box = new THREE.Box3().setFromBufferAttribute(positions);
+    const center = box.getCenter(new THREE.Vector3());
+    const maxDistance = center.distanceTo(box.max);
+    
+    // Store original colors for depth enhancement
+    if (!geometry.userData) geometry.userData = {};
+    geometry.userData.originalColors = new Float32Array(colorArray);
+    
+    // Apply depth-based effects
+    for (let i = 0; i < positionArray.length; i += 3) {
+        const x = positionArray[i];
+        const y = positionArray[i + 1];
+        const z = positionArray[i + 2];
+        
+        // Calculate distance from center (for depth effect)
+        const distanceFromCenter = Math.sqrt(
+            (x - center.x) ** 2 + 
+            (y - center.y) ** 2 + 
+            (z - center.z) ** 2
+        );
+        
+        // Depth factor (0 = center, 1 = edge)
+        const depthFactor = Math.min(distanceFromCenter / maxDistance, 1.0);
+        
+        // Apply depth-based color modification (darken distant points)
+        const colorIndex = i; // Colors are also arranged as xyz
+        const depthIntensity = 0.4 + (0.6 * (1 - depthFactor)); // 0.4 to 1.0 range
+        
+        colorArray[colorIndex] *= depthIntensity;     // R
+        colorArray[colorIndex + 1] *= depthIntensity; // G  
+        colorArray[colorIndex + 2] *= depthIntensity; // B
+    }
+    
+    colors.needsUpdate = true;
+    console.log('🎆 Enhanced 3D appearance with depth-based coloring applied');
+}
+
 function storeOriginalPositions() {
     if (!pointCloud) return;
     
@@ -599,6 +647,9 @@ function applyMouseGravity() {
         particleVelocities[i + 2] += returnForceZ;
     }
     
+    // Update dynamic 3D effects based on new positions
+    updateDynamic3DEffects();
+    
     // Debug log every 120 frames (reduce logging frequency)
     if (Math.random() < 0.008) {
         console.log(`🌊 Wave gravity: ${affectedParticles} particles directly affected, wave intensity: ${waveIntensity.toFixed(2)}`);
@@ -654,6 +705,87 @@ function toggleGravityMode() {
     }
 }
 
+function updateDynamic3DEffects() {
+    if (!pointCloud || !camera) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    const colors = pointCloud.geometry.attributes.color;
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    const originalColors = pointCloud.geometry.userData.originalColors;
+    
+    if (!originalColors) return;
+    
+    const cameraPosition = camera.position;
+    const material = pointCloud.material;
+    
+    // Calculate scene bounds for depth normalization
+    const box = new THREE.Box3().setFromObject(pointCloud);
+    const sceneSize = box.getSize(new THREE.Vector3()).length();
+    const maxViewDistance = sceneSize * 1.5; // Scale based on scene size
+    
+    let minDistance = Infinity;
+    let maxDistance = -Infinity;
+    
+    // First pass: find min/max distances for better normalization
+    for (let i = 0; i < positionArray.length; i += 90) { // Quick sampling
+        const x = positionArray[i];
+        const y = positionArray[i + 1];
+        const z = positionArray[i + 2];
+        
+        const distance = Math.sqrt(
+            (x - cameraPosition.x) ** 2 + 
+            (y - cameraPosition.y) ** 2 + 
+            (z - cameraPosition.z) ** 2
+        );
+        
+        minDistance = Math.min(minDistance, distance);
+        maxDistance = Math.min(maxDistance, maxViewDistance);
+    }
+    
+    const distanceRange = maxDistance - minDistance;
+    
+    // Update every 15th particle for better performance with enhanced effects
+    for (let i = 0; i < positionArray.length; i += 45) { // Process every 15th particle
+        const x = positionArray[i];
+        const y = positionArray[i + 1];
+        const z = positionArray[i + 2];
+        
+        // Calculate distance from camera
+        const distanceFromCamera = Math.sqrt(
+            (x - cameraPosition.x) ** 2 + 
+            (y - cameraPosition.y) ** 2 + 
+            (z - cameraPosition.z) ** 2
+        );
+        
+        // Enhanced depth factor calculation (closer = brighter, further = dimmer)
+        const normalizedDistance = Math.max(0, Math.min(1, (distanceFromCamera - minDistance) / distanceRange));
+        const depthFactor = 0.2 + (0.8 * (1 - normalizedDistance)); // 0.2 to 1.0 range
+        
+        // Apply enhanced depth-based coloring with more dramatic effect
+        const colorIndex = i;
+        if (colorIndex + 2 < colorArray.length) {
+            // Enhanced color depth with slight blue tint for distant particles (atmospheric perspective)
+            const atmosphericEffect = normalizedDistance * 0.1;
+            colorArray[colorIndex] = originalColors[colorIndex] * depthFactor * (1 - atmosphericEffect); // Red
+            colorArray[colorIndex + 1] = originalColors[colorIndex + 1] * depthFactor * (1 - atmosphericEffect * 0.5); // Green  
+            colorArray[colorIndex + 2] = originalColors[colorIndex + 2] * depthFactor * (1 + atmosphericEffect); // Blue (enhanced for distance)
+        }
+    }
+    
+    // Dynamic size adjustment based on average camera distance
+    const avgCameraDistance = (minDistance + maxDistance) / 2;
+    const baseSizeMultiplier = Math.max(0.5, Math.min(2.0, 100 / avgCameraDistance));
+    material.size = pointSize * baseSizeMultiplier;
+    
+    // Subtle opacity adjustment for depth (very subtle to avoid performance issues)
+    const depthOpacity = Math.max(0.7, Math.min(1.0, 1.0 - (avgCameraDistance / maxViewDistance) * 0.3));
+    material.opacity = depthOpacity;
+    
+    colors.needsUpdate = true;
+    material.needsUpdate = true;
+}
+
 function resetParticlePositions() {
     if (!pointCloud || !originalPositions) return;
     
@@ -665,9 +797,17 @@ function resetParticlePositions() {
         particleVelocities.fill(0);
     }
     
+    // Reset colors to original enhanced state
+    const colors = pointCloud.geometry.attributes.color;
+    const originalColors = pointCloud.geometry.userData.originalColors;
+    if (originalColors) {
+        colors.array.set(originalColors);
+        colors.needsUpdate = true;
+    }
+    
     positions.needsUpdate = true;
     
-    console.log('🔄 Particles and velocities reset to original state');
+    console.log('🔄 Particles, velocities, and colors reset to original state');
 }
 
 MUSIC_FUNCTIONS_PLACEHOLDER
