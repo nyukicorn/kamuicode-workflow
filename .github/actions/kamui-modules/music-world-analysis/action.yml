@@ -354,6 +354,9 @@ runs:
             git commit -m "Add music world analysis for file: ${{ inputs.music-file }}"
           fi
           # Pull before push to handle concurrent commits
-          git pull origin ${{ inputs.branch-name }} --rebase || true
-          git push origin ${{ inputs.branch-name }}
+          for i in {1..3}; do
+            git pull origin ${{ inputs.branch-name }} --rebase && git push origin ${{ inputs.branch-name }} && break
+            echo "Push attempt $i failed, retrying in 5 seconds..."
+            sleep 5
+          done
         fi
