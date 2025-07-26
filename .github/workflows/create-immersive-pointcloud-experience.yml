@@ -80,12 +80,6 @@ on:
           - 'midas_v21'
         default: 'midas_v21'
       
-      point-size:
-        description: 'ポイントクラウドのサイズ'
-        required: false
-        type: string
-        default: '1.5'
-      
       depth-enhancement:
         description: '深度強調レベル'
         required: false
