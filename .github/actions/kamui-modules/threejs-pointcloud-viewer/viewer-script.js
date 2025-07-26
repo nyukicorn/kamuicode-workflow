@@ -920,13 +920,22 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
     
     // Apply smoothing to frequency bands
     const smoothing = 0.7;
-    frequencyBands.bass = frequencyBands.bass * smoothing + (bassSum / bassCount / 255) * (1 - smoothing);
-    frequencyBands.mid = frequencyBands.mid * smoothing + (midSum / midCount / 255) * (1 - smoothing);
-    frequencyBands.treble = frequencyBands.treble * smoothing + (trebleSum / trebleCount / 255) * (1 - smoothing);
+    let newBass = (bassSum / bassCount / 255);
+    let newMid = (midSum / midCount / 255);
+    let newTreble = (trebleSum / trebleCount / 255);
     
-    // Boost certain frequencies for better visibility
-    frequencyBands.bass *= 1.2;    // Bass is often quieter in FFT
-    frequencyBands.treble *= 1.5;  // Treble needs more boost
+    // Clamp values to prevent overflow
+    newBass = Math.min(1.0, newBass);
+    newMid = Math.min(1.0, newMid);
+    newTreble = Math.min(1.0, newTreble);
+    
+    frequencyBands.bass = frequencyBands.bass * smoothing + newBass * (1 - smoothing);
+    frequencyBands.mid = frequencyBands.mid * smoothing + newMid * (1 - smoothing);
+    frequencyBands.treble = frequencyBands.treble * smoothing + newTreble * (1 - smoothing);
+    
+    // Boost certain frequencies for better visibility (with limits)
+    frequencyBands.bass = Math.min(1.0, frequencyBands.bass * 1.2);
+    frequencyBands.treble = Math.min(1.0, frequencyBands.treble * 1.5);
 }
 
 function toggleAudioReactive() {
@@ -987,10 +996,10 @@ function applyAudioReactiveEffects() {
             // Treble: Controls sparkle/color intensity (2000Hz+)
             colorIntensity = 1.0 + (frequencyBands.treble * 2.0); // Up to 3x
         } else {
-            // Volume-based effects (enhanced for visibility)
-            sizeMultiplier = 1.0 + (volumeLevel * 3.0); // Up to 4x size
-            brightnessMultiplier = 1.0 + (volumeLevel * 2.0); // Up to 3x brightness
-            colorIntensity = 1.0 + (volumeLevel * 1.5); // Up to 2.5x color
+            // Volume-based effects (more moderate for better usability)
+            sizeMultiplier = 1.0 + (volumeLevel * 1.8); // Up to 2.8x size (reduced)
+            brightnessMultiplier = 1.0 + (volumeLevel * 1.5); // Up to 2.5x brightness (reduced)
+            colorIntensity = 1.0 + (volumeLevel * 1.2); // Up to 2.2x color (reduced)
         }
         
         // 1. Size effect
@@ -1117,11 +1126,17 @@ function toggleFrequencyMode() {
     frequencyMode = frequencyMode === 'volume' ? 'frequency' : 'volume';
     const button = document.getElementById('frequencyModeToggle');
     
+    // Reset frequency bands when switching modes to prevent residual effects
     if (frequencyMode === 'frequency') {
+        frequencyBands.bass = 0;
+        frequencyBands.mid = 0;
+        frequencyBands.treble = 0;
         button.innerHTML = '🎼 Frequency Mode';
         button.title = 'Currently in frequency mode (bass/mid/treble effects)';
         console.log('🎼 Switched to frequency analysis mode');
     } else {
+        // Reset to ensure clean volume mode
+        currentVolumeLevel = 0;
         button.innerHTML = '🔊 Volume Mode';
         button.title = 'Currently in volume mode (overall level effects)';
         console.log('🔊 Switched to volume analysis mode');
