@@ -103,7 +103,7 @@ runs:
         3. **$ANALYSIS_DIR/recommendations.txt** - 設定推奨値（1行形式）
 
         **JSONフォーマット例**:
-        ```json
+        \`\`\`json
         {
           \"scene_type\": \"dynamic\",
           \"atmosphere\": \"peaceful\",
@@ -113,7 +113,7 @@ runs:
           \"color_temperature\": \"warm\",
           \"confidence\": 0.85
         }
-        ```
+        \`\`\`
 
         **重要な注意点**:
         1. 必ず3つのファイルすべてを作成してください
