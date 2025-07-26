@@ -19,6 +19,14 @@ let microphoneEnabled = false;
 let currentVolumeLevel = 0;
 let volumeSmoothing = 0.8; // Smoothing factor for volume changes
 
+// Frequency band analysis
+let frequencyBands = {
+    bass: 0,      // 0-250Hz
+    mid: 0,       // 250-2000Hz
+    treble: 0     // 2000Hz+
+};
+let frequencyMode = 'volume'; // 'volume' or 'frequency'
+
 // Lighting and appearance
 let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
 
@@ -854,11 +862,21 @@ function getVolumeLevel() {
     if (audioReactiveEnabled && musicAnalyser && musicPlaying) {
         musicAnalyser.getByteFrequencyData(musicDataArray);
         volume = Math.max(volume, getAverageVolume(musicDataArray));
+        
+        // Also analyze frequency bands
+        if (frequencyMode === 'frequency') {
+            analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
+        }
     }
     
     if (microphoneEnabled && micAnalyser) {
         micAnalyser.getByteFrequencyData(micDataArray);
         volume = Math.max(volume, getAverageVolume(micDataArray));
+        
+        // Also analyze frequency bands for microphone
+        if (frequencyMode === 'frequency') {
+            analyzeFrequencyBands(micDataArray, micAnalyser.context.sampleRate);
+        }
     }
     
     // Apply smoothing
@@ -872,6 +890,43 @@ function getAverageVolume(dataArray) {
         sum += dataArray[i];
     }
     return (sum / dataArray.length) / 255; // Normalize to 0-1
+}
+
+function analyzeFrequencyBands(dataArray, sampleRate) {
+    // FFT size is 256, so we have 128 frequency bins
+    // Each bin represents (sampleRate / 2) / 128 Hz
+    const binSize = (sampleRate / 2) / dataArray.length;
+    
+    // Calculate bin ranges for each frequency band
+    const bassEnd = Math.floor(250 / binSize);
+    const midEnd = Math.floor(2000 / binSize);
+    
+    // Calculate average volume for each band
+    let bassSum = 0, midSum = 0, trebleSum = 0;
+    let bassCount = 0, midCount = 0, trebleCount = 0;
+    
+    for (let i = 0; i < dataArray.length; i++) {
+        if (i <= bassEnd) {
+            bassSum += dataArray[i];
+            bassCount++;
+        } else if (i <= midEnd) {
+            midSum += dataArray[i];
+            midCount++;
+        } else {
+            trebleSum += dataArray[i];
+            trebleCount++;
+        }
+    }
+    
+    // Apply smoothing to frequency bands
+    const smoothing = 0.7;
+    frequencyBands.bass = frequencyBands.bass * smoothing + (bassSum / bassCount / 255) * (1 - smoothing);
+    frequencyBands.mid = frequencyBands.mid * smoothing + (midSum / midCount / 255) * (1 - smoothing);
+    frequencyBands.treble = frequencyBands.treble * smoothing + (trebleSum / trebleCount / 255) * (1 - smoothing);
+    
+    // Boost certain frequencies for better visibility
+    frequencyBands.bass *= 1.2;    // Bass is often quieter in FFT
+    frequencyBands.treble *= 1.5;  // Treble needs more boost
 }
 
 function toggleAudioReactive() {
@@ -918,13 +973,30 @@ function toggleMicrophone() {
 function applyAudioReactiveEffects() {
     const volumeLevel = getVolumeLevel();
     
-    if (volumeLevel > 0.01) { // Only apply effects if there's audio
-        // 1. Size effect based on volume (like audio meter)
-        const sizeMultiplier = 1.0 + (volumeLevel * 2.0); // Up to 3x size
+    if (volumeLevel > 0.01 || frequencyMode === 'frequency') { // Apply effects for volume or frequency mode
+        let sizeMultiplier, brightnessMultiplier, colorIntensity;
+        
+        if (frequencyMode === 'frequency' && (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
+            // Frequency-based effects
+            // Bass: Controls size and "punch" (0-250Hz) 
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 3.5); // Up to 4.5x for bass
+            
+            // Mid: Controls overall brightness (250-2000Hz)
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.5); // Up to 3.5x
+            
+            // Treble: Controls sparkle/color intensity (2000Hz+)
+            colorIntensity = 1.0 + (frequencyBands.treble * 2.0); // Up to 3x
+        } else {
+            // Volume-based effects (enhanced for visibility)
+            sizeMultiplier = 1.0 + (volumeLevel * 3.0); // Up to 4x size
+            brightnessMultiplier = 1.0 + (volumeLevel * 2.0); // Up to 3x brightness
+            colorIntensity = 1.0 + (volumeLevel * 1.5); // Up to 2.5x color
+        }
+        
+        // 1. Size effect
         pointCloud.material.size = pointSize * sizeMultiplier;
         
         // 2. Brightness effect
-        const brightnessMultiplier = 1.0 + (volumeLevel * 1.5); // Up to 2.5x brightness
         if (ambientLight) {
             ambientLight.intensity = brightnessLevel * brightnessMultiplier;
         }
@@ -938,7 +1010,6 @@ function applyAudioReactiveEffects() {
             const originalColors = pointCloud.geometry.userData.originalColors;
             
             if (originalColors) {
-                const colorIntensity = 1.0 + (volumeLevel * 1.0); // Up to 2x color intensity
                 const colorArray = colors.array;
                 
                 // Apply to a subset of particles for performance
@@ -953,19 +1024,47 @@ function applyAudioReactiveEffects() {
             }
         }
         
-        // 4. Optional: Subtle gravity effect based on volume
-        if (volumeLevel > 0.3) { // Only for louder sounds
+        // 4. Audio-based movement effects
+        if (frequencyMode === 'frequency') {
+            // Different movement for different frequencies
+            if (originalPositions && particleVelocities) {
+                // Bass: outward expansion (punch effect)
+                if (frequencyBands.bass > 0.3) {
+                    const expansionForce = frequencyBands.bass * 0.15;
+                    for (let i = 0; i < particleVelocities.length; i += 40) {
+                        const centerX = 0, centerY = 0, centerZ = 0;
+                        const dx = originalPositions[i] - centerX;
+                        const dy = originalPositions[i + 1] - centerY;
+                        const dz = originalPositions[i + 2] - centerZ;
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        if (distance > 0) {
+                            particleVelocities[i] += (dx / distance) * expansionForce;
+                            particleVelocities[i + 1] += (dy / distance) * expansionForce;
+                            particleVelocities[i + 2] += (dz / distance) * expansionForce;
+                        }
+                    }
+                }
+                
+                // Treble: subtle shimmer/vibration
+                if (frequencyBands.treble > 0.2) {
+                    const shimmerForce = frequencyBands.treble * 0.05;
+                    for (let i = 0; i < particleVelocities.length; i += 60) {
+                        particleVelocities[i] += (Math.random() - 0.5) * shimmerForce;
+                        particleVelocities[i + 1] += (Math.random() - 0.5) * shimmerForce;
+                        particleVelocities[i + 2] += (Math.random() - 0.5) * shimmerForce;
+                    }
+                }
+            }
+        } else if (volumeLevel > 0.3) {
+            // Volume-based expansion (original behavior)
             const audioGravityStrength = volumeLevel * 0.5;
-            // Apply a gentle outward expansion effect
             if (originalPositions && particleVelocities) {
                 const expansionForce = audioGravityStrength * 0.1;
-                for (let i = 0; i < particleVelocities.length; i += 30) { // Sample particles
-                    const centerX = 0, centerY = 0, centerZ = 0; // Center point
+                for (let i = 0; i < particleVelocities.length; i += 30) {
+                    const centerX = 0, centerY = 0, centerZ = 0;
                     const dx = originalPositions[i] - centerX;
                     const dy = originalPositions[i + 1] - centerY;
                     const dz = originalPositions[i + 2] - centerZ;
-                    
-                    // Normalize direction
                     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     if (distance > 0) {
                         particleVelocities[i] += (dx / distance) * expansionForce;
@@ -978,7 +1077,11 @@ function applyAudioReactiveEffects() {
         
         // Debug log occasionally
         if (Math.random() < 0.01) {
-            console.log(`🎵 Audio reactive: volume=${(volumeLevel * 100).toFixed(1)}%, size=${sizeMultiplier.toFixed(2)}x`);
+            if (frequencyMode === 'frequency') {
+                console.log(`🎵 Frequency mode: bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}%`);
+            } else {
+                console.log(`🎵 Volume mode: ${(volumeLevel * 100).toFixed(1)}%, size=${sizeMultiplier.toFixed(2)}x`);
+            }
         }
     }
 }
@@ -1010,12 +1113,28 @@ function updateWaveIntensity(value) {
     console.log(`🌊 Wave intensity updated to: ${waveIntensity}`);
 }
 
+function toggleFrequencyMode() {
+    frequencyMode = frequencyMode === 'volume' ? 'frequency' : 'volume';
+    const button = document.getElementById('frequencyModeToggle');
+    
+    if (frequencyMode === 'frequency') {
+        button.innerHTML = '🎼 Frequency Mode';
+        button.title = 'Currently in frequency mode (bass/mid/treble effects)';
+        console.log('🎼 Switched to frequency analysis mode');
+    } else {
+        button.innerHTML = '🔊 Volume Mode';
+        button.title = 'Currently in volume mode (overall level effects)';
+        console.log('🔊 Switched to volume analysis mode');
+    }
+}
+
 window.updateGravityRange = updateGravityRange;
 window.updateGravityStrength = updateGravityStrength;
 window.updateWaveIntensity = updateWaveIntensity;
 window.toggleGravityMode = toggleGravityMode;
 window.toggleAudioReactive = toggleAudioReactive;
 window.toggleMicrophone = toggleMicrophone;
+window.toggleFrequencyMode = toggleFrequencyMode;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application
