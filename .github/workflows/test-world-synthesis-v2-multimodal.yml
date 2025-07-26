@@ -177,6 +177,7 @@ jobs:
           fi
       
       - name: Commit all multimodal analysis results
+        if: ${{ always() }}
         run: |
           FOLDER_NAME="${{ steps.setup.outputs.folder_name }}"
           SCENARIO="${{ steps.setup.outputs.scenario }}"
@@ -191,10 +192,10 @@ jobs:
             git commit -m "$(cat <<'EOF'
 Add multimodal world analysis and synthesis results ($SCENARIO scenario)
 
-Image Analysis: dramatic/mysterious/enhanced
-Music Analysis: dramatic/orchestral/variable
-Speech Analysis: mysterious/contemplative/authoritative
-Video Analysis: fantasy/mysterious/cinematic
+Image Analysis - dramatic/mysterious/enhanced
+Music Analysis - dramatic/orchestral/variable  
+Speech Analysis - mysterious/contemplative/authoritative
+Video Analysis - fantasy/mysterious/cinematic
 World Synthesis: unified multimodal experience
 
 Generated with Claude Code

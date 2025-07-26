@@ -55,6 +55,7 @@ jobs:
           echo "📄 ファイル: ${{ inputs.requirements_file }}"
           
       - name: Phase 1 - Requirements Analysis and Design
+        if: ${{ inputs.development_mode == 'full' || inputs.development_mode == 'analysis_only' || inputs.development_mode == 'design_only' }}
         id: analysis
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -68,10 +69,9 @@ GitHub Actions Automatic Development System Experiment.
 
 Analyze the requirements document and create detailed technical design documents.
 
-**Requirements Document**:
-$REQUIREMENTS_CONTENT
+Requirements Document - $REQUIREMENTS_CONTENT
 
-**Files to Create**:
+Files to Create -
 - docs/design/${{ inputs.target_module }}-design.md (Detailed Design Document)
 - docs/design/${{ inputs.target_module }}-implementation-plan.md (Implementation Plan)
 
