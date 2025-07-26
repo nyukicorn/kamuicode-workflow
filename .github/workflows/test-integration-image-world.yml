@@ -1,0 +1,112 @@
+name: 'Test Image-Planning to World-Synthesis Integration'
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-image-prompt:
+        description: 'テスト用画像プロンプト'
+        required: true
+        type: string
+        default: 'A mystical underground crystal cave with glowing purple crystals, dramatic lighting, deep caverns'
+
+jobs:
+  test-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Generate test timestamp
+        id: timestamp
+        run: echo "value=integration-test-$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      
+      - name: Step 1 - Image Planning Analysis
+        uses: ./.github/actions/kamui-modules/image-planning
+        with:
+          image-prompt: ${{ inputs.test-image-prompt }}
+          folder-name: ${{ steps.timestamp.outputs.value }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+        id: image-analysis
+      
+      - name: Display Image Analysis Results
+        run: |
+          echo "🎨 Image Analysis Results:"
+          echo "Scene Type: ${{ steps.image-analysis.outputs.scene-type }}"
+          echo "Atmosphere: ${{ steps.image-analysis.outputs.atmosphere }}"
+          echo "Depth Mode: ${{ steps.image-analysis.outputs.depth-mode }}"
+          echo "Lighting Style: ${{ steps.image-analysis.outputs.lighting-style }}"
+          echo "Movement Energy: ${{ steps.image-analysis.outputs.movement-energy }}"
+          echo "Color Temperature: ${{ steps.image-analysis.outputs.color-temperature }}"
+      
+      - name: Step 2 - World Synthesis (Using Image Analysis Output)
+        uses: ./.github/actions/kamui-modules/world-synthesis
+        with:
+          image-scene-type: ${{ steps.image-analysis.outputs.scene-type }}
+          image-atmosphere: ${{ steps.image-analysis.outputs.atmosphere }}
+          image-depth-mode: ${{ steps.image-analysis.outputs.depth-mode }}
+          image-lighting-style: ${{ steps.image-analysis.outputs.lighting-style }}
+          image-movement-energy: ${{ steps.image-analysis.outputs.movement-energy }}
+          image-color-temperature: ${{ steps.image-analysis.outputs.color-temperature }}
+          music-atmosphere: 'mystical'
+          music-energy: 'medium'
+          primary-weight: 'image'
+          folder-name: ${{ steps.timestamp.outputs.value }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+        id: world-synthesis
+        continue-on-error: true
+      
+      - name: Display World Synthesis Results
+        run: |
+          echo "🌍 World Synthesis Results:"
+          echo "Final Depth Mode: ${{ steps.world-synthesis.outputs.final-depth-mode || 'N/A' }}"
+          echo "Final Atmosphere: ${{ steps.world-synthesis.outputs.final-atmosphere || 'N/A' }}"
+          echo "Brightness Level: ${{ steps.world-synthesis.outputs.brightness-level || 'N/A' }}"
+          echo "Rotation Speed: ${{ steps.world-synthesis.outputs.rotation-speed || 'N/A' }}"
+          echo "Particle Energy: ${{ steps.world-synthesis.outputs.particle-energy || 'N/A' }}"
+          echo "Auto Rotate: ${{ steps.world-synthesis.outputs.auto-rotate || 'N/A' }}"
+          echo "Synthesis Completed: ${{ steps.world-synthesis.outputs.synthesis-completed || 'N/A' }}"
+      
+      - name: Integration Test Summary
+        run: |
+          echo "## 🔗 Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Test Input" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Prompt**: ${{ inputs.test-image-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎨 Image Analysis → World Synthesis Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "1. **Image Analysis Completed**: ${{ steps.image-analysis.outputs.analysis-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "2. **World Synthesis Completed**: ${{ steps.world-synthesis.outputs.synthesis-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Final Settings" >> $GITHUB_STEP_SUMMARY
+          echo "- **Scene Type**: ${{ steps.image-analysis.outputs.scene-type }} → **Depth Mode**: ${{ steps.world-synthesis.outputs.final-depth-mode || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Atmosphere**: ${{ steps.image-analysis.outputs.atmosphere }} → **Final**: ${{ steps.world-synthesis.outputs.final-atmosphere || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Movement Energy**: ${{ steps.image-analysis.outputs.movement-energy }} → **Particle Energy**: ${{ steps.world-synthesis.outputs.particle-energy || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.image-analysis.outputs.analysis-completed }}" = "true" ] && [ -n "${{ steps.world-synthesis.outputs.synthesis-completed }}" ]; then
+            echo "✅ **Integration Status**: Pipeline executed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Integration Status**: Pipeline had issues" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: Show Generated Files
+        run: |
+          echo "📁 Integration Test Files:"
+          find ${{ steps.timestamp.outputs.value }} -type f -name "*.json" -o -name "*.md" -o -name "*.txt" | head -10 || echo "No files found"
+          
+          echo ""
+          echo "📄 Image Analysis JSON:"
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-analysis/image-analysis.json" ]; then
+            cat ${{ steps.timestamp.outputs.value }}/world-analysis/image-analysis.json
+          else
+            echo "Image analysis JSON not found"
+          fi
+          
+          echo ""
+          echo "📄 World Synthesis JSON:"
+          if [ -f "${{ steps.timestamp.outputs.value }}/world-synthesis/world-synthesis.json" ]; then
+            cat ${{ steps.timestamp.outputs.value }}/world-synthesis/world-synthesis.json
+          else
+            echo "World synthesis JSON not found"
+          fi
