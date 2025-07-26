@@ -201,7 +201,7 @@ Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
-)"
+            )"
             
             # Push the final results
             for i in {1..3}; do
