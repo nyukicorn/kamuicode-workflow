@@ -1,0 +1,1190 @@
+// Global variables
+let scene, camera, renderer, controls;
+let pointCloud = null;
+let autoRotate = false;
+let rotationSpeed = 1.0;
+let pointSize = 1.5;
+let audioElement = null;
+let musicPlaying = false;
+
+// Audio analysis variables
+let audioContext = null;
+let microphoneSource = null;
+let musicAnalyser = null;
+let micAnalyser = null;
+let musicDataArray = null;
+let micDataArray = null;
+let audioReactiveEnabled = false;
+let microphoneEnabled = false;
+let currentVolumeLevel = 0;
+let volumeSmoothing = 0.8; // Smoothing factor for volume changes
+
+// Frequency band analysis
+let frequencyBands = {
+    bass: 0,      // 0-250Hz
+    mid: 0,       // 250-2000Hz
+    treble: 0     // 2000Hz+
+};
+let frequencyMode = 'volume'; // 'volume' or 'frequency'
+
+// Lighting and appearance
+let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
+
+// Initialize appearance variables
+ambientLight = null;  // Initialize to avoid TDZ
+directionalLight = null;  // Initialize to avoid TDZ
+brightnessLevel = 0.2;  // Default brightness level (dim, so button shows "bright")
+glowIntensity = 0.0;  // Default no glow
+
+// Mouse interaction variables
+let mousePosition = new THREE.Vector2();
+let mouseWorldPosition = new THREE.Vector3();
+let originalPositions = null;
+let mouseGravityEnabled = true;
+let gravityStrength = 0.3;  // Increased default strength for bigger movement
+let gravityRange = 100;     // Default range
+let waveIntensity = 0.0;    // Disable wave by default for better performance
+let particleVelocities = null; // Store particle velocities for wave effect
+
+// Gravity mode variables
+let gravityMode = 'circle';  // 'circle', 'flow', or 'magnet'
+let mouseTrail = [];         // Store recent mouse positions for flow mode
+const MAX_TRAIL_LENGTH = 15; // Number of positions to remember
+const MIN_MAGNET_DISTANCE = 8; // Minimum distance for magnet mode (particles within this don't move)
+
+// Initialize the viewer
+function init() {
+    // Scene setup
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color('#0a0a2a');
+    
+    // Lighting setup (use default brightness level)
+    ambientLight = new THREE.AmbientLight(0xffffff, brightnessLevel);
+    scene.add(ambientLight);
+    
+    // Camera setup
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    camera.position.set(0, 0, 150);
+    
+    // Renderer setup
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.getElementById('container').appendChild(renderer.domElement);
+    
+    // Controls setup
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = autoRotate;
+    controls.autoRotateSpeed = rotationSpeed;
+    
+    // Lock vertical rotation to prevent flipping
+    controls.minPolarAngle = 0; // 0 degrees
+    controls.maxPolarAngle = Math.PI; // 180 degrees
+    
+    // Ensure zoom is always enabled
+    controls.enableZoom = true;
+    controls.enablePan = true;
+    controls.enableRotate = true;
+    
+    // Additional lighting (directional light)
+    directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.5);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+    
+    // Initialize audio if available
+    setupMusic();
+    
+    // Load PLY file
+    loadPointCloud();
+    
+    // Debug info for rotation center
+    console.log('OrbitControls initialized with autoRotate:', autoRotate);
+    console.log('Rotation will be around Y-axis through controls.target');
+    
+    // Start animation loop
+    animate();
+    
+    // Handle window resize
+    window.addEventListener('resize', onWindowResize);
+    
+    // Keyboard controls
+    document.addEventListener('keydown', onKeyDown);
+    
+    // Double-click to toggle rotation (don't prevent default to preserve zoom)
+    renderer.domElement.addEventListener('dblclick', (event) => {
+        // Don't prevent default - let OrbitControls handle zoom
+        toggleAutoRotate();
+    });
+    
+    // Setup control panel auto-hide
+    setupControlsAutoHide();
+    
+    // Setup mouse interaction
+    setupMouseInteraction();
+}
+
+function loadPointCloud() {
+    const loader = new THREE.PLYLoader();
+    
+    loader.load('assets/pointcloud.ply', function(geometry) {
+        geometry.computeBoundingBox();
+        geometry.center();
+        
+        // Enhance 3D appearance with depth-based effects
+        enhance3DAppearance(geometry);
+        
+        // Create point cloud material
+        const material = new THREE.PointsMaterial({
+            vertexColors: true,
+            size: pointSize,
+            sizeAttenuation: true,
+            transparent: true,  // Enable transparency for depth effects
+            opacity: 1.0
+        });
+        
+        // Create point cloud
+        pointCloud = new THREE.Points(geometry, material);
+        scene.add(pointCloud);
+        
+        // Update info
+        const pointCount = geometry.attributes.position.count;
+        document.getElementById('stats').textContent = `Points: ${pointCount.toLocaleString()}`;
+        document.getElementById('loading').style.display = 'none';
+        
+        // Auto-fit camera
+        fitCameraToObject(pointCloud);
+        
+        // Store original positions for mouse interaction
+        storeOriginalPositions();
+        
+        console.log('✅ Point cloud loaded:', pointCount, 'points');
+        console.log('Rotation center set to:', controls.target);
+        console.log('Camera position:', camera.position);
+    }, 
+    function(progress) {
+        const percent = Math.round((progress.loaded / progress.total) * 100);
+        document.getElementById('loading').textContent = `🔄 Loading: ${percent}%`;
+    },
+    function(error) {
+        console.error('❌ Error loading PLY file:', error);
+        document.getElementById('loading').textContent = '❌ Failed to load point cloud';
+    });
+}
+
+function fitCameraToObject(object) {
+    const box = new THREE.Box3().setFromObject(object);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    
+    const maxSize = Math.max(size.x, size.y, size.z);
+    const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
+    const fitWidthDistance = fitHeightDistance / camera.aspect;
+    const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.5;
+    
+    camera.near = distance / 100;
+    camera.far = distance * 100;
+    camera.updateProjectionMatrix();
+    
+    controls.target.copy(center);
+    controls.update();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    
+    // Apply mouse gravity effect
+    if (mouseGravityEnabled && pointCloud && originalPositions) {
+        applyMouseGravity();
+    }
+    
+    // Apply audio-reactive effects
+    if ((audioReactiveEnabled || microphoneEnabled) && pointCloud) {
+        applyAudioReactiveEffects();
+    }
+    
+    renderer.render(scene, camera);
+}
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function onKeyDown(event) {
+    const moveSpeed = 10;
+    switch(event.code) {
+        case 'KeyW':
+            camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
+            break;
+        case 'KeyS':
+            camera.position.add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(-moveSpeed));
+            break;
+        case 'KeyA':
+            camera.position.add(new THREE.Vector3().crossVectors(camera.up, camera.getWorldDirection(new THREE.Vector3())).multiplyScalar(moveSpeed));
+            break;
+        case 'KeyD':
+            camera.position.add(new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).multiplyScalar(moveSpeed));
+            break;
+    }
+}
+
+// Control functions
+function toggleAutoRotate() {
+    autoRotate = !autoRotate;
+    controls.autoRotate = autoRotate;
+}
+
+function resetCamera() {
+    if (pointCloud) {
+        fitCameraToObject(pointCloud);
+        // Ensure rotation is around the object center
+        const box = new THREE.Box3().setFromObject(pointCloud);
+        const center = box.getCenter(new THREE.Vector3());
+        controls.target.copy(center);
+        controls.update();
+    }
+}
+
+function updatePointSize(value) {
+    pointSize = parseFloat(value);
+    if (pointCloud) {
+        pointCloud.material.size = pointSize;
+    }
+}
+
+function updateRotationSpeed(value) {
+    rotationSpeed = parseFloat(value);
+    controls.autoRotateSpeed = rotationSpeed;
+}
+
+function toggleBrightness() {
+    const button = document.getElementById('brightnessToggle');
+    
+    // Enhanced brightness toggle with background change
+    if (brightnessLevel <= 0.5) {
+        // Make it bright - much brighter lighting + lighter background
+        brightnessLevel = 1.2;
+        scene.background = new THREE.Color('#404040'); // Dark gray instead of black
+        button.innerHTML = '☀️ Light Mode';
+        button.title = 'Currently in light mode (click for dark)';
+    } else {
+        // Make it dim - keep original dark appearance
+        brightnessLevel = 0.3;
+        scene.background = new THREE.Color('#0a0a2a');
+        button.innerHTML = '🌙 Dark Mode';
+        button.title = 'Currently in dark mode (click for light)';
+    }
+    
+    // Apply enhanced brightness change
+    ambientLight.intensity = brightnessLevel;
+    directionalLight.intensity = brightnessLevel * 1.8; // More dramatic difference
+}
+
+function updateGlowIntensity(value) {
+    glowIntensity = parseFloat(value) / 100.0; // 0-100% to 0-1.0
+    
+    if (pointCloud && pointCloud.material) {
+        // Create glow effect by making colors brighter and slightly larger
+        const geometry = pointCloud.geometry;
+        if (geometry.attributes.color) {
+            const colors = geometry.attributes.color.array;
+            const originalColors = pointCloud.userData.originalColors;
+            
+            // Store original colors if not already stored
+            if (!originalColors) {
+                pointCloud.userData.originalColors = new Float32Array(colors);
+            }
+            
+            // Apply glow brightness
+            const glowBrightness = 1.0 + glowIntensity * 1.5; // Up to 2.5x brightness
+            for (let i = 0; i < colors.length; i++) {
+                colors[i] = Math.min(1.0, pointCloud.userData.originalColors[i] * glowBrightness);
+            }
+            
+            geometry.attributes.color.needsUpdate = true;
+        }
+        
+        // Also slightly increase size for extra glow effect
+        const sizeMultiplier = 1.0 + glowIntensity * 0.3; // Up to 30% size increase
+        pointCloud.material.size = pointSize * sizeMultiplier;
+        pointCloud.material.needsUpdate = true;
+    }
+}
+
+function setupControlsAutoHide() {
+    const controls = document.getElementById('controls');
+    let hideTimeout;
+    
+    // Show controls when mouse enters the left side of screen or controls
+    const showControls = () => {
+        controls.classList.add('visible');
+        clearTimeout(hideTimeout);
+    };
+    
+    // Hide controls after a delay
+    const scheduleHide = () => {
+        clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(() => {
+            controls.classList.remove('visible');
+        }, 3000); // Hide after 3 seconds
+    };
+    
+    // Show when hovering over controls
+    controls.addEventListener('mouseenter', showControls);
+    controls.addEventListener('mouseleave', scheduleHide);
+    
+    // Initial hide after 5 seconds
+    setTimeout(() => {
+        scheduleHide();
+    }, 5000);
+}
+
+function setupMouseInteraction() {
+    const controls = document.getElementById('controls');
+    
+    // Track mouse position for 3D interaction
+    document.addEventListener('mousemove', (event) => {
+        // Handle control visibility
+        if (event.clientX < 300) {
+            controls.classList.add('visible');
+        }
+        
+        // Normalize mouse coordinates to [-1, 1]
+        mousePosition.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mousePosition.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        
+        // Convert to world coordinates
+        updateMouseWorldPosition();
+        
+        // Update mouse trail for flow mode
+        if (gravityMode === 'flow') {
+            updateMouseTrail();
+        }
+        
+        // Debug log occasionally
+        if (Math.random() < 0.01) {
+            const modeIcon = gravityMode === 'flow' ? '🌊' : gravityMode === 'magnet' ? '🧲' : '🎯';
+            console.log(`${modeIcon} Mouse: screen(${event.clientX}, ${event.clientY}) mode: ${gravityMode}`);
+        }
+    });
+}
+
+function updateMouseWorldPosition() {
+    if (!camera || !pointCloud) return;
+    
+    // Create a raycaster to get 3D mouse position
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mousePosition, camera);
+    
+    // Try to intersect with the point cloud geometry
+    const intersects = raycaster.intersectObject(pointCloud);
+    
+    if (intersects.length > 0) {
+        // Use intersection point if available
+        mouseWorldPosition.copy(intersects[0].point);
+    } else {
+        // Fallback: project onto a plane at a fixed distance
+        const distance = 100; // Fixed distance for more predictable behavior
+        mouseWorldPosition.copy(raycaster.ray.origin)
+            .add(raycaster.ray.direction.multiplyScalar(distance));
+    }
+}
+
+function updateMouseTrail() {
+    // Add current position to trail
+    mouseTrail.push({
+        x: mouseWorldPosition.x,
+        y: mouseWorldPosition.y,
+        z: mouseWorldPosition.z,
+        strength: 1.0  // Full strength for newest position
+    });
+    
+    // Limit trail length
+    if (mouseTrail.length > MAX_TRAIL_LENGTH) {
+        mouseTrail.shift();
+    }
+    
+    // Fade older positions
+    for (let i = 0; i < mouseTrail.length - 1; i++) {
+        mouseTrail[i].strength = (i + 1) / mouseTrail.length;
+    }
+}
+
+function enhance3DAppearance(geometry) {
+    const positions = geometry.attributes.position;
+    const colors = geometry.attributes.color;
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    
+    // Store original colors for later depth calculations
+    if (!geometry.userData) geometry.userData = {};
+    geometry.userData.originalColors = new Float32Array(colorArray);
+    
+    // Don't apply any initial depth effects here - let dynamic updates handle it
+    // This ensures depth is always calculated from current camera position
+    
+    colors.needsUpdate = true;
+    console.log('🎆 3D appearance system initialized - dynamic depth will be applied in real-time');
+}
+
+function storeOriginalPositions() {
+    if (!pointCloud) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    originalPositions = new Float32Array(positions.array.length);
+    originalPositions.set(positions.array);
+    
+    // Initialize particle velocities for wave effect
+    particleVelocities = new Float32Array(positions.array.length);
+    particleVelocities.fill(0);
+    
+    console.log('📍 Original positions and velocities stored for mouse interaction');
+}
+
+function applyMouseGravity() {
+    const positions = pointCloud.geometry.attributes.position;
+    const positionArray = positions.array;
+    
+    // Use dynamic values from sliders
+    const currentStrength = gravityStrength;
+    const maxDistance = gravityRange;
+    
+    let affectedParticles = 0;
+    const dampening = 0.95; // Velocity dampening factor
+    
+    if (gravityMode === 'circle') {
+        // Original circle mode - single point of attraction
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
+            
+            // Calculate distance to mouse
+            const dx = mouseWorldPosition.x - originalX;
+            const dy = mouseWorldPosition.y - originalY;
+            const dz = mouseWorldPosition.z - originalZ;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            if (distance < maxDistance && distance > 0) {
+                affectedParticles++;
+                
+                // Apply stronger gravity effect for bigger movement
+                const force = currentStrength * (maxDistance - distance) / maxDistance;
+                const amplifiedForce = force * 3.0;
+                
+                // Add velocity
+                particleVelocities[i] += dx * amplifiedForce * 0.2;
+                particleVelocities[i + 1] += dy * amplifiedForce * 0.2;
+                particleVelocities[i + 2] += dz * amplifiedForce * 0.2;
+            }
+        }
+    } else if (gravityMode === 'flow' && mouseTrail.length > 0) {
+        // Flow mode - multiple points of attraction along mouse path
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
+            
+            let totalForceX = 0;
+            let totalForceY = 0;
+            let totalForceZ = 0;
+            let hasEffect = false;
+            
+            // Check influence from each trail point
+            for (const trailPoint of mouseTrail) {
+                const dx = trailPoint.x - originalX;
+                const dy = trailPoint.y - originalY;
+                const dz = trailPoint.z - originalZ;
+                const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                
+                if (distance < maxDistance && distance > 0) {
+                    hasEffect = true;
+                    
+                    // Apply force with trail point strength
+                    const force = currentStrength * (maxDistance - distance) / maxDistance * trailPoint.strength;
+                    const amplifiedForce = force * 2.5; // Slightly less than circle mode
+                    
+                    totalForceX += dx * amplifiedForce * 0.15;
+                    totalForceY += dy * amplifiedForce * 0.15;
+                    totalForceZ += dz * amplifiedForce * 0.15;
+                }
+            }
+            
+            if (hasEffect) {
+                affectedParticles++;
+                
+                // Apply combined force from all trail points
+                particleVelocities[i] += totalForceX;
+                particleVelocities[i + 1] += totalForceY;
+                particleVelocities[i + 2] += totalForceZ;
+            }
+        }
+    } else if (gravityMode === 'magnet') {
+        // Magnet mode - particles are attracted to mouse like a real magnet
+        for (let i = 0; i < positionArray.length; i += 3) {
+            const originalX = originalPositions[i];
+            const originalY = originalPositions[i + 1];
+            const originalZ = originalPositions[i + 2];
+            
+            // Calculate distance to mouse
+            const dx = mouseWorldPosition.x - originalX;
+            const dy = mouseWorldPosition.y - originalY;
+            const dz = mouseWorldPosition.z - originalZ;
+            const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            
+            // Only apply force if particle is far enough from mouse (magnet behavior)
+            if (distance > MIN_MAGNET_DISTANCE && distance < maxDistance) {
+                affectedParticles++;
+                
+                // Normalize direction vector (consistent pull direction regardless of distance)
+                const dirX = dx / distance;
+                const dirY = dy / distance;
+                const dirZ = dz / distance;
+                
+                // Magnetic force with realistic falloff (inverse square law, but capped for usability)
+                const falloff = Math.max(0.1, (maxDistance - distance) / maxDistance);
+                const magneticForce = currentStrength * falloff * 1.5; // Slightly stronger than circle mode
+                
+                // Apply normalized force (particles move toward mouse, don't overshoot)
+                particleVelocities[i] += dirX * magneticForce * 0.15;
+                particleVelocities[i + 1] += dirY * magneticForce * 0.15;
+                particleVelocities[i + 2] += dirZ * magneticForce * 0.15;
+            }
+        }
+    }
+    
+    // Second pass: Optimized wave propagation with sampling
+    if (waveIntensity > 0) {
+        const neighborDistance = 25; // Distance to consider particles as neighbors
+        const waveStrength = waveIntensity * 0.03;
+        const maxSampleSize = Math.min(2000, Math.floor(positionArray.length / 30)); // Limit sampling
+        const sampleStep = Math.max(1, Math.floor(positionArray.length / (maxSampleSize * 3)));
+        
+        // Only process a subset of particles for wave propagation
+        for (let i = 0; i < positionArray.length; i += sampleStep * 3) {
+            // Skip if this particle has no velocity
+            if (Math.abs(particleVelocities[i]) < 0.001 && 
+                Math.abs(particleVelocities[i + 1]) < 0.001 && 
+                Math.abs(particleVelocities[i + 2]) < 0.001) {
+                continue;
+            }
+            
+            let neighborInfluenceX = 0;
+            let neighborInfluenceY = 0;
+            let neighborInfluenceZ = 0;
+            let neighborCount = 0;
+            const maxNeighbors = 50; // Limit neighbors to check
+            
+            // Check nearby particles with early termination
+            for (let j = 0; j < positionArray.length && neighborCount < maxNeighbors; j += 6) { // Skip every other particle
+                if (i === j) continue;
+                
+                const dx = positionArray[j] - positionArray[i];
+                const dy = positionArray[j + 1] - positionArray[i + 1];
+                const dz = positionArray[j + 2] - positionArray[i + 2];
+                
+                // Quick distance check without sqrt for performance
+                const distanceSquared = dx * dx + dy * dy + dz * dz;
+                const neighborDistanceSquared = neighborDistance * neighborDistance;
+                
+                if (distanceSquared < neighborDistanceSquared && distanceSquared > 0.01) {
+                    const distance = Math.sqrt(distanceSquared);
+                    const influence = (neighborDistance - distance) / neighborDistance;
+                    
+                    neighborInfluenceX += particleVelocities[j] * influence;
+                    neighborInfluenceY += particleVelocities[j + 1] * influence;
+                    neighborInfluenceZ += particleVelocities[j + 2] * influence;
+                    neighborCount++;
+                }
+            }
+            
+            // Apply wave propagation to nearby particles
+            if (neighborCount > 0) {
+                const avgInfluenceX = (neighborInfluenceX / neighborCount) * waveStrength;
+                const avgInfluenceY = (neighborInfluenceY / neighborCount) * waveStrength;
+                const avgInfluenceZ = (neighborInfluenceZ / neighborCount) * waveStrength;
+                
+                // Apply to current particle and some neighbors
+                for (let k = Math.max(0, i - 9); k <= Math.min(positionArray.length - 3, i + 9); k += 3) {
+                    particleVelocities[k] += avgInfluenceX * 0.3;
+                    particleVelocities[k + 1] += avgInfluenceY * 0.3;
+                    particleVelocities[k + 2] += avgInfluenceZ * 0.3;
+                }
+            }
+        }
+    }
+    
+    // Third pass: Apply velocities and handle return to original position
+    for (let i = 0; i < positionArray.length; i += 3) {
+        const originalX = originalPositions[i];
+        const originalY = originalPositions[i + 1];
+        const originalZ = originalPositions[i + 2];
+        
+        // Apply velocity
+        positionArray[i] += particleVelocities[i];
+        positionArray[i + 1] += particleVelocities[i + 1];
+        positionArray[i + 2] += particleVelocities[i + 2];
+        
+        // Dampen velocity
+        particleVelocities[i] *= dampening;
+        particleVelocities[i + 1] *= dampening;
+        particleVelocities[i + 2] *= dampening;
+        
+        // Add gentler spring force back to original position (slower return for longer visibility)
+        const returnStrength = 0.015; // Reduced for slower return
+        const returnForceX = (originalX - positionArray[i]) * returnStrength;
+        const returnForceY = (originalY - positionArray[i + 1]) * returnStrength;
+        const returnForceZ = (originalZ - positionArray[i + 2]) * returnStrength;
+        
+        particleVelocities[i] += returnForceX;
+        particleVelocities[i + 1] += returnForceY;
+        particleVelocities[i + 2] += returnForceZ;
+    }
+    
+    // Update dynamic 3D effects based on new positions
+    updateDynamic3DEffects();
+    
+    // Debug log every 120 frames (reduce logging frequency)
+    if (Math.random() < 0.008) {
+        console.log(`🌊 Wave gravity: ${affectedParticles} particles directly affected, wave intensity: ${waveIntensity.toFixed(2)}`);
+    }
+    
+    positions.needsUpdate = true;
+}
+
+function toggleMouseGravity() {
+    mouseGravityEnabled = !mouseGravityEnabled;
+    const button = document.getElementById('gravityToggle');
+    
+    if (mouseGravityEnabled) {
+        button.innerHTML = '🧲 Gravity ON';
+        button.title = 'Gravity is ON (click to disable)';
+        console.log('🧲 Mouse gravity enabled');
+    } else {
+        button.innerHTML = '🚫 Gravity OFF';
+        button.title = 'Gravity is OFF (click to enable)';
+        console.log('❌ Mouse gravity disabled');
+        
+        // Reset particles to original positions when disabled
+        resetParticlePositions();
+    }
+}
+
+function toggleGravityMode() {
+    // Cycle through three modes: circle -> flow -> magnet -> circle
+    if (gravityMode === 'circle') {
+        gravityMode = 'flow';
+    } else if (gravityMode === 'flow') {
+        gravityMode = 'magnet';
+    } else {
+        gravityMode = 'circle';
+    }
+    
+    const button = document.getElementById('gravityModeToggle');
+    
+    if (gravityMode === 'circle') {
+        button.innerHTML = '🎯 Circle';
+        button.title = 'Circle mode - particles attracted to current mouse position';
+        mouseTrail = []; // Clear trail
+        console.log('🎯 Switched to Circle gravity mode');
+    } else if (gravityMode === 'flow') {
+        button.innerHTML = '🌊 Flow';
+        button.title = 'Flow mode - particles follow mouse movement path creating flowing effects';
+        console.log('🌊 Switched to Flow gravity mode');
+    } else if (gravityMode === 'magnet') {
+        button.innerHTML = '🧲 Magnet';
+        button.title = 'Magnet mode - particles gather toward mouse like iron filings to a magnet';
+        mouseTrail = []; // Clear trail
+        console.log('🧲 Switched to Magnet gravity mode');
+    }
+}
+
+function updateDynamic3DEffects() {
+    if (!pointCloud || !camera) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    const colors = pointCloud.geometry.attributes.color;
+    const positionArray = positions.array;
+    const colorArray = colors.array;
+    const originalColors = pointCloud.geometry.userData.originalColors;
+    
+    if (!originalColors) return;
+    
+    const cameraPosition = camera.position;
+    const material = pointCloud.material;
+    
+    // Calculate proper depth range based on camera distance
+    let minCameraDistance = Infinity;
+    let maxCameraDistance = -Infinity;
+    
+    // Sample particles to find actual min/max camera distances
+    for (let i = 0; i < positionArray.length; i += 60) {
+        const x = positionArray[i];
+        const y = positionArray[i + 1];
+        const z = positionArray[i + 2];
+        
+        const cameraDistance = Math.sqrt(
+            (x - cameraPosition.x) ** 2 + 
+            (y - cameraPosition.y) ** 2 + 
+            (z - cameraPosition.z) ** 2
+        );
+        
+        minCameraDistance = Math.min(minCameraDistance, cameraDistance);
+        maxCameraDistance = Math.max(maxCameraDistance, cameraDistance);
+    }
+    
+    const depthRange = maxCameraDistance - minCameraDistance;
+    
+    // Apply true camera-based depth effects to every particle (improved sampling)
+    for (let i = 0; i < positionArray.length; i += 30) { // Process every 10th particle
+        const x = positionArray[i];
+        const y = positionArray[i + 1];
+        const z = positionArray[i + 2];
+        
+        // Calculate actual distance from camera (true 3D depth)
+        const cameraDistance = Math.sqrt(
+            (x - cameraPosition.x) ** 2 + 
+            (y - cameraPosition.y) ** 2 + 
+            (z - cameraPosition.z) ** 2
+        );
+        
+        // Normalize distance for depth factor (0 = closest, 1 = farthest)
+        const normalizedDepth = depthRange > 0 ? 
+            Math.max(0, Math.min(1, (cameraDistance - minCameraDistance) / depthRange)) : 0;
+        
+        // Natural depth intensity (closer = brighter, farther = darker)
+        const depthIntensity = 0.3 + (0.7 * (1 - normalizedDepth)); // 0.3 to 1.0 range
+        
+        // Apply natural color darkening (no artificial color tints)
+        const colorIndex = i;
+        if (colorIndex + 2 < colorArray.length) {
+            colorArray[colorIndex] = originalColors[colorIndex] * depthIntensity;         // R
+            colorArray[colorIndex + 1] = originalColors[colorIndex + 1] * depthIntensity; // G  
+            colorArray[colorIndex + 2] = originalColors[colorIndex + 2] * depthIntensity; // B
+        }
+    }
+    
+    // Dynamic size based on average viewing distance
+    const avgCameraDistance = (minCameraDistance + maxCameraDistance) / 2;
+    const sizeMultiplier = Math.max(0.4, Math.min(3.0, 150 / avgCameraDistance));
+    material.size = pointSize * sizeMultiplier;
+    
+    // Subtle opacity for extreme depth (very conservative)
+    const globalOpacity = Math.max(0.8, Math.min(1.0, 1.0 - (avgCameraDistance / (maxCameraDistance * 1.5)) * 0.2));
+    material.opacity = globalOpacity;
+    
+    colors.needsUpdate = true;
+    material.needsUpdate = true;
+}
+
+function resetParticlePositions() {
+    if (!pointCloud || !originalPositions) return;
+    
+    const positions = pointCloud.geometry.attributes.position;
+    positions.array.set(originalPositions);
+    
+    // Reset velocities
+    if (particleVelocities) {
+        particleVelocities.fill(0);
+    }
+    
+    // Reset colors to original enhanced state
+    const colors = pointCloud.geometry.attributes.color;
+    const originalColors = pointCloud.geometry.userData.originalColors;
+    if (originalColors) {
+        colors.array.set(originalColors);
+        colors.needsUpdate = true;
+    }
+    
+    positions.needsUpdate = true;
+    
+    console.log('🔄 Particles, velocities, and colors reset to original state');
+}
+
+// Audio analysis functions
+function initializeAudioContext() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('🎵 Audio context initialized');
+    }
+    return audioContext;
+}
+
+function setupMusicAnalysis(audioElement) {
+    if (!audioElement || musicAnalyser) return;
+    
+    try {
+        const context = initializeAudioContext();
+        const source = context.createMediaElementSource(audioElement);
+        musicAnalyser = context.createAnalyser();
+        musicAnalyser.fftSize = 256;
+        musicDataArray = new Uint8Array(musicAnalyser.frequencyBinCount);
+        
+        source.connect(musicAnalyser);
+        musicAnalyser.connect(context.destination);
+        
+        console.log('🎵 Music analysis setup complete');
+    } catch (error) {
+        console.error('❌ Music analysis setup failed:', error);
+    }
+}
+
+function setupMicrophoneAnalysis() {
+    if (micAnalyser) return Promise.resolve();
+    
+    return navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            const context = initializeAudioContext();
+            microphoneSource = context.createMediaStreamSource(stream);
+            micAnalyser = context.createAnalyser();
+            micAnalyser.fftSize = 256;
+            micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+            
+            microphoneSource.connect(micAnalyser);
+            microphoneEnabled = true;
+            
+            console.log('🎤 Microphone analysis setup complete');
+            return true;
+        })
+        .catch(error => {
+            console.error('❌ Microphone access denied:', error);
+            return false;
+        });
+}
+
+function getVolumeLevel() {
+    let volume = 0;
+    
+    if (audioReactiveEnabled && musicAnalyser && musicPlaying) {
+        musicAnalyser.getByteFrequencyData(musicDataArray);
+        volume = Math.max(volume, getAverageVolume(musicDataArray));
+        
+        // Also analyze frequency bands
+        if (frequencyMode === 'frequency') {
+            analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
+        }
+    }
+    
+    if (microphoneEnabled && micAnalyser) {
+        micAnalyser.getByteFrequencyData(micDataArray);
+        volume = Math.max(volume, getAverageVolume(micDataArray));
+        
+        // Also analyze frequency bands for microphone
+        if (frequencyMode === 'frequency') {
+            analyzeFrequencyBands(micDataArray, micAnalyser.context.sampleRate);
+        }
+    }
+    
+    // Apply smoothing
+    currentVolumeLevel = currentVolumeLevel * volumeSmoothing + volume * (1 - volumeSmoothing);
+    return currentVolumeLevel;
+}
+
+function getAverageVolume(dataArray) {
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+    }
+    return (sum / dataArray.length) / 255; // Normalize to 0-1
+}
+
+function analyzeFrequencyBands(dataArray, sampleRate) {
+    // FFT size is 256, so we have 128 frequency bins
+    // Each bin represents (sampleRate / 2) / 128 Hz
+    const binSize = (sampleRate / 2) / dataArray.length;
+    
+    // Calculate bin ranges for each frequency band
+    const bassEnd = Math.floor(250 / binSize);
+    const midEnd = Math.floor(2000 / binSize);
+    
+    // Calculate average volume for each band
+    let bassSum = 0, midSum = 0, trebleSum = 0;
+    let bassCount = 0, midCount = 0, trebleCount = 0;
+    
+    for (let i = 0; i < dataArray.length; i++) {
+        if (i <= bassEnd) {
+            bassSum += dataArray[i];
+            bassCount++;
+        } else if (i <= midEnd) {
+            midSum += dataArray[i];
+            midCount++;
+        } else {
+            trebleSum += dataArray[i];
+            trebleCount++;
+        }
+    }
+    
+    // Apply smoothing to frequency bands
+    const smoothing = 0.7;
+    frequencyBands.bass = frequencyBands.bass * smoothing + (bassSum / bassCount / 255) * (1 - smoothing);
+    frequencyBands.mid = frequencyBands.mid * smoothing + (midSum / midCount / 255) * (1 - smoothing);
+    frequencyBands.treble = frequencyBands.treble * smoothing + (trebleSum / trebleCount / 255) * (1 - smoothing);
+    
+    // Boost certain frequencies for better visibility
+    frequencyBands.bass *= 1.2;    // Bass is often quieter in FFT
+    frequencyBands.treble *= 1.5;  // Treble needs more boost
+}
+
+function toggleAudioReactive() {
+    audioReactiveEnabled = !audioReactiveEnabled;
+    const button = document.getElementById('audioReactiveToggle');
+    
+    if (audioReactiveEnabled) {
+        button.innerHTML = '🎵 Audio React ON';
+        button.title = 'Audio reactive is ON (click to disable)';
+        console.log('🎵 Audio-reactive mode enabled');
+        // Setup audio analysis for the music element if it exists
+        if (audioElement && !musicAnalyser) {
+            setupMusicAnalysis(audioElement);
+        }
+    } else {
+        button.innerHTML = '🔇 Audio React OFF';
+        button.title = 'Audio reactive is OFF (click to enable)';
+        console.log('🔇 Audio-reactive mode disabled');
+    }
+}
+
+function toggleMicrophone() {
+    if (!microphoneEnabled) {
+        setupMicrophoneAnalysis().then(success => {
+            if (success) {
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎤 Mic ON';
+                button.title = 'Microphone is ON (click to disable)';
+                console.log('🎤 Microphone enabled');
+            }
+        });
+    } else {
+        microphoneEnabled = false;
+        if (microphoneSource) {
+            microphoneSource.disconnect();
+        }
+        const button = document.getElementById('microphoneToggle');
+        button.innerHTML = '🎙️ Mic OFF';
+        button.title = 'Microphone is OFF (click to enable)';
+        console.log('🎤 Microphone disabled');
+    }
+}
+
+function applyAudioReactiveEffects() {
+    const volumeLevel = getVolumeLevel();
+    
+    if (volumeLevel > 0.01 || frequencyMode === 'frequency') { // Apply effects for volume or frequency mode
+        let sizeMultiplier, brightnessMultiplier, colorIntensity;
+        
+        if (frequencyMode === 'frequency' && (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
+            // Frequency-based effects
+            // Bass: Controls size and "punch" (0-250Hz) 
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 3.5); // Up to 4.5x for bass
+            
+            // Mid: Controls overall brightness (250-2000Hz)
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.5); // Up to 3.5x
+            
+            // Treble: Controls sparkle/color intensity (2000Hz+)
+            colorIntensity = 1.0 + (frequencyBands.treble * 2.0); // Up to 3x
+        } else {
+            // Volume-based effects (enhanced for visibility)
+            sizeMultiplier = 1.0 + (volumeLevel * 3.0); // Up to 4x size
+            brightnessMultiplier = 1.0 + (volumeLevel * 2.0); // Up to 3x brightness
+            colorIntensity = 1.0 + (volumeLevel * 1.5); // Up to 2.5x color
+        }
+        
+        // 1. Size effect
+        pointCloud.material.size = pointSize * sizeMultiplier;
+        
+        // 2. Brightness effect
+        if (ambientLight) {
+            ambientLight.intensity = brightnessLevel * brightnessMultiplier;
+        }
+        if (directionalLight) {
+            directionalLight.intensity = brightnessLevel * 1.5 * brightnessMultiplier;
+        }
+        
+        // 3. Color intensity effect
+        if (pointCloud.geometry.attributes.color) {
+            const colors = pointCloud.geometry.attributes.color;
+            const originalColors = pointCloud.geometry.userData.originalColors;
+            
+            if (originalColors) {
+                const colorArray = colors.array;
+                
+                // Apply to a subset of particles for performance
+                for (let i = 0; i < colorArray.length; i += 30) { // Every 10th particle
+                    if (i + 2 < colorArray.length) {
+                        colorArray[i] = Math.min(1.0, originalColors[i] * colorIntensity);     // R
+                        colorArray[i + 1] = Math.min(1.0, originalColors[i + 1] * colorIntensity); // G
+                        colorArray[i + 2] = Math.min(1.0, originalColors[i + 2] * colorIntensity); // B
+                    }
+                }
+                colors.needsUpdate = true;
+            }
+        }
+        
+        // 4. Audio-based movement effects
+        if (frequencyMode === 'frequency') {
+            // Different movement for different frequencies
+            if (originalPositions && particleVelocities) {
+                // Bass: outward expansion (punch effect)
+                if (frequencyBands.bass > 0.3) {
+                    const expansionForce = frequencyBands.bass * 0.15;
+                    for (let i = 0; i < particleVelocities.length; i += 40) {
+                        const centerX = 0, centerY = 0, centerZ = 0;
+                        const dx = originalPositions[i] - centerX;
+                        const dy = originalPositions[i + 1] - centerY;
+                        const dz = originalPositions[i + 2] - centerZ;
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        if (distance > 0) {
+                            particleVelocities[i] += (dx / distance) * expansionForce;
+                            particleVelocities[i + 1] += (dy / distance) * expansionForce;
+                            particleVelocities[i + 2] += (dz / distance) * expansionForce;
+                        }
+                    }
+                }
+                
+                // Treble: subtle shimmer/vibration
+                if (frequencyBands.treble > 0.2) {
+                    const shimmerForce = frequencyBands.treble * 0.05;
+                    for (let i = 0; i < particleVelocities.length; i += 60) {
+                        particleVelocities[i] += (Math.random() - 0.5) * shimmerForce;
+                        particleVelocities[i + 1] += (Math.random() - 0.5) * shimmerForce;
+                        particleVelocities[i + 2] += (Math.random() - 0.5) * shimmerForce;
+                    }
+                }
+            }
+        } else if (volumeLevel > 0.3) {
+            // Volume-based expansion (original behavior)
+            const audioGravityStrength = volumeLevel * 0.5;
+            if (originalPositions && particleVelocities) {
+                const expansionForce = audioGravityStrength * 0.1;
+                for (let i = 0; i < particleVelocities.length; i += 30) {
+                    const centerX = 0, centerY = 0, centerZ = 0;
+                    const dx = originalPositions[i] - centerX;
+                    const dy = originalPositions[i + 1] - centerY;
+                    const dz = originalPositions[i + 2] - centerZ;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (distance > 0) {
+                        particleVelocities[i] += (dx / distance) * expansionForce;
+                        particleVelocities[i + 1] += (dy / distance) * expansionForce;
+                        particleVelocities[i + 2] += (dz / distance) * expansionForce;
+                    }
+                }
+            }
+        }
+        
+        // Debug log occasionally
+        if (Math.random() < 0.01) {
+            if (frequencyMode === 'frequency') {
+                console.log(`🎵 Frequency mode: bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}%`);
+            } else {
+                console.log(`🎵 Volume mode: ${(volumeLevel * 100).toFixed(1)}%, size=${sizeMultiplier.toFixed(2)}x`);
+            }
+        }
+    }
+}
+
+function setupMusic() {
+    const playButton = document.getElementById('musicToggle');
+    let audio = null;
+    
+    playButton.addEventListener('click', () => {
+        if (!audio) {
+            audio = new Audio('assets/generated-music.wav');
+            audioElement = audio; // Set global reference
+            audio.loop = true;
+            audio.volume = 0.7;
+            audio.crossOrigin = 'anonymous';
+            
+            // Enhanced error handling
+            audio.addEventListener('error', (e) => {
+                console.error('Audio loading error:', e);
+                console.error('Audio src:', audio.src);
+                console.error('Audio error:', audio.error);
+                playButton.textContent = '❌ No Music File';
+            });
+            
+            audio.addEventListener('loadeddata', () => {
+                console.log('Audio loaded successfully from:', audio.src);
+            });
+        }
+        
+        if (audio.paused) {
+            audio.play().then(() => {
+                playButton.textContent = '🔇 Stop Music';
+                playButton.classList.add('playing');
+                // Setup audio analysis for music
+                setupMusicAnalysis(audio);
+                musicPlaying = true;
+            }).catch(error => {
+                console.error('Music playback error:', error);
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                if (error.name === 'NotAllowedError') {
+                    playButton.textContent = '⚠️ Click First';
+                } else {
+                    playButton.textContent = '❌ No Music File';
+                }
+            });
+        } else {
+            audio.pause();
+            playButton.textContent = '🎵 Play Music';
+            playButton.classList.remove('playing');
+            musicPlaying = false;
+        }
+    });
+}
+
+// Make functions globally accessible for HTML events
+window.toggleAutoRotate = toggleAutoRotate;
+window.resetCamera = resetCamera;
+window.updatePointSize = updatePointSize;
+window.updateRotationSpeed = updateRotationSpeed;
+window.toggleBrightness = toggleBrightness;
+window.updateGlowIntensity = updateGlowIntensity;
+window.toggleMouseGravity = toggleMouseGravity;
+
+// Gravity adjustment functions
+function updateGravityRange(value) {
+    gravityRange = parseFloat(value);
+    console.log(`🧲 Gravity range updated to: ${gravityRange}`);
+}
+
+function updateGravityStrength(value) {
+    gravityStrength = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    console.log(`🧲 Gravity strength updated to: ${gravityStrength}`);
+}
+
+function updateWaveIntensity(value) {
+    waveIntensity = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    console.log(`🌊 Wave intensity updated to: ${waveIntensity}`);
+}
+
+function toggleFrequencyMode() {
+    frequencyMode = frequencyMode === 'volume' ? 'frequency' : 'volume';
+    const button = document.getElementById('frequencyModeToggle');
+    
+    if (frequencyMode === 'frequency') {
+        button.innerHTML = '🎼 Frequency Mode';
+        button.title = 'Currently in frequency mode (bass/mid/treble effects)';
+        console.log('🎼 Switched to frequency analysis mode');
+    } else {
+        button.innerHTML = '🔊 Volume Mode';
+        button.title = 'Currently in volume mode (overall level effects)';
+        console.log('🔊 Switched to volume analysis mode');
+    }
+}
+
+window.updateGravityRange = updateGravityRange;
+window.updateGravityStrength = updateGravityStrength;
+window.updateWaveIntensity = updateWaveIntensity;
+window.toggleGravityMode = toggleGravityMode;
+window.toggleAudioReactive = toggleAudioReactive;
+window.toggleMicrophone = toggleMicrophone;
+window.toggleFrequencyMode = toggleFrequencyMode;
+
+
+// Start the application
+init();
