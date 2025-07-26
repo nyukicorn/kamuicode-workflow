@@ -1,0 +1,19 @@
+{
+  "atmosphere": "calm",
+  "emotion": "contemplative",
+  "tone": "intimate",
+  "pace": "slow",
+  "energy": 3,
+  "language_style": "conversational",
+  "content_type": "monologue",
+  "formality": 4,
+  "implied_space": "outdoor",
+  "time_period": "modern",
+  "cultural_context": "universal",
+  "audio_quality": "studio",
+  "speaker_count": "single",
+  "background_environment": "ambient",
+  "confidence": 0.85,
+  "input_type": "prompt",
+  "analysis_timestamp": "2025-07-26T08:31:53.078Z"
+}
