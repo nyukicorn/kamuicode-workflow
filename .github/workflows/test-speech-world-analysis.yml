@@ -1,0 +1,79 @@
+name: Test Speech World Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-type:
+        description: 'Test type (prompt/transcript)'
+        required: false
+        default: 'prompt'
+      test-content:
+        description: 'Custom test content'
+        required: false
+
+jobs:
+  test-speech-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          FOLDER_NAME="test-speech-analysis-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          
+          # テストコンテンツの設定
+          TEST_TYPE="${{ github.event.inputs.test-type || 'prompt' }}"
+          CUSTOM_CONTENT="${{ github.event.inputs.test-content }}"
+          
+          if [ "$TEST_TYPE" = "transcript" ]; then
+            if [ -n "$CUSTOM_CONTENT" ]; then
+              TEST_INPUT="$CUSTOM_CONTENT"
+            else
+              TEST_INPUT="こんにちは、皆さん。今日は私たちの新しいプロジェクトについてお話しします。このプロジェクトは、人工知能と創造性を組み合わせた革新的な取り組みです。私たちは、技術の力で人々の想像力を拡張し、より豊かな表現を可能にしたいと考えています。質問があれば、いつでもお気軽にお声かけください。"
+            fi
+            echo "speech-transcript=$TEST_INPUT" >> $GITHUB_OUTPUT
+            echo "speech-prompt=" >> $GITHUB_OUTPUT
+          else
+            if [ -n "$CUSTOM_CONTENT" ]; then
+              TEST_INPUT="$CUSTOM_CONTENT"
+            else
+              TEST_INPUT="落ち着いた女性の声で、瞑想とマインドフルネスについて穏やかに語りかけるスピーチ。ゆっくりとしたペースで、聞き手をリラックスさせるような温かみのあるトーン。背景は静寂で、時々遠くで鳥のさえずりが聞こえる。"
+            fi
+            echo "speech-prompt=$TEST_INPUT" >> $GITHUB_OUTPUT
+            echo "speech-transcript=" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Using test type: $TEST_TYPE"
+          echo "Test input: $TEST_INPUT"
+      
+      - name: Run Speech World Analysis
+        uses: ./.github/actions/kamui-modules/speech-world-analysis
+        with:
+          speech-prompt: ${{ steps.setup.outputs.speech-prompt }}
+          speech-transcript: ${{ steps.setup.outputs.speech-transcript }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking analysis results in: $FOLDER_NAME/world-analysis"
+          
+          if [ -f "$FOLDER_NAME/world-analysis/speech-analysis.json" ]; then
+            echo "✅ Speech analysis JSON found:"
+            cat "$FOLDER_NAME/world-analysis/speech-analysis.json"
+          else
+            echo "❌ Speech analysis JSON not found"
+            exit 1
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/speech-analysis.md" ]; then
+            echo "✅ Speech analysis markdown found"
+            echo "First 20 lines:"
+            head -20 "$FOLDER_NAME/world-analysis/speech-analysis.md"
+          fi

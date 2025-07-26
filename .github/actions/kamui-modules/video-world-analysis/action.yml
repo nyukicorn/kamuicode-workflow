@@ -1,0 +1,443 @@
+name: 'Video World Analysis'
+description: 'Analyze video content to extract comprehensive world characteristics for immersive experience'
+author: 'KamuiCode Workflow'
+
+inputs:
+  # 動画入力オプション（複数形式対応）
+  video-prompt:
+    description: 'Video content description'
+    required: false
+  video-url:
+    description: 'URL to video file'
+    required: false
+  video-file:
+    description: 'Path to local video file'
+    required: false
+  video-description:
+    description: 'Detailed description of video content'
+    required: false
+  
+  # 共通設定
+  folder-name:
+    description: 'The folder name for storing analysis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  # 視覚的特性
+  scene-type:
+    description: 'Primary scene type (nature/urban/interior/fantasy/dramatic/etc.)'
+    value: ${{ steps.analysis.outputs.scene-type }}
+  atmosphere:
+    description: 'Overall atmosphere (peaceful/energetic/mysterious/dramatic/etc.)'
+    value: ${{ steps.analysis.outputs.atmosphere }}
+  visual-style:
+    description: 'Visual style (realistic/stylized/cinematic/documentary/etc.)'
+    value: ${{ steps.analysis.outputs.visual-style }}
+  color-palette:
+    description: 'Dominant color palette (warm/cool/monochrome/vibrant/etc.)'
+    value: ${{ steps.analysis.outputs.color-palette }}
+  lighting-quality:
+    description: 'Lighting quality (natural/artificial/dramatic/soft/etc.)'
+    value: ${{ steps.analysis.outputs.lighting-quality }}
+  
+  # 動的特性
+  movement-type:
+    description: 'Type of movement (static/slow/dynamic/chaotic/rhythmic/etc.)'
+    value: ${{ steps.analysis.outputs.movement-type }}
+  camera-movement:
+    description: 'Camera movement style (steady/handheld/smooth/tracking/etc.)'
+    value: ${{ steps.analysis.outputs.camera-movement }}
+  pace:
+    description: 'Overall pace (slow/medium/fast/varied)'
+    value: ${{ steps.analysis.outputs.pace }}
+  energy-level:
+    description: 'Energy level (1-10)'
+    value: ${{ steps.analysis.outputs.energy-level }}
+  
+  # 音響特性
+  audio-type:
+    description: 'Audio type (music/dialogue/ambient/sound-effects/mixed/etc.)'
+    value: ${{ steps.analysis.outputs.audio-type }}
+  audio-atmosphere:
+    description: 'Audio atmosphere (calm/intense/mysterious/uplifting/etc.)'
+    value: ${{ steps.analysis.outputs.audio-atmosphere }}
+  audio-quality:
+    description: 'Audio quality (studio/live/ambient/processed/etc.)'
+    value: ${{ steps.analysis.outputs.audio-quality }}
+  
+  # 空間・時間特性
+  spatial-scale:
+    description: 'Spatial scale (intimate/room/building/landscape/cosmic/etc.)'
+    value: ${{ steps.analysis.outputs.spatial-scale }}
+  depth-perception:
+    description: 'Depth perception (flat/moderate/deep/immersive)'
+    value: ${{ steps.analysis.outputs.depth-perception }}
+  time-period:
+    description: 'Time period (historical/contemporary/futuristic/timeless)'
+    value: ${{ steps.analysis.outputs.time-period }}
+  duration-feel:
+    description: 'Duration feeling (brief/extended/epic/cyclical/etc.)'
+    value: ${{ steps.analysis.outputs.duration-feel }}
+  
+  # 内容・テーマ特性
+  content-genre:
+    description: 'Content genre (documentary/narrative/abstract/educational/etc.)'
+    value: ${{ steps.analysis.outputs.content-genre }}
+  emotional-arc:
+    description: 'Emotional arc (stable/building/climactic/varied/etc.)'
+    value: ${{ steps.analysis.outputs.emotional-arc }}
+  cultural-context:
+    description: 'Cultural context (western/eastern/universal/specific/etc.)'
+    value: ${{ steps.analysis.outputs.cultural-context }}
+  
+  # 技術・品質特性
+  production-quality:
+    description: 'Production quality (professional/amateur/artistic/experimental/etc.)'
+    value: ${{ steps.analysis.outputs.production-quality }}
+  technical-style:
+    description: 'Technical style (polished/raw/stylized/naturalistic/etc.)'
+    value: ${{ steps.analysis.outputs.technical-style }}
+  
+  # メタデータ
+  analysis-completed:
+    description: 'Whether analysis was completed successfully'
+    value: ${{ steps.analysis.outputs.completed }}
+  confidence:
+    description: 'Analysis confidence score (0.0-1.0)'
+    value: ${{ steps.analysis.outputs.confidence }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 動画世界観分析エージェント
+      id: analysis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎬 Video World Analysis Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        ANALYSIS_DIR="$FOLDER_NAME/world-analysis"
+        
+        echo "Analysis folder: $ANALYSIS_DIR"
+        
+        # 分析フォルダを事前に作成
+        if [ ! -d "$ANALYSIS_DIR" ]; then
+          mkdir -p "$ANALYSIS_DIR"
+          echo "📁 Created analysis folder: $ANALYSIS_DIR"
+        fi
+        
+        # 入力データの確認と整理
+        VIDEO_PROMPT="${{ inputs.video-prompt }}"
+        VIDEO_URL="${{ inputs.video-url }}"
+        VIDEO_FILE="${{ inputs.video-file }}"
+        VIDEO_DESCRIPTION="${{ inputs.video-description }}"
+        
+        echo "Input validation:"
+        echo "- Video prompt: ${VIDEO_PROMPT:+provided}"
+        echo "- Video URL: ${VIDEO_URL:+provided}"
+        echo "- Video file: ${VIDEO_FILE:+provided}"
+        echo "- Video description: ${VIDEO_DESCRIPTION:+provided}"
+        
+        # 入力検証
+        INPUT_COUNT=0
+        INPUT_TYPE=""
+        
+        if [ -n "$VIDEO_PROMPT" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="prompt"
+          echo "✅ Using video prompt input"
+        fi
+        
+        if [ -n "$VIDEO_URL" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="url"
+          echo "✅ Using video URL input"
+        fi
+        
+        if [ -n "$VIDEO_FILE" ] && [ -f "$VIDEO_FILE" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="file"
+          echo "✅ Using video file input: $VIDEO_FILE"
+        fi
+        
+        if [ -n "$VIDEO_DESCRIPTION" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="description"
+          echo "✅ Using video description input"
+        fi
+        
+        if [ "$INPUT_COUNT" -eq 0 ]; then
+          echo "::error::❌ No video input provided"
+          exit 1
+        fi
+        
+        if [ "$INPUT_COUNT" -gt 1 ]; then
+          echo "::warning::⚠️ Multiple video inputs provided, using first available"
+        fi
+        
+        # プロンプトの構築
+        PROMPT="あなたは動画コンテンツ分析から総合的な世界観特性を抽出する専門家です。"
+        
+        if [ -n "$VIDEO_PROMPT" ]; then
+          PROMPT="$PROMPT
+        
+        **動画コンテンツ説明**:
+        $VIDEO_PROMPT"
+        elif [ -n "$VIDEO_DESCRIPTION" ]; then
+          PROMPT="$PROMPT
+        
+        **動画詳細説明**:
+        $VIDEO_DESCRIPTION"
+        elif [ -n "$VIDEO_URL" ]; then
+          PROMPT="$PROMPT
+        
+        **動画URL**: $VIDEO_URL
+        (URLから動画内容を分析してください)"
+        elif [ -n "$VIDEO_FILE" ]; then
+          PROMPT="$PROMPT
+        
+        **動画ファイル**: $VIDEO_FILE
+        (ファイルから動画内容を分析してください)"
+        fi
+        
+        PROMPT="$PROMPT
+        
+        **分析タスク**:
+        動画の視覚・聴覚・時間的特性を包括的に分析し、3D体験や世界観構築に活用できる特性を抽出してください。
+        
+        **分析要素**:
+        1. **視覚的特性**:
+           - scene_type: 主要シーンタイプ（nature/urban/interior/fantasy/dramatic/etc.）
+           - atmosphere: 全体的雰囲気（peaceful/energetic/mysterious/dramatic/etc.）
+           - visual_style: 視覚スタイル（realistic/stylized/cinematic/documentary/etc.）
+           - color_palette: 支配的カラーパレット（warm/cool/monochrome/vibrant/etc.）
+           - lighting_quality: 照明品質（natural/artificial/dramatic/soft/etc.）
+        
+        2. **動的特性**:
+           - movement_type: 動きのタイプ（static/slow/dynamic/chaotic/rhythmic/etc.）
+           - camera_movement: カメラ動作スタイル（steady/handheld/smooth/tracking/etc.）
+           - pace: 全体的ペース（slow/medium/fast/varied）
+           - energy_level: エネルギーレベル（1-10）
+        
+        3. **音響特性**:
+           - audio_type: 音声タイプ（music/dialogue/ambient/sound-effects/mixed/etc.）
+           - audio_atmosphere: 音声雰囲気（calm/intense/mysterious/uplifting/etc.）
+           - audio_quality: 音声品質（studio/live/ambient/processed/etc.）
+        
+        4. **空間・時間特性**:
+           - spatial_scale: 空間スケール（intimate/room/building/landscape/cosmic/etc.）
+           - depth_perception: 奥行き知覚（flat/moderate/deep/immersive）
+           - time_period: 時代（historical/contemporary/futuristic/timeless）
+           - duration_feel: 持続感（brief/extended/epic/cyclical/etc.）
+        
+        5. **内容・テーマ特性**:
+           - content_genre: コンテンツジャンル（documentary/narrative/abstract/educational/etc.）
+           - emotional_arc: 感情アーク（stable/building/climactic/varied/etc.）
+           - cultural_context: 文化的文脈（western/eastern/universal/specific/etc.）
+        
+        6. **技術・品質特性**:
+           - production_quality: 制作品質（professional/amateur/artistic/experimental/etc.）
+           - technical_style: 技術スタイル（polished/raw/stylized/naturalistic/etc.）
+        
+        **時間的変化の分析**:
+        動画の場合、時間経過に伴う変化も重要です。主要な転換点や感情の変化があれば、
+        **$ANALYSIS_DIR/temporal-analysis.srt** ファイルも作成してください。
+        
+        **必須出力ファイル**:
+        1. **$ANALYSIS_DIR/video-analysis.json** - 構造化された分析結果
+        2. **$ANALYSIS_DIR/video-analysis.md** - 詳細分析レポート
+        3. **$ANALYSIS_DIR/video-summary.txt** - 1行要約
+        4. **$ANALYSIS_DIR/temporal-analysis.srt** (オプション) - 時間的変化分析
+        
+        **JSONフォーマット**:
+        \`\`\`json
+        {
+          \"scene_type\": \"nature\",
+          \"atmosphere\": \"peaceful\",
+          \"visual_style\": \"cinematic\",
+          \"color_palette\": \"warm\",
+          \"lighting_quality\": \"natural\",
+          \"movement_type\": \"slow\",
+          \"camera_movement\": \"smooth\",
+          \"pace\": \"slow\",
+          \"energy_level\": 4,
+          \"audio_type\": \"ambient\",
+          \"audio_atmosphere\": \"calm\",
+          \"audio_quality\": \"studio\",
+          \"spatial_scale\": \"landscape\",
+          \"depth_perception\": \"deep\",
+          \"time_period\": \"contemporary\",
+          \"duration_feel\": \"extended\",
+          \"content_genre\": \"documentary\",
+          \"emotional_arc\": \"stable\",
+          \"cultural_context\": \"universal\",
+          \"production_quality\": \"professional\",
+          \"technical_style\": \"polished\",
+          \"confidence\": 0.9,
+          \"input_type\": \"$INPUT_TYPE\",
+          \"analysis_timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\"
+        }
+        \`\`\`
+        
+        **重要な注意点**:
+        1. 全ての値は指定された選択肢または数値範囲内で設定してください
+        2. 視覚と聴覚の両方の要素を総合的に考慮してください
+        3. 動画の時間的展開も分析に含めてください
+        4. 3D体験や世界観構築への適用可能性を考慮してください
+        5. ファイル作成後、ファイルパスを確認・報告してください"
+        
+        echo "🚀 Starting Video World Analysis Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 20 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された分析結果の確認と出力設定
+        echo ""
+        echo "📋 Checking generated analysis files..."
+        
+        # JSON分析結果の確認と出力設定
+        if [ -f "$ANALYSIS_DIR/video-analysis.json" ]; then
+          echo "::notice::✅ Video analysis JSON generated"
+          
+          # JSONから値を抽出してGitHub Outputに設定
+          SCENE_TYPE=$(grep -o '"scene_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          VISUAL_STYLE=$(grep -o '"visual_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          COLOR_PALETTE=$(grep -o '"color_palette"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          LIGHTING_QUALITY=$(grep -o '"lighting_quality"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          MOVEMENT_TYPE=$(grep -o '"movement_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          CAMERA_MOVEMENT=$(grep -o '"camera_movement"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          PACE=$(grep -o '"pace"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          ENERGY_LEVEL=$(grep -o '"energy_level"[[:space:]]*:[[:space:]]*[0-9]*' "$ANALYSIS_DIR/video-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          AUDIO_TYPE=$(grep -o '"audio_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          AUDIO_ATMOSPHERE=$(grep -o '"audio_atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          AUDIO_QUALITY=$(grep -o '"audio_quality"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          SPATIAL_SCALE=$(grep -o '"spatial_scale"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          DEPTH_PERCEPTION=$(grep -o '"depth_perception"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          TIME_PERIOD=$(grep -o '"time_period"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          DURATION_FEEL=$(grep -o '"duration_feel"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          CONTENT_GENRE=$(grep -o '"content_genre"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          EMOTIONAL_ARC=$(grep -o '"emotional_arc"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          CULTURAL_CONTEXT=$(grep -o '"cultural_context"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          PRODUCTION_QUALITY=$(grep -o '"production_quality"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          TECHNICAL_STYLE=$(grep -o '"technical_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/video-analysis.json" | cut -d'"' -f4)
+          CONFIDENCE=$(grep -o '"confidence"[[:space:]]*:[[:space:]]*[0-9.]*' "$ANALYSIS_DIR/video-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          
+          echo "Scene type: $SCENE_TYPE"
+          echo "Atmosphere: $ATMOSPHERE"
+          echo "Visual style: $VISUAL_STYLE"
+          echo "Color palette: $COLOR_PALETTE"
+          echo "Lighting quality: $LIGHTING_QUALITY"
+          echo "Movement type: $MOVEMENT_TYPE"
+          echo "Camera movement: $CAMERA_MOVEMENT"
+          echo "Pace: $PACE"
+          echo "Energy level: $ENERGY_LEVEL"
+          echo "Audio type: $AUDIO_TYPE"
+          echo "Audio atmosphere: $AUDIO_ATMOSPHERE"
+          echo "Audio quality: $AUDIO_QUALITY"
+          echo "Spatial scale: $SPATIAL_SCALE"
+          echo "Depth perception: $DEPTH_PERCEPTION"
+          echo "Time period: $TIME_PERIOD"
+          echo "Duration feel: $DURATION_FEEL"
+          echo "Content genre: $CONTENT_GENRE"
+          echo "Emotional arc: $EMOTIONAL_ARC"
+          echo "Cultural context: $CULTURAL_CONTEXT"
+          echo "Production quality: $PRODUCTION_QUALITY"
+          echo "Technical style: $TECHNICAL_STYLE"
+          echo "Analysis confidence: $CONFIDENCE"
+          
+          # GitHub Outputに設定
+          echo "scene-type=${SCENE_TYPE:-nature}" >> $GITHUB_OUTPUT
+          echo "atmosphere=${ATMOSPHERE:-peaceful}" >> $GITHUB_OUTPUT
+          echo "visual-style=${VISUAL_STYLE:-realistic}" >> $GITHUB_OUTPUT
+          echo "color-palette=${COLOR_PALETTE:-natural}" >> $GITHUB_OUTPUT
+          echo "lighting-quality=${LIGHTING_QUALITY:-natural}" >> $GITHUB_OUTPUT
+          echo "movement-type=${MOVEMENT_TYPE:-medium}" >> $GITHUB_OUTPUT
+          echo "camera-movement=${CAMERA_MOVEMENT:-steady}" >> $GITHUB_OUTPUT
+          echo "pace=${PACE:-medium}" >> $GITHUB_OUTPUT
+          echo "energy-level=${ENERGY_LEVEL:-5}" >> $GITHUB_OUTPUT
+          echo "audio-type=${AUDIO_TYPE:-ambient}" >> $GITHUB_OUTPUT
+          echo "audio-atmosphere=${AUDIO_ATMOSPHERE:-calm}" >> $GITHUB_OUTPUT
+          echo "audio-quality=${AUDIO_QUALITY:-studio}" >> $GITHUB_OUTPUT
+          echo "spatial-scale=${SPATIAL_SCALE:-room}" >> $GITHUB_OUTPUT
+          echo "depth-perception=${DEPTH_PERCEPTION:-moderate}" >> $GITHUB_OUTPUT
+          echo "time-period=${TIME_PERIOD:-contemporary}" >> $GITHUB_OUTPUT
+          echo "duration-feel=${DURATION_FEEL:-medium}" >> $GITHUB_OUTPUT
+          echo "content-genre=${CONTENT_GENRE:-narrative}" >> $GITHUB_OUTPUT
+          echo "emotional-arc=${EMOTIONAL_ARC:-stable}" >> $GITHUB_OUTPUT
+          echo "cultural-context=${CULTURAL_CONTEXT:-universal}" >> $GITHUB_OUTPUT
+          echo "production-quality=${PRODUCTION_QUALITY:-professional}" >> $GITHUB_OUTPUT
+          echo "technical-style=${TECHNICAL_STYLE:-polished}" >> $GITHUB_OUTPUT
+          echo "confidence=${CONFIDENCE:-0.8}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Video analysis JSON file not found"
+          exit 1
+        fi
+        
+        # 分析文書の確認
+        if [ -f "$ANALYSIS_DIR/video-analysis.md" ]; then
+          echo "::notice::✅ Video analysis document generated"
+          echo "First 10 lines of analysis:"
+          head -10 "$ANALYSIS_DIR/video-analysis.md"
+        else
+          echo "::warning::⚠️ Video analysis document not found"
+        fi
+        
+        # 時間的分析の確認
+        if [ -f "$ANALYSIS_DIR/temporal-analysis.srt" ]; then
+          echo "::notice::✅ Temporal analysis generated"
+          echo "First 5 entries of temporal analysis:"
+          head -15 "$ANALYSIS_DIR/temporal-analysis.srt"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push analysis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No analysis files to commit"
+        else
+          git commit -m "Add video world analysis results"
+          git push origin ${{ inputs.branch-name }}
+        fi

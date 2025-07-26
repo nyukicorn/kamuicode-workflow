@@ -1,0 +1,366 @@
+name: 'Speech World Analysis'
+description: 'Analyze speech/voice content to extract world characteristics for immersive experience'
+author: 'KamuiCode Workflow'
+
+inputs:
+  # 音声入力オプション（複数形式対応）
+  speech-prompt:
+    description: 'Speech content description or transcript'
+    required: false
+  speech-url:
+    description: 'URL to speech/audio file'
+    required: false
+  speech-file:
+    description: 'Path to local speech/audio file'
+    required: false
+  speech-transcript:
+    description: 'Text transcript of speech content'
+    required: false
+  
+  # 共通設定
+  folder-name:
+    description: 'The folder name for storing analysis files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+
+outputs:
+  # 音声・言語特性
+  atmosphere:
+    description: 'Speech atmosphere (calm/energetic/dramatic/mysterious/etc.)'
+    value: ${{ steps.analysis.outputs.atmosphere }}
+  emotion:
+    description: 'Primary emotion (happy/sad/excited/angry/neutral/etc.)'
+    value: ${{ steps.analysis.outputs.emotion }}
+  tone:
+    description: 'Speech tone (formal/casual/intimate/authoritative/etc.)'
+    value: ${{ steps.analysis.outputs.tone }}
+  pace:
+    description: 'Speech pace (slow/medium/fast/varied)'
+    value: ${{ steps.analysis.outputs.pace }}
+  energy:
+    description: 'Energy level (1-10)'
+    value: ${{ steps.analysis.outputs.energy }}
+  
+  # 言語・内容特性
+  language-style:
+    description: 'Language style (poetic/technical/conversational/narrative/etc.)'
+    value: ${{ steps.analysis.outputs.language-style }}
+  content-type:
+    description: 'Content type (story/explanation/dialogue/monologue/etc.)'
+    value: ${{ steps.analysis.outputs.content-type }}
+  formality:
+    description: 'Formality level (1-10)'
+    value: ${{ steps.analysis.outputs.formality }}
+  
+  # 空間・時間特性
+  implied-space:
+    description: 'Implied spatial setting (indoor/outdoor/intimate/vast/etc.)'
+    value: ${{ steps.analysis.outputs.implied-space }}
+  time-period:
+    description: 'Implied time period (modern/historical/futuristic/timeless)'
+    value: ${{ steps.analysis.outputs.time-period }}
+  cultural-context:
+    description: 'Cultural context (western/eastern/universal/specific/etc.)'
+    value: ${{ steps.analysis.outputs.cultural-context }}
+  
+  # 技術・品質特性  
+  audio-quality:
+    description: 'Audio quality perception (studio/live/phone/outdoor/etc.)'
+    value: ${{ steps.analysis.outputs.audio-quality }}
+  speaker-count:
+    description: 'Number of speakers (single/multiple/crowd/etc.)'
+    value: ${{ steps.analysis.outputs.speaker-count }}
+  background-environment:
+    description: 'Background environment (silent/ambient/noisy/musical/etc.)'
+    value: ${{ steps.analysis.outputs.background-environment }}
+  
+  # メタデータ
+  analysis-completed:
+    description: 'Whether analysis was completed successfully'
+    value: ${{ steps.analysis.outputs.completed }}
+  confidence:
+    description: 'Analysis confidence score (0.0-1.0)'
+    value: ${{ steps.analysis.outputs.confidence }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: 音声世界観分析エージェント
+      id: analysis
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎤 Speech World Analysis Agent Execution"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # 設定
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        ANALYSIS_DIR="$FOLDER_NAME/world-analysis"
+        
+        echo "Analysis folder: $ANALYSIS_DIR"
+        
+        # 分析フォルダを事前に作成
+        if [ ! -d "$ANALYSIS_DIR" ]; then
+          mkdir -p "$ANALYSIS_DIR"
+          echo "📁 Created analysis folder: $ANALYSIS_DIR"
+        fi
+        
+        # 入力データの確認と整理
+        SPEECH_PROMPT="${{ inputs.speech-prompt }}"
+        SPEECH_URL="${{ inputs.speech-url }}"
+        SPEECH_FILE="${{ inputs.speech-file }}"
+        SPEECH_TRANSCRIPT="${{ inputs.speech-transcript }}"
+        
+        echo "Input validation:"
+        echo "- Speech prompt: ${SPEECH_PROMPT:+provided}"
+        echo "- Speech URL: ${SPEECH_URL:+provided}"
+        echo "- Speech file: ${SPEECH_FILE:+provided}"
+        echo "- Speech transcript: ${SPEECH_TRANSCRIPT:+provided}"
+        
+        # 入力検証
+        INPUT_COUNT=0
+        INPUT_TYPE=""
+        
+        if [ -n "$SPEECH_PROMPT" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="prompt"
+          echo "✅ Using speech prompt input"
+        fi
+        
+        if [ -n "$SPEECH_URL" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="url"
+          echo "✅ Using speech URL input"
+        fi
+        
+        if [ -n "$SPEECH_FILE" ] && [ -f "$SPEECH_FILE" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="file"
+          echo "✅ Using speech file input: $SPEECH_FILE"
+        fi
+        
+        if [ -n "$SPEECH_TRANSCRIPT" ]; then
+          INPUT_COUNT=$((INPUT_COUNT + 1))
+          INPUT_TYPE="transcript"
+          echo "✅ Using speech transcript input"
+        fi
+        
+        if [ "$INPUT_COUNT" -eq 0 ]; then
+          echo "::error::❌ No speech input provided"
+          exit 1
+        fi
+        
+        if [ "$INPUT_COUNT" -gt 1 ]; then
+          echo "::warning::⚠️ Multiple speech inputs provided, using first available"
+        fi
+        
+        # プロンプトの構築
+        PROMPT="あなたは音声・スピーチ分析から世界観特性を抽出する専門家です。"
+        
+        if [ -n "$SPEECH_PROMPT" ]; then
+          PROMPT="$PROMPT
+        
+        **音声コンテンツ説明**:
+        $SPEECH_PROMPT"
+        elif [ -n "$SPEECH_TRANSCRIPT" ]; then
+          PROMPT="$PROMPT
+        
+        **音声トランスクリプト**:
+        $SPEECH_TRANSCRIPT"
+        elif [ -n "$SPEECH_URL" ]; then
+          PROMPT="$PROMPT
+        
+        **音声URL**: $SPEECH_URL
+        (URLから音声内容を分析してください)"
+        elif [ -n "$SPEECH_FILE" ]; then
+          PROMPT="$PROMPT
+        
+        **音声ファイル**: $SPEECH_FILE
+        (ファイルから音声内容を分析してください)"
+        fi
+        
+        PROMPT="$PROMPT
+        
+        **分析タスク**:
+        音声・スピーチの特性を多角的に分析し、3D体験や世界観構築に活用できる特性を抽出してください。
+        
+        **分析要素**:
+        1. **音声・言語特性**:
+           - atmosphere: 音声の雰囲気（calm/energetic/dramatic/mysterious/intimate/etc.）
+           - emotion: 主要感情（happy/sad/excited/angry/neutral/contemplative/etc.）
+           - tone: 話し方のトーン（formal/casual/intimate/authoritative/playful/etc.）
+           - pace: 話すペース（slow/medium/fast/varied）
+           - energy: エネルギーレベル（1-10）
+        
+        2. **言語・内容特性**:
+           - language_style: 言語スタイル（poetic/technical/conversational/narrative/etc.）
+           - content_type: 内容タイプ（story/explanation/dialogue/monologue/etc.）
+           - formality: フォーマリティレベル（1-10）
+        
+        3. **空間・時間特性**:
+           - implied_space: 暗示される空間設定（indoor/outdoor/intimate/vast/etc.）
+           - time_period: 暗示される時代（modern/historical/futuristic/timeless）
+           - cultural_context: 文化的文脈（western/eastern/universal/specific/etc.）
+        
+        4. **技術・品質特性**:
+           - audio_quality: 音声品質の知覚（studio/live/phone/outdoor/etc.）
+           - speaker_count: 話者数（single/multiple/crowd/etc.）
+           - background_environment: 背景環境（silent/ambient/noisy/musical/etc.）
+        
+        **必須出力ファイル**:
+        1. **$ANALYSIS_DIR/speech-analysis.json** - 構造化された分析結果
+        2. **$ANALYSIS_DIR/speech-analysis.md** - 詳細分析レポート
+        3. **$ANALYSIS_DIR/speech-summary.txt** - 1行要約
+        
+        **JSONフォーマット**:
+        \`\`\`json
+        {
+          \"atmosphere\": \"calm\",
+          \"emotion\": \"contemplative\", 
+          \"tone\": \"intimate\",
+          \"pace\": \"slow\",
+          \"energy\": 3,
+          \"language_style\": \"conversational\",
+          \"content_type\": \"monologue\",
+          \"formality\": 4,
+          \"implied_space\": \"indoor\",
+          \"time_period\": \"modern\",
+          \"cultural_context\": \"universal\",
+          \"audio_quality\": \"studio\",
+          \"speaker_count\": \"single\",
+          \"background_environment\": \"silent\",
+          \"confidence\": 0.85,
+          \"input_type\": \"$INPUT_TYPE\",
+          \"analysis_timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)\"
+        }
+        \`\`\`
+        
+        **重要な注意点**:
+        1. 全ての値は指定された選択肢または数値範囲内で設定してください
+        2. 音声の微細なニュアンスも捉えて分析してください
+        3. 3D体験や世界観構築への適用可能性を考慮してください
+        4. ファイル作成後、ファイルパスを確認・報告してください"
+        
+        echo "🚀 Starting Speech World Analysis Agent Claude Code CLI..."
+        echo "📝 Prompt length: ${#PROMPT}"
+        
+        # Claude Code CLIの実行
+        npx @anthropic-ai/claude-code \
+          --allowedTools "Read,Write,Edit,Bash" \
+          --max-turns 15 \
+          --verbose \
+          --permission-mode "bypassPermissions" \
+          -p "$PROMPT" || {
+            echo "::error::❌ Claude Code CLI execution failed"
+            exit 1
+          }
+        
+        # 生成された分析結果の確認と出力設定
+        echo ""
+        echo "📋 Checking generated analysis files..."
+        
+        # JSON分析結果の確認と出力設定
+        if [ -f "$ANALYSIS_DIR/speech-analysis.json" ]; then
+          echo "::notice::✅ Speech analysis JSON generated"
+          
+          # JSONから値を抽出してGitHub Outputに設定
+          ATMOSPHERE=$(grep -o '"atmosphere"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          EMOTION=$(grep -o '"emotion"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          TONE=$(grep -o '"tone"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          PACE=$(grep -o '"pace"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          ENERGY=$(grep -o '"energy"[[:space:]]*:[[:space:]]*[0-9]*' "$ANALYSIS_DIR/speech-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          LANGUAGE_STYLE=$(grep -o '"language_style"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          CONTENT_TYPE=$(grep -o '"content_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          FORMALITY=$(grep -o '"formality"[[:space:]]*:[[:space:]]*[0-9]*' "$ANALYSIS_DIR/speech-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          IMPLIED_SPACE=$(grep -o '"implied_space"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          TIME_PERIOD=$(grep -o '"time_period"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          CULTURAL_CONTEXT=$(grep -o '"cultural_context"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          AUDIO_QUALITY=$(grep -o '"audio_quality"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          SPEAKER_COUNT=$(grep -o '"speaker_count"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          BACKGROUND_ENV=$(grep -o '"background_environment"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANALYSIS_DIR/speech-analysis.json" | cut -d'"' -f4)
+          CONFIDENCE=$(grep -o '"confidence"[[:space:]]*:[[:space:]]*[0-9.]*' "$ANALYSIS_DIR/speech-analysis.json" | cut -d':' -f2 | tr -d ' ')
+          
+          echo "Speech atmosphere: $ATMOSPHERE"
+          echo "Primary emotion: $EMOTION"
+          echo "Speech tone: $TONE"
+          echo "Speech pace: $PACE"
+          echo "Energy level: $ENERGY"
+          echo "Language style: $LANGUAGE_STYLE"
+          echo "Content type: $CONTENT_TYPE"
+          echo "Formality: $FORMALITY"
+          echo "Implied space: $IMPLIED_SPACE"
+          echo "Time period: $TIME_PERIOD"
+          echo "Cultural context: $CULTURAL_CONTEXT"
+          echo "Audio quality: $AUDIO_QUALITY"
+          echo "Speaker count: $SPEAKER_COUNT"
+          echo "Background environment: $BACKGROUND_ENV"
+          echo "Analysis confidence: $CONFIDENCE"
+          
+          # GitHub Outputに設定
+          echo "atmosphere=${ATMOSPHERE:-calm}" >> $GITHUB_OUTPUT
+          echo "emotion=${EMOTION:-neutral}" >> $GITHUB_OUTPUT
+          echo "tone=${TONE:-conversational}" >> $GITHUB_OUTPUT
+          echo "pace=${PACE:-medium}" >> $GITHUB_OUTPUT
+          echo "energy=${ENERGY:-5}" >> $GITHUB_OUTPUT
+          echo "language-style=${LANGUAGE_STYLE:-conversational}" >> $GITHUB_OUTPUT
+          echo "content-type=${CONTENT_TYPE:-monologue}" >> $GITHUB_OUTPUT
+          echo "formality=${FORMALITY:-5}" >> $GITHUB_OUTPUT
+          echo "implied-space=${IMPLIED_SPACE:-indoor}" >> $GITHUB_OUTPUT
+          echo "time-period=${TIME_PERIOD:-modern}" >> $GITHUB_OUTPUT
+          echo "cultural-context=${CULTURAL_CONTEXT:-universal}" >> $GITHUB_OUTPUT
+          echo "audio-quality=${AUDIO_QUALITY:-studio}" >> $GITHUB_OUTPUT
+          echo "speaker-count=${SPEAKER_COUNT:-single}" >> $GITHUB_OUTPUT
+          echo "background-environment=${BACKGROUND_ENV:-silent}" >> $GITHUB_OUTPUT
+          echo "confidence=${CONFIDENCE:-0.8}" >> $GITHUB_OUTPUT
+        else
+          echo "::error::❌ Speech analysis JSON file not found"
+          exit 1
+        fi
+        
+        # 分析文書の確認
+        if [ -f "$ANALYSIS_DIR/speech-analysis.md" ]; then
+          echo "::notice::✅ Speech analysis document generated"
+          echo "First 10 lines of analysis:"
+          head -10 "$ANALYSIS_DIR/speech-analysis.md"
+        else
+          echo "::warning::⚠️ Speech analysis document not found"
+        fi
+        
+        echo "completed=true" >> $GITHUB_OUTPUT
+        
+        echo "::endgroup::"
+    
+    - name: Commit and push analysis
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No analysis files to commit"
+        else
+          git commit -m "Add speech world analysis results"
+          git push origin ${{ inputs.branch-name }}
+        fi

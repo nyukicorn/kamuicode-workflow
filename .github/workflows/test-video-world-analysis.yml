@@ -1,0 +1,83 @@
+name: Test Video World Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-type:
+        description: 'Test type (nature/urban/cinematic)'
+        required: false
+        default: 'nature'
+      custom-description:
+        description: 'Custom video description'
+        required: false
+
+jobs:
+  test-video-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up test data
+        id: setup
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          FOLDER_NAME="test-video-analysis-$TIMESTAMP"
+          echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
+          
+          # テストコンテンツの設定
+          TEST_TYPE="${{ github.event.inputs.test-type || 'nature' }}"
+          CUSTOM_DESC="${{ github.event.inputs.custom-description }}"
+          
+          if [ -n "$CUSTOM_DESC" ]; then
+            TEST_INPUT="$CUSTOM_DESC"
+          else
+            case "$TEST_TYPE" in
+              "nature")
+                TEST_INPUT="美しい森の中を流れる小川の4K映像。朝の柔らかな光が木々の間から差し込み、水面がキラキラと輝いている。カメラはゆっくりと小川に沿って移動し、鳥のさえずりと水の音が心地よく響く。色彩は緑と青を基調とした自然な色合いで、非常に平和的で瞑想的な雰囲気。約3分間の映像で、時々風に揺れる葉の音も聞こえる。"
+                ;;
+              "urban")
+                TEST_INPUT="夜の東京都心部をドローンで空撮した映像。ネオンサインが光る高層ビル群とその間を流れる車のライトの軌跡。カメラは高速で移動し、エネルギッシュなエレクトロニック音楽が流れる。色彩は青、紫、オレンジのネオンカラーが支配的で、非常にダイナミックで現代的な雰囲気。約2分間の映像で、都市の躍動感を表現している。"
+                ;;
+              "cinematic")
+                TEST_INPUT="映画的な宇宙ステーションの内部シーン。静寂の中で宇宙飛行士が窓から地球を見つめている。カメラは緩やかに回り込み、幻想的なアンビエント音楽が流れる。照明は青白く、時々地球の光が反射する。色彩はモノクロームに近く、深い青と銀色が基調。非常にドラマチックで哲学的な雰囲気。約4分間の映像で、孤独と美しさを表現している。"
+                ;;
+            esac
+          fi
+          
+          echo "video-prompt=$TEST_INPUT" >> $GITHUB_OUTPUT
+          echo "Using test type: $TEST_TYPE"
+          echo "Test input: $TEST_INPUT"
+      
+      - name: Run Video World Analysis
+        uses: ./.github/actions/kamui-modules/video-world-analysis
+        with:
+          video-prompt: ${{ steps.setup.outputs.video-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ github.ref_name }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Verify Results
+        run: |
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          echo "Checking analysis results in: $FOLDER_NAME/world-analysis"
+          
+          if [ -f "$FOLDER_NAME/world-analysis/video-analysis.json" ]; then
+            echo "✅ Video analysis JSON found:"
+            cat "$FOLDER_NAME/world-analysis/video-analysis.json"
+          else
+            echo "❌ Video analysis JSON not found"
+            exit 1
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/video-analysis.md" ]; then
+            echo "✅ Video analysis markdown found"
+            echo "First 20 lines:"
+            head -20 "$FOLDER_NAME/world-analysis/video-analysis.md"
+          fi
+          
+          if [ -f "$FOLDER_NAME/world-analysis/temporal-analysis.srt" ]; then
+            echo "✅ Temporal analysis found"
+            echo "First 15 lines:"
+            head -15 "$FOLDER_NAME/world-analysis/temporal-analysis.srt"
+          fi
