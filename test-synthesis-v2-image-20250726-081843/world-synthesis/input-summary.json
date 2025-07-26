@@ -1,0 +1,32 @@
+{
+  "input_count": 1,
+  "input_types": ["image"],
+  "primary_source": "image",
+  "integration_strategy": "single_input_full_reflection",
+  "source_details": {
+    "image": {
+      "confidence": 0.92,
+      "key_characteristics": [
+        "fantasy_scene",
+        "ethereal_atmosphere", 
+        "high_movement_energy",
+        "soft_glow_lighting",
+        "aerial_perspective",
+        "vast_scale",
+        "sparse_density",
+        "warm_color_temperature",
+        "impressionistic_style",
+        "volumetric_approach"
+      ],
+      "influence_weight": 1.0,
+      "technical_approach": "volumetric"
+    }
+  },
+  "synthesis_metadata": {
+    "strategy_applied": "auto",
+    "primary_weight": "image_dominant",
+    "integration_complexity": "simple",
+    "confidence_level": "high",
+    "timestamp": "2025-07-26T08:18:43Z"
+  }
+}
