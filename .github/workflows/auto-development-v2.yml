@@ -243,7 +243,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>" \
           fi
           
       - name: Final Summary
-        if: always()
+        if: ${{ always() }}
         run: |
           echo "📊 Auto-Development Summary"
           echo "============================================="
