@@ -1,0 +1,9 @@
+{
+  "scene_type": "static",
+  "atmosphere": "peaceful",
+  "depth_mode": "normal",
+  "lighting_style": "soft",
+  "movement_energy": 2,
+  "color_temperature": "warm",
+  "confidence": 0.92
+}
