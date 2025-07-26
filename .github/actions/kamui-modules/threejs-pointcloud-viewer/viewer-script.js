@@ -1004,10 +1004,19 @@ function applyAudioReactiveEffects() {
             // Treble: Controls sparkle/color intensity (2000Hz+)
             colorIntensity = 1.0 + (frequencyBands.treble * 2.0); // Up to 3x
         } else {
-            // Volume-based effects (more moderate for better usability)
-            sizeMultiplier = 1.0 + (volumeLevel * 1.8); // Up to 2.8x size (reduced)
-            brightnessMultiplier = 1.0 + (volumeLevel * 1.5); // Up to 2.5x brightness (reduced)
-            colorIntensity = 1.0 + (volumeLevel * 1.2); // Up to 2.2x color (reduced)
+            // Volume-based effects with improved dynamic range
+            if (volumeLevel < 0.08) {
+                // Complete silence for very low volumes - back to original state
+                sizeMultiplier = 1.0;
+                brightnessMultiplier = 1.0;
+                colorIntensity = 1.0;
+            } else {
+                // Scale from threshold to maximum for better visual contrast
+                const adjustedVolume = (volumeLevel - 0.08) / 0.92; // 0-1 range from threshold
+                sizeMultiplier = 1.0 + (adjustedVolume * 1.8); // Up to 2.8x size
+                brightnessMultiplier = 1.0 + (adjustedVolume * 1.5); // Up to 2.5x brightness
+                colorIntensity = 1.0 + (adjustedVolume * 1.2); // Up to 2.2x color
+            }
         }
         
         // 1. Size effect
