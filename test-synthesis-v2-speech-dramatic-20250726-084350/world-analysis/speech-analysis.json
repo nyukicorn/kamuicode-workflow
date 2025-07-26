@@ -1,0 +1,19 @@
+{
+  "atmosphere": "dramatic",
+  "emotion": "contemplative",
+  "tone": "authoritative",
+  "pace": "slow",
+  "energy": 8,
+  "language_style": "narrative",
+  "content_type": "story",
+  "formality": 8,
+  "implied_space": "vast",
+  "time_period": "historical",
+  "cultural_context": "universal",
+  "audio_quality": "studio",
+  "speaker_count": "single",
+  "background_environment": "ambient",
+  "confidence": 0.92,
+  "input_type": "prompt",
+  "analysis_timestamp": "2025-07-26T08:43:55.552Z"
+}

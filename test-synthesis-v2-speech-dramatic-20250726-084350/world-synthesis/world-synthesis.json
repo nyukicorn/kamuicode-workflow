@@ -1,0 +1,20 @@
+{
+  "depth_mode": "enhanced",
+  "atmosphere": "dramatic_contemplative",
+  "brightness_level": 0.4,
+  "rotation_speed": 0.2,
+  "particle_energy": 0.8,
+  "auto_rotate": true,
+  "synthesis_confidence": 0.92,
+  "input_sources": ["speech"],
+  "primary_influence": "speech_dramatic",
+  "reasoning": "Based on dramatic atmosphere with contemplative emotion and authoritative tone. High energy (8/10) combined with slow pace suggests powerful but controlled movement. Historical vast space implies deep, immersive depth mode. Studio quality audio with ambient background supports enhanced visual experience.",
+  "input_count": 1,
+  "derived_settings": {
+    "scene_type": "dramatic_narrative",
+    "mood_intensity": "high",
+    "movement_character": "deliberate_powerful",
+    "spatial_impression": "vast_historical",
+    "audio_visual_sync": "contemplative_authoritative"
+  }
+}
