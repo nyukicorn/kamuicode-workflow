@@ -32,7 +32,7 @@ jobs:
       
       # 各分析モジュールを順次実行
       - name: Run Image World Analysis
-        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'image') || contains(steps.setup.outputs.scenario, 'three')
+        if: ${{ contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'image') || contains(steps.setup.outputs.scenario, 'three') }}
         uses: ./.github/actions/kamui-modules/image-world-analysis
         with:
           image-prompt: 'Dramatic underground cave system with glowing crystals embedded in the walls. Deep blue and purple ambient lighting creates mysterious shadows. Ancient stone formations and underground pools reflect the crystalline light. The atmosphere is mystical and otherworldly, with a sense of ancient secrets waiting to be discovered.'
@@ -42,7 +42,7 @@ jobs:
           skip-commit: 'true'
       
       - name: Run Music World Analysis
-        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'music') || contains(steps.setup.outputs.scenario, 'three')
+        if: ${{ contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'music') || contains(steps.setup.outputs.scenario, 'three') }}
         uses: ./.github/actions/kamui-modules/music-world-analysis
         with:
           music-prompt: 'Epic orchestral soundtrack with deep strings, ethereal choir, and dramatic percussion. Building from mysterious whispers to powerful crescendo. Celtic influences with mystical harp and flute melodies. Creates atmosphere of ancient magic and heroic adventure.'
@@ -52,7 +52,7 @@ jobs:
           skip-commit: 'true'
       
       - name: Run Speech World Analysis
-        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'speech') || contains(steps.setup.outputs.scenario, 'three')
+        if: ${{ contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'speech') || contains(steps.setup.outputs.scenario, 'three') }}
         uses: ./.github/actions/kamui-modules/speech-world-analysis
         with:
           speech-prompt: 'Deep, resonant male narrator voice speaking in hushed, reverent tones about ancient legends and forgotten civilizations. Slow, deliberate pace with pauses for dramatic effect. Echoing slightly as if spoken in a vast chamber. The voice carries weight of centuries and hidden knowledge.'
@@ -62,7 +62,7 @@ jobs:
           skip-commit: 'true'
       
       - name: Run Video World Analysis
-        if: contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'video') || contains(steps.setup.outputs.scenario, 'three')
+        if: ${{ contains(steps.setup.outputs.scenario, 'all-four') || contains(steps.setup.outputs.scenario, 'video') || contains(steps.setup.outputs.scenario, 'three') }}
         uses: ./.github/actions/kamui-modules/video-world-analysis
         with:
           video-prompt: 'Cinematic exploration of ancient temple ruins at twilight. Camera slowly moves through crumbling stone corridors illuminated by shafts of golden light. Dust particles dance in the air. Mysterious carvings on walls become visible as light shifts. Epic, contemplative atmosphere with natural ambient sounds and distant mystical music.'
