@@ -32,11 +32,11 @@ let dynamicModeEnabled = false; // Independent dynamic mode toggle
 let adaptiveSystem = {
     // Dynamic thresholds based on audio history
     frequencyThresholds: {
-        bass: 0.15,   // Will be dynamically adjusted
-        mid: 0.12,    // Will be dynamically adjusted  
-        treble: 0.10  // Will be dynamically adjusted
+        bass: 0.08,   // Lowered for better microphone sensitivity
+        mid: 0.06,    // Lowered for better microphone sensitivity  
+        treble: 0.04  // Lowered for better microphone sensitivity
     },
-    volumeThreshold: 0.15, // Will be dynamically adjusted
+    volumeThreshold: 0.08, // Lowered for better microphone sensitivity
     // Human auditory perception weights
     perceptualWeight: { 
         bass: 0.8,   // Lower weight as humans are less sensitive to bass
@@ -1010,10 +1010,13 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
     let newMid = Math.min(1.0, (midSum / midCount / 255));
     let newTreble = Math.min(1.0, (trebleSum / trebleCount / 255));
     
-    // Apply perceptual weighting
-    newBass *= adaptiveSystem.perceptualWeight.bass;
-    newMid *= adaptiveSystem.perceptualWeight.mid;
-    newTreble *= adaptiveSystem.perceptualWeight.treble;
+    // Apply perceptual weighting with microphone boost
+    const isMicrophoneInput = microphoneEnabled && currentVolumeLevel > 0;
+    const micBoost = isMicrophoneInput ? 2.5 : 1.0; // 2.5x boost for microphone input
+    
+    newBass *= adaptiveSystem.perceptualWeight.bass * micBoost;
+    newMid *= adaptiveSystem.perceptualWeight.mid * micBoost;
+    newTreble *= adaptiveSystem.perceptualWeight.treble * micBoost;
     
     frequencyBands.bass = frequencyBands.bass * smoothing + newBass * (1 - smoothing);
     frequencyBands.mid = frequencyBands.mid * smoothing + newMid * (1 - smoothing);
