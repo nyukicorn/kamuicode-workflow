@@ -1034,22 +1034,25 @@ function applyAudioReactiveEffects() {
     if (volumeLevel > 0.01 || (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
         let sizeMultiplier, brightnessMultiplier, colorIntensity;
         
-        // Base audio mode effects (Music or Voice)
+        // Volume factor for dynamic response to music amplitude
+        const volumeFactor = Math.max(0.1, volumeLevel * 2.0); // Min 10%, max 200% based on volume
+        
+        // Base audio mode effects (Music or Voice) with volume modulation
         if (audioMode === 'music') {
-            // Music Mode: Traditional frequency separation
-            sizeMultiplier = 1.0 + (frequencyBands.bass * 2.0); // Up to 3.0x
-            brightnessMultiplier = 1.0 + (frequencyBands.mid * 1.5); // Up to 2.5x
-            colorIntensity = 1.0 + (frequencyBands.treble * 1.2); // Up to 2.2x
+            // Music Mode: Traditional frequency separation × volume
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 2.5 * volumeFactor); // Stronger base effect
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.0 * volumeFactor);
+            colorIntensity = 1.0 + (frequencyBands.treble * 1.5 * volumeFactor);
         } else {
-            // Voice Mode: Focus on speech clarity (500-2000Hz)
-            sizeMultiplier = 1.0 + (frequencyBands.bass * 1.5); // Subdued low freq
-            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.0); // Enhanced speech
-            colorIntensity = 1.0 + (frequencyBands.treble * 1.0); // Moderate high freq
+            // Voice Mode: Focus on speech clarity × volume
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 1.5 * volumeFactor);
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.5 * volumeFactor); // Enhanced speech
+            colorIntensity = 1.0 + (frequencyBands.treble * 1.2 * volumeFactor);
         }
         
-        // Apply Dynamic Mode enhancement if enabled
-        if (dynamicModeEnabled) {
-            const dynamicBoost = 1.4; // 40% enhancement
+        // Apply Dynamic Mode enhancement if enabled (only when sound is present)
+        if (dynamicModeEnabled && volumeLevel > 0.1) {
+            const dynamicBoost = 1.6; // 60% enhancement
             sizeMultiplier = (sizeMultiplier - 1.0) * dynamicBoost + 1.0;
             brightnessMultiplier = (brightnessMultiplier - 1.0) * dynamicBoost + 1.0;
             colorIntensity = (colorIntensity - 1.0) * dynamicBoost + 1.0;
