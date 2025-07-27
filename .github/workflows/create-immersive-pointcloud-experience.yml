@@ -151,7 +151,7 @@ jobs:
         id: image-path
         run: |
           if [ "${{ inputs.image-source }}" = "ai-generated" ]; then
-            echo "path=immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images/generated-image.png" >> $GITHUB_OUTPUT
+            echo "path=archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images/generated-image.png" >> $GITHUB_OUTPUT
           else
             echo "path=${{ steps.image-upload.outputs.image-path }}" >> $GITHUB_OUTPUT
           fi
