@@ -133,7 +133,7 @@ jobs:
         with:
           image-prompt: ${{ steps.image-translation.outputs.english-prompt }}
           image-model: ${{ inputs.image-model }}
-          folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          folder-name: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
@@ -144,7 +144,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-upload
         with:
           image-url: ${{ inputs.uploaded-image-url }}
-          output-folder: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          output-folder: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
       
       - name: Set image path for downstream steps
@@ -171,7 +171,7 @@ jobs:
         with:
           music-concept: ${{ steps.music-translation.outputs.english-prompt }}
           music-prompt: ${{ steps.music-translation.outputs.english-prompt }}
-          folder-name: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          folder-name: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
@@ -209,7 +209,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
           input-image-path: ${{ steps.image-path.outputs.path }}
-          output-folder: 'immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          output-folder: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           branch-name: 'main'
           depth-model: ${{ inputs.depth-model }}
           color-mode: ${{ inputs.color-mode }}
@@ -243,7 +243,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
           ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
-          output-folder: 'docs/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          output-folder: 'docs/archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
           viewer-title: 'Immersive 3D Point Cloud Experience'
           camera-position: '0,0,150'
           background-color: ${{ steps.bg-color.outputs.color }}
@@ -298,7 +298,7 @@ jobs:
           if [ "${{ steps.deployment.conclusion }}" = "success" ]; then
             echo "### 🚀 Live Experience" >> $GITHUB_STEP_SUMMARY
             echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
-            echo "🌐 **Experience URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/immersive-pointcloud-${{ steps.timestamp.outputs.value }}/" >> $GITHUB_STEP_SUMMARY
+            echo "🌐 **Experience URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}/" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
           fi
