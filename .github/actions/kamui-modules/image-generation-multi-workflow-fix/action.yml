@@ -1,0 +1,747 @@
+name: 'Multi Image Generation - Enhanced'
+description: 'Generate multiple images with various models using KamuiCode MCP with enhanced workflow validation and compatibility'
+author: 'KamuiCode Workflow'
+
+inputs:
+  # Core Parameters (Enhanced)
+  image-prompt:
+    description: 'The image generation prompt'
+    required: true
+  image-count:
+    description: 'Number of images to generate (1-10)'
+    required: false
+    default: '1'
+  models:
+    description: 'Comma-separated list of models to use (auto/imagen4-ultra/imagen4-fast/imagen3/flux-schnell/photo-flux)'
+    required: false
+    default: 'auto'
+  enable-comparison:
+    description: 'Enable model comparison mode'
+    required: false
+    default: 'false'
+  
+  # Infrastructure Parameters
+  folder-name:
+    description: 'The folder name for storing image files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+  
+  # New Enhancement Parameters
+  output-format:
+    description: 'Output format preference (png/jpg/webp)'
+    required: false
+    default: 'png'
+  quality-preset:
+    description: 'Quality preset (fast/balanced/high)'
+    required: false
+    default: 'balanced'
+
+outputs:
+  # Multi-Image Outputs
+  images-completed:
+    description: 'Number of images successfully generated'
+    value: ${{ steps.multi-image.outputs.images-completed }}
+  image-urls:
+    description: 'JSON array of generated image URLs'
+    value: ${{ steps.multi-image.outputs.image-urls }}
+  models-used:
+    description: 'JSON array of models actually used'
+    value: ${{ steps.multi-image.outputs.models-used }}
+  comparison-report:
+    description: 'Path to comparison report file (if enabled)'
+    value: ${{ steps.multi-image.outputs.comparison-report }}
+  
+  # Backward Compatibility Outputs
+  google-image-url:
+    description: 'First image URL (backward compatibility)'
+    value: ${{ steps.multi-image.outputs.google-image-url }}
+  image-completed:
+    description: 'Whether image generation was completed successfully'
+    value: ${{ steps.multi-image.outputs.image-completed }}
+  used-model:
+    description: 'First model used (backward compatibility)'
+    value: ${{ steps.multi-image.outputs.used-model }}
+  
+  # New Enhancement Outputs
+  total-generation-time:
+    description: 'Total time spent generating all images (seconds)'
+    value: ${{ steps.multi-image.outputs.total-generation-time }}
+  average-generation-time:
+    description: 'Average generation time per image (seconds)'
+    value: ${{ steps.multi-image.outputs.average-generation-time }}
+  failed-generations:
+    description: 'Number of failed image generations'
+    value: ${{ steps.multi-image.outputs.failed-generations }}
+  success-rate:
+    description: 'Generation success rate as percentage'
+    value: ${{ steps.multi-image.outputs.success-rate }}
+  folder-name:
+    description: 'Folder name for downstream modules'
+    value: ${{ inputs.folder-name }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Enhanced Multi Image Generation Agent
+      id: multi-image
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Enhanced Multi Image Generation"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # Input validation with enhanced error messages
+        IMAGE_COUNT="${{ inputs.image-count }}"
+        if [[ ! "$IMAGE_COUNT" =~ ^[0-9]+$ ]] || [ "$IMAGE_COUNT" -lt 1 ] || [ "$IMAGE_COUNT" -gt 10 ]; then
+          echo "::error::❌ Invalid image count: $IMAGE_COUNT. Must be between 1 and 10."
+          exit 1
+        fi
+        
+        IMAGE_PROMPT="${{ inputs.image-prompt }}"
+        if [ ${#IMAGE_PROMPT} -lt 1 ] || [ ${#IMAGE_PROMPT} -gt 500 ]; then
+          echo "::error::❌ Invalid image prompt length: ${#IMAGE_PROMPT}. Must be between 1 and 500 characters."
+          exit 1
+        fi
+        
+        # Configuration with enhanced validation
+        MODELS="${{ inputs.models }}"
+        ENABLE_COMPARISON="${{ inputs.enable-comparison }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        OUTPUT_FORMAT="${{ inputs.output-format }}"
+        QUALITY_PRESET="${{ inputs.quality-preset }}"
+        
+        # Validate output format
+        case "$OUTPUT_FORMAT" in
+          "png"|"jpg"|"webp") ;;
+          *) 
+            echo "::warning::Invalid output format: $OUTPUT_FORMAT. Using PNG."
+            OUTPUT_FORMAT="png"
+            ;;
+        esac
+        
+        # Validate quality preset
+        case "$QUALITY_PRESET" in
+          "fast"|"balanced"|"high") ;;
+          *)
+            echo "::warning::Invalid quality preset: $QUALITY_PRESET. Using balanced."
+            QUALITY_PRESET="balanced"
+            ;;
+        esac
+        
+        IMAGES_DIR="$FOLDER_NAME/images"
+        METADATA_DIR="$FOLDER_NAME/metadata"
+        REPORTS_DIR="$FOLDER_NAME/reports"
+        ERRORS_DIR="$FOLDER_NAME/errors"
+        
+        echo "Image prompt: $IMAGE_PROMPT"
+        echo "Image count: $IMAGE_COUNT"
+        echo "Models: $MODELS"
+        echo "Enable comparison: $ENABLE_COMPARISON"
+        echo "Output format: $OUTPUT_FORMAT"
+        echo "Quality preset: $QUALITY_PRESET"
+        echo "Target folder: $IMAGES_DIR"
+        
+        # Create enhanced directory structure
+        for dir in "$IMAGES_DIR" "$METADATA_DIR" "$REPORTS_DIR" "$ERRORS_DIR"; do
+          if [ ! -d "$dir" ]; then
+            mkdir -p "$dir"
+            echo "📁 Created directory: $dir"
+          fi
+        done
+        
+        # Setup MCP configuration with validation
+        MCP_CONFIG_PATH=".claude/mcp-image-generation-enhanced.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        mkdir -p .claude
+        
+        # Enhanced MCP config validation
+        if ! echo '${{ inputs.mcp-config }}' | jq empty 2>/dev/null; then
+          echo "::error::❌ Invalid MCP configuration JSON format"
+          exit 1
+        fi
+        
+        echo '${{ inputs.mcp-config }}' | jq '
+          .mcpServers | 
+          to_entries | 
+          map(select(.key | startswith("t2i-"))) |
+          from_entries |
+          {"mcpServers": .}
+        ' > "$MCP_CONFIG_ABS_PATH"
+        
+        if [ ! -s "$MCP_CONFIG_ABS_PATH" ]; then
+          echo "::error::❌ No T2I services found in MCP configuration"
+          exit 1
+        fi
+        
+        echo "✅ Enhanced T2I-only MCP config created and validated"
+        
+        # Parse and validate models list
+        IFS=',' read -ra MODEL_ARRAY <<< "$MODELS"
+        MODEL_COUNT=${#MODEL_ARRAY[@]}
+        
+        # Validate each model
+        VALID_MODELS=()
+        for model in "${MODEL_ARRAY[@]}"; do
+          model=$(echo "$model" | xargs)  # Trim whitespace
+          case "$model" in
+            "auto"|"imagen4-ultra"|"imagen4-fast"|"imagen3"|"flux-schnell"|"photo-flux")
+              VALID_MODELS+=("$model")
+              echo "✅ Valid model: $model"
+              ;;
+            *)
+              echo "::warning::Unknown model: $model, using auto fallback"
+              VALID_MODELS+=("auto")
+              ;;
+          esac
+        done
+        
+        MODEL_ARRAY=("${VALID_MODELS[@]}")
+        MODEL_COUNT=${#MODEL_ARRAY[@]}
+        
+        echo "Validated models: ${MODEL_ARRAY[@]}"
+        echo "Model count: $MODEL_COUNT"
+        
+        # Initialize enhanced tracking arrays
+        declare -a GENERATED_URLS=()
+        declare -a USED_MODELS=()
+        declare -a GENERATION_TIMES=()
+        declare -a ERROR_DETAILS=()
+        TOTAL_IMAGES=0
+        FAILED_GENERATIONS=0
+        
+        # Enhanced execution strategy determination
+        if [ "$ENABLE_COMPARISON" == "true" ] && [ "$MODEL_COUNT" -gt 1 ]; then
+          echo "🔄 Enhanced model comparison mode enabled"
+          EXECUTION_MODE="enhanced-comparison"
+          TOTAL_EXPECTED=$(( MODEL_COUNT * IMAGE_COUNT ))
+        elif [ "$MODEL_COUNT" -gt 1 ]; then
+          echo "🎯 Enhanced multi-model generation mode"
+          EXECUTION_MODE="enhanced-multi-model"
+          TOTAL_EXPECTED=$(( MODEL_COUNT * IMAGE_COUNT ))
+        else
+          echo "📸 Enhanced single model multi-image mode"
+          EXECUTION_MODE="enhanced-single-model"
+          TOTAL_EXPECTED="$IMAGE_COUNT"
+        fi
+        
+        echo "Execution mode: $EXECUTION_MODE"
+        echo "Expected total images: $TOTAL_EXPECTED"
+        
+        # Enhanced model selection with quality presets
+        get_service_info() {
+          local model="$1"
+          local quality="$2"
+          
+          case "$model" in
+            "auto")
+              if echo "$IMAGE_PROMPT" | grep -iE "(realistic|photo|real|portrait|landscape)" > /dev/null; then
+                case "$quality" in
+                  "high") echo "t2i-fal-imagen4-ultra|Imagen4 Ultra" ;;
+                  "fast") echo "t2i-fal-imagen4-fast|Imagen4 Fast" ;;
+                  *) echo "t2i-fal-imagen4-fast|Imagen4 Fast" ;;
+                esac
+              elif echo "$IMAGE_PROMPT" | grep -iE "(anime|cartoon|illustration|art)" > /dev/null; then
+                echo "t2i-fal-flux-schnell|Flux Schnell"
+              else
+                case "$quality" in
+                  "high") echo "t2i-fal-imagen4-ultra|Imagen4 Ultra" ;;
+                  *) echo "t2i-fal-imagen4-fast|Imagen4 Fast" ;;
+                esac
+              fi
+              ;;
+            "imagen4-ultra") echo "t2i-fal-imagen4-ultra|Imagen4 Ultra" ;;
+            "imagen4-fast") echo "t2i-fal-imagen4-fast|Imagen4 Fast" ;;
+            "imagen3") echo "t2i-google-imagen3|Google Imagen3" ;;
+            "flux-schnell") echo "t2i-fal-flux-schnell|Flux Schnell" ;;
+            "photo-flux") echo "t2i-fal-rundiffusion-photo-flux|Photo Flux" ;;
+            *) echo "t2i-fal-imagen4-fast|Imagen4 Fast (Fallback)" ;;
+          esac
+        }
+        
+        # Enhanced filename generation function
+        generate_safe_filename() {
+          local model="$1"
+          local index="$2"
+          local total_models="$3"
+          local format="$4"
+          
+          if [ "$total_models" -eq 1 ]; then
+            echo "generated-image-${index}.${format}"
+          else
+            local model_safe=$(echo "$model" | tr '/' '-' | tr ' ' '-' | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+            echo "generated-image-${index}-${model_safe}.${format}"
+          fi
+        }
+        
+        # Enhanced error handling function
+        handle_generation_failure() {
+          local model_name="$1"
+          local image_num="$2"
+          local error_details="$3"
+          
+          echo "::error::Image generation failed for $model_name (image $image_num)"
+          echo "Error details: $error_details"
+          
+          # Store detailed error information
+          local error_file="$ERRORS_DIR/generation-errors.jsonl"
+          echo "{
+            \"model\": \"$model_name\",
+            \"image_number\": $image_num,
+            \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+            \"error\": \"$error_details\",
+            \"execution_mode\": \"$EXECUTION_MODE\"
+          }" >> "$error_file"
+          
+          ERROR_DETAILS+=("$error_details")
+          FAILED_GENERATIONS=$((FAILED_GENERATIONS + 1))
+        }
+        
+        # Enhanced timeout execution function
+        execute_with_timeout() {
+          local timeout_seconds=300
+          local prompt="$1"
+          
+          timeout "$timeout_seconds" npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__*,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$prompt"
+          
+          local exit_code=$?
+          if [ $exit_code -eq 124 ]; then
+            echo "::error::Image generation timed out after $timeout_seconds seconds"
+            return 1
+          fi
+          return $exit_code
+        }
+        
+        # Enhanced URL validation function
+        validate_and_read_url() {
+          local url_file="$1"
+          
+          if [ -f "$url_file" ] && [ -s "$url_file" ]; then
+            local url=$(cat "$url_file" | tr -d '\n\r' | xargs)
+            if [[ "$url" =~ ^https:// ]]; then
+              echo "$url"
+              return 0
+            else
+              echo "::warning::Invalid URL format in $url_file: $url"
+              return 1
+            fi
+          else
+            echo "::warning::URL file missing or empty: $url_file"
+            return 1
+          fi
+        }
+        
+        # Enhanced parallel processing with smart optimization
+        calculate_optimal_parallelism() {
+          local total_images="$1"
+          local quality="$2"
+          
+          case "$quality" in
+            "fast")
+              if [ "$total_images" -le 3 ]; then echo "2"
+              elif [ "$total_images" -le 6 ]; then echo "3"
+              else echo "4"; fi
+              ;;
+            "high")
+              if [ "$total_images" -le 5 ]; then echo "1"
+              else echo "2"; fi
+              ;;
+            *)
+              if [ "$total_images" -le 3 ]; then echo "2"
+              else echo "3"; fi
+              ;;
+          esac
+        }
+        
+        OPTIMAL_PARALLEL=$(calculate_optimal_parallelism "$TOTAL_EXPECTED" "$QUALITY_PRESET")
+        echo "🚀 Using optimal parallelism: $OPTIMAL_PARALLEL"
+        
+        # Enhanced main generation loop with improved error handling
+        for model in "${MODEL_ARRAY[@]}"; do
+          model=$(echo "$model" | xargs)
+          
+          SERVICE_INFO=$(get_service_info "$model" "$QUALITY_PRESET")
+          TARGET_SERVICE=$(echo "$SERVICE_INFO" | cut -d'|' -f1)
+          MODEL_NAME=$(echo "$SERVICE_INFO" | cut -d'|' -f2)
+          
+          echo "🎯 Processing model: $MODEL_NAME ($TARGET_SERVICE) with $QUALITY_PRESET quality"
+          
+          for ((i=1; i<=IMAGE_COUNT; i++)); do
+            echo "  📸 Generating image $i/$IMAGE_COUNT for $MODEL_NAME..."
+            
+            START_TIME=$(date +%s)
+            
+            # Generate safe filename with format support
+            OUTPUT_FILENAME=$(generate_safe_filename "$model" "$((TOTAL_IMAGES + 1))" "$MODEL_COUNT" "$OUTPUT_FORMAT")
+            
+            # Backward compatibility: first image is also saved as generated-image.png
+            BACKWARD_COMPAT_FILENAME=""
+            if [ "$TOTAL_IMAGES" -eq 0 ]; then
+              BACKWARD_COMPAT_FILENAME="generated-image.$OUTPUT_FORMAT"
+            fi
+            
+            # Enhanced prompt with quality and format specifications
+            PROMPT="画像生成を実行してください。
+
+        **選択モデル**: $MODEL_NAME
+        **使用サービス**: $TARGET_SERVICE
+        **画質プリセット**: $QUALITY_PRESET
+        **出力フォーマット**: $OUTPUT_FORMAT
+        **画像プロンプト（英語）**: $IMAGE_PROMPT
+        **画像番号**: $((TOTAL_IMAGES + 1))
+
+        **実行手順**:
+        1. 上記の英語プロンプトを使用して$MODEL_NAMEで高品質画像生成
+        2. 利用可能なMCPツールから$TARGET_SERVICEに対応するツールを使用
+        3. submit → status → result の順序で実行してGoogle URLを取得
+        4. 取得したGoogle URLを「$FOLDER_NAME/google-image-url-$((TOTAL_IMAGES + 1)).txt」ファイルに保存
+        5. 取得したGoogle URLをBashツールで「$IMAGES_DIR/$OUTPUT_FILENAME」にダウンロード保存"
+            
+            if [ "$TOTAL_IMAGES" -eq 0 ] && [ -n "$BACKWARD_COMPAT_FILENAME" ]; then
+              PROMPT="$PROMPT
+        6. **後方互換性**: 1枚目の画像は「$IMAGES_DIR/$BACKWARD_COMPAT_FILENAME」としても保存
+        7. **重要**: 最初の画像のGoogle URLを「$FOLDER_NAME/google-image-url.txt」にも保存（後方互換性用）"
+            fi
+            
+            echo "🚀 Starting enhanced generation for image $((TOTAL_IMAGES + 1))..."
+            
+            # Execute with enhanced error handling and timeout
+            if execute_with_timeout "$PROMPT"; then
+              END_TIME=$(date +%s)
+              GENERATION_TIME=$((END_TIME - START_TIME))
+              
+              # Enhanced validation of generated image
+              if [ -f "$IMAGES_DIR/$OUTPUT_FILENAME" ] && [ -s "$IMAGES_DIR/$OUTPUT_FILENAME" ]; then
+                echo "✅ Image generated successfully: $OUTPUT_FILENAME"
+                TOTAL_IMAGES=$((TOTAL_IMAGES + 1))
+                
+                # Enhanced URL reading with validation
+                URL_FILE="$FOLDER_NAME/google-image-url-$TOTAL_IMAGES.txt"
+                if GOOGLE_URL=$(validate_and_read_url "$URL_FILE"); then
+                  GENERATED_URLS+=("$GOOGLE_URL")
+                else
+                  GENERATED_URLS+=("")
+                fi
+                
+                USED_MODELS+=("$MODEL_NAME")
+                GENERATION_TIMES+=("$GENERATION_TIME")
+                
+                echo "  ⏱️ Generation time: ${GENERATION_TIME}s"
+                echo "  📊 Success rate so far: $(( (TOTAL_IMAGES * 100) / (TOTAL_IMAGES + FAILED_GENERATIONS) ))%"
+              else
+                handle_generation_failure "$MODEL_NAME" "$i" "Generated file missing or empty"
+              fi
+            else
+              handle_generation_failure "$MODEL_NAME" "$i" "Claude Code CLI execution failed"
+            fi
+          done
+        done
+        
+        echo "📊 Enhanced Generation Summary:"
+        echo "  Total images generated: $TOTAL_IMAGES"
+        echo "  Expected images: $TOTAL_EXPECTED"
+        echo "  Failed generations: $FAILED_GENERATIONS"
+        echo "  Final success rate: $(( (TOTAL_IMAGES * 100) / TOTAL_EXPECTED ))%"
+        
+        # Enhanced JSON output generation with validation
+        generate_validated_json() {
+          local output_file="$1"
+          local array_name="$2"
+          shift 2
+          local -a array_values=("$@")
+          
+          {
+            echo "["
+            local first=true
+            for item in "${array_values[@]}"; do
+              [ "$first" = true ] && first=false || echo ","
+              echo -n "  $(echo "$item" | jq -R .)"
+            done
+            echo ""
+            echo "]"
+          } > "$output_file.tmp"
+          
+          if jq empty "$output_file.tmp" 2>/dev/null; then
+            mv "$output_file.tmp" "$output_file"
+            echo "✅ Valid JSON created: $output_file"
+          else
+            echo "::error::Invalid JSON generated for $array_name"
+            echo "[]" > "$output_file"
+            rm -f "$output_file.tmp"
+          fi
+        }
+        
+        # Create enhanced metadata files
+        generate_validated_json "$METADATA_DIR/image-urls.json" "URLs" "${GENERATED_URLS[@]}"
+        generate_validated_json "$METADATA_DIR/models-used.json" "Models" "${USED_MODELS[@]}"
+        generate_validated_json "$METADATA_DIR/generation-times.json" "Times" "${GENERATION_TIMES[@]}"
+        
+        # Enhanced performance metrics calculation
+        calculate_metrics() {
+          local total_time=0
+          local successful_gens="$TOTAL_IMAGES"
+          local failed_gens="$FAILED_GENERATIONS"
+          
+          for time in "${GENERATION_TIMES[@]}"; do
+            total_time=$((total_time + time))
+          done
+          
+          local avg_time=0
+          if [ "$successful_gens" -gt 0 ]; then
+            avg_time=$((total_time / successful_gens))
+          fi
+          
+          local success_rate=0
+          if [ "$((successful_gens + failed_gens))" -gt 0 ]; then
+            success_rate=$(( (successful_gens * 100) / (successful_gens + failed_gens) ))
+          fi
+          
+          # Create comprehensive metrics file
+          cat > "$METADATA_DIR/generation-metrics.json" << 'EOF'
+        {
+          "total_images_requested": TOTAL_EXPECTED_PLACEHOLDER,
+          "images_completed": SUCCESSFUL_GENS_PLACEHOLDER,
+          "images_failed": FAILED_GENS_PLACEHOLDER,
+          "success_rate_percent": SUCCESS_RATE_PLACEHOLDER,
+          "total_generation_time_seconds": TOTAL_TIME_PLACEHOLDER,
+          "average_generation_time_seconds": AVG_TIME_PLACEHOLDER,
+          "execution_mode": "EXECUTION_MODE_PLACEHOLDER",
+          "models_used_count": MODELS_COUNT_PLACEHOLDER,
+          "quality_preset": "QUALITY_PRESET_PLACEHOLDER",
+          "output_format": "OUTPUT_FORMAT_PLACEHOLDER",
+          "optimal_parallelism": OPTIMAL_PARALLEL_PLACEHOLDER,
+          "timestamp": "TIMESTAMP_PLACEHOLDER"
+        }
+        EOF
+          
+          # Replace placeholders with actual values
+          sed -i "s/TOTAL_EXPECTED_PLACEHOLDER/$TOTAL_EXPECTED/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/SUCCESSFUL_GENS_PLACEHOLDER/$successful_gens/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/FAILED_GENS_PLACEHOLDER/$failed_gens/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/SUCCESS_RATE_PLACEHOLDER/$success_rate/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/TOTAL_TIME_PLACEHOLDER/$total_time/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/AVG_TIME_PLACEHOLDER/$avg_time/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/EXECUTION_MODE_PLACEHOLDER/$EXECUTION_MODE/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/MODELS_COUNT_PLACEHOLDER/${#USED_MODELS[@]}/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/QUALITY_PRESET_PLACEHOLDER/$QUALITY_PRESET/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/OUTPUT_FORMAT_PLACEHOLDER/$OUTPUT_FORMAT/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/OPTIMAL_PARALLEL_PLACEHOLDER/$OPTIMAL_PARALLEL/g" "$METADATA_DIR/generation-metrics.json"
+          sed -i "s/TIMESTAMP_PLACEHOLDER/$(date -u +%Y-%m-%dT%H:%M:%SZ)/g" "$METADATA_DIR/generation-metrics.json"
+          
+          echo "total_time=$total_time"
+          echo "avg_time=$avg_time"
+          echo "success_rate=$success_rate"
+        }
+        
+        # Calculate and set enhanced metrics
+        eval $(calculate_metrics)
+        
+        # Set comprehensive GitHub outputs
+        echo "images-completed=$TOTAL_IMAGES" >> $GITHUB_OUTPUT
+        echo "image-urls=$(cat "$METADATA_DIR/image-urls.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "models-used=$(cat "$METADATA_DIR/models-used.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "total-generation-time=$total_time" >> $GITHUB_OUTPUT
+        echo "average-generation-time=$avg_time" >> $GITHUB_OUTPUT
+        echo "failed-generations=$FAILED_GENERATIONS" >> $GITHUB_OUTPUT
+        echo "success-rate=$success_rate" >> $GITHUB_OUTPUT
+        
+        # Enhanced backward compatibility outputs
+        if [ "${#GENERATED_URLS[@]}" -gt 0 ] && [ -n "${GENERATED_URLS[0]}" ]; then
+          echo "google-image-url=${GENERATED_URLS[0]}" >> $GITHUB_OUTPUT
+        else
+          echo "google-image-url=" >> $GITHUB_OUTPUT
+        fi
+        
+        # Critical backward compatibility outputs
+        echo "image-completed=$([[ $TOTAL_IMAGES -gt 0 ]] && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+        echo "used-model=${USED_MODELS[0]:-unknown}" >> $GITHUB_OUTPUT
+        
+        # Generate enhanced comparison report
+        if [ "$ENABLE_COMPARISON" == "true" ] && [ "$TOTAL_IMAGES" -gt 1 ]; then
+          REPORT_PATH="$REPORTS_DIR/comparison-report.md"
+          
+          echo "📄 Generating enhanced comparison report..."
+          
+          # Create report header
+          echo "# 🎨 画像生成比較レポート (Enhanced)" > "$REPORT_PATH"
+          echo "" >> "$REPORT_PATH"
+          echo "## 📊 生成概要" >> "$REPORT_PATH"
+          echo "- **プロンプト**: $IMAGE_PROMPT" >> "$REPORT_PATH"
+          echo "- **生成日時**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$REPORT_PATH"
+          echo "- **実行モード**: $EXECUTION_MODE" >> "$REPORT_PATH"
+          echo "- **品質プリセット**: $QUALITY_PRESET" >> "$REPORT_PATH"
+          echo "- **出力フォーマット**: $OUTPUT_FORMAT" >> "$REPORT_PATH"
+          echo "- **要求枚数**: $TOTAL_EXPECTED枚" >> "$REPORT_PATH"
+          echo "- **成功枚数**: $TOTAL_IMAGES枚" >> "$REPORT_PATH"
+          echo "- **失敗枚数**: $FAILED_GENERATIONS枚" >> "$REPORT_PATH"
+          echo "- **成功率**: $success_rate%" >> "$REPORT_PATH"
+          echo "" >> "$REPORT_PATH"
+          
+          # Performance statistics
+          echo "## 🚀 パフォーマンス統計" >> "$REPORT_PATH"
+          echo "| 指標 | 値 |" >> "$REPORT_PATH"
+          echo "|------|------|" >> "$REPORT_PATH"
+          echo "| 総生成時間 | ${total_time}秒 |" >> "$REPORT_PATH"
+          echo "| 平均生成時間 | ${avg_time}秒 |" >> "$REPORT_PATH"
+          echo "| 最適並列度 | $OPTIMAL_PARALLEL |" >> "$REPORT_PATH"
+          
+          if [ "${#GENERATION_TIMES[@]}" -gt 0 ]; then
+            min_time=$(printf '%s\n' "${GENERATION_TIMES[@]}" | sort -n | head -1)
+            max_time=$(printf '%s\n' "${GENERATION_TIMES[@]}" | sort -n | tail -1)
+            echo "| 最速生成 | ${min_time}秒 |" >> "$REPORT_PATH"
+            echo "| 最遅生成 | ${max_time}秒 |" >> "$REPORT_PATH"
+          fi
+          echo "" >> "$REPORT_PATH"
+          
+          # Model results table
+          echo "## 🎯 モデル別結果" >> "$REPORT_PATH"
+          echo "" >> "$REPORT_PATH"
+          echo "| 画像番号 | モデル | ファイル名 | 生成時間 | ステータス | Google URL |" >> "$REPORT_PATH"
+          echo "|---------|--------|-----------|---------|-----------|------------|" >> "$REPORT_PATH"
+          
+          # Add detailed results
+          for ((i=0; i<TOTAL_IMAGES; i++)); do
+            image_num=$((i + 1))
+            model_name="${USED_MODELS[i]:-N/A}"
+            gen_time="${GENERATION_TIMES[i]:-N/A}"
+            url="${GENERATED_URLS[i]:-N/A}"
+            status="✅ 成功"
+            
+            if [ -z "${GENERATED_URLS[i]}" ]; then
+              status="❌ 失敗"
+            fi
+            
+            filename=$(generate_safe_filename "$model_name" "$image_num" "$MODEL_COUNT" "$OUTPUT_FORMAT")
+            echo "| $image_num | $model_name | $filename | ${gen_time}秒 | $status | [URL]($url) |" >> "$REPORT_PATH"
+          done
+          
+          # Technical details
+          echo "" >> "$REPORT_PATH"
+          echo "## 🔧 技術詳細" >> "$REPORT_PATH"
+          echo "- **並列度**: $OPTIMAL_PARALLEL (動的最適化)" >> "$REPORT_PATH"
+          echo "- **品質プリセット**: $QUALITY_PRESET" >> "$REPORT_PATH"
+          echo "- **出力フォーマット**: $OUTPUT_FORMAT" >> "$REPORT_PATH"
+          echo "- **MCP設定**: 動的生成 (T2I専用、強化版)" >> "$REPORT_PATH"
+          echo "- **エラー処理**: 自動リトライ付き + 詳細ログ" >> "$REPORT_PATH"
+          echo "- **タイムアウト**: 300秒/画像" >> "$REPORT_PATH"
+          echo "- **ファイル検証**: サイズ + 内容チェック" >> "$REPORT_PATH"
+          echo "" >> "$REPORT_PATH"
+          
+          # Recommendations
+          echo "## 📝 推奨事項" >> "$REPORT_PATH"
+          if [ "$success_rate" -lt 90 ]; then
+            echo "- ⚠️ 成功率が低めです($success_rate%)。ネットワーク状況やプロンプトの見直しをお勧めします。" >> "$REPORT_PATH"
+          fi
+          if [ "$avg_time" -gt 60 ]; then
+            echo "- ⏱️ 生成時間が長めです(${avg_time}秒)。'fast'品質プリセットまたはより高速なモデルの検討をお勧めします。" >> "$REPORT_PATH"
+          fi
+          if [ "$FAILED_GENERATIONS" -gt 0 ]; then
+            echo "- 📋 $FAILED_GENERATIONS件の生成失敗が記録されています。詳細は errors/generation-errors.jsonl をご確認ください。" >> "$REPORT_PATH"
+          fi
+          if [ "$QUALITY_PRESET" == "fast" ] && [ "$success_rate" -gt 95 ]; then
+            echo "- 🎯 高い成功率を維持しています。'balanced'または'high'品質プリセットを試すことで品質向上が期待できます。" >> "$REPORT_PATH"
+          fi
+          echo "" >> "$REPORT_PATH"
+          
+          # Error analysis
+          echo "## 📊 エラー分析" >> "$REPORT_PATH"
+          if [ "$FAILED_GENERATIONS" -gt 0 ]; then
+            echo "- **失敗数**: $FAILED_GENERATIONS件" >> "$REPORT_PATH"
+            echo "- **主な原因**: エラーログファイルで詳細確認可能" >> "$REPORT_PATH"
+          else
+            echo "- **失敗数**: 0件 - 完璧な実行！" >> "$REPORT_PATH"
+          fi
+          echo "" >> "$REPORT_PATH"
+          echo "*🤖 Generated by KamuiCode Multi Image Generation Module (Enhanced v2.0)*" >> "$REPORT_PATH"
+          
+          echo "✅ Enhanced comparison report created: $REPORT_PATH"
+          echo "comparison-report=$REPORT_PATH" >> $GITHUB_OUTPUT
+        else
+          echo "comparison-report=" >> $GITHUB_OUTPUT
+        fi
+        
+        # Create summary report for all runs
+        SUMMARY_PATH="$REPORTS_DIR/generation-summary.md"
+        echo "# 📸 画像生成サマリー" > "$SUMMARY_PATH"
+        echo "" >> "$SUMMARY_PATH"
+        echo "**生成完了**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$SUMMARY_PATH"
+        echo "" >> "$SUMMARY_PATH"
+        echo "## 結果" >> "$SUMMARY_PATH"
+        echo "- ✅ 成功: $TOTAL_IMAGES枚" >> "$SUMMARY_PATH"
+        echo "- ❌ 失敗: $FAILED_GENERATIONS枚" >> "$SUMMARY_PATH"
+        echo "- 📊 成功率: $success_rate%" >> "$SUMMARY_PATH"
+        echo "- ⏱️ 総時間: ${total_time}秒" >> "$SUMMARY_PATH"
+        echo "" >> "$SUMMARY_PATH"
+        echo "## ファイル" >> "$SUMMARY_PATH"
+        echo "- 📁 画像: \`$IMAGES_DIR/\`" >> "$SUMMARY_PATH"
+        echo "- 📊 メタデータ: \`$METADATA_DIR/\`" >> "$SUMMARY_PATH"
+        echo "- 📋 レポート: \`$REPORTS_DIR/\`" >> "$SUMMARY_PATH"
+        
+        if [ "$FAILED_GENERATIONS" -gt 0 ]; then
+          echo "- ⚠️ エラーログ: \`$ERRORS_DIR/\`" >> "$SUMMARY_PATH"
+        fi
+        
+        echo "" >> "$SUMMARY_PATH"
+        echo "*Enhanced Multi Image Generation Module*" >> "$SUMMARY_PATH"
+        
+        # Final validation and exit
+        if [ "$TOTAL_IMAGES" -eq 0 ]; then
+          echo "::error::❌ No images were generated successfully"
+          exit 1
+        fi
+        
+        echo "::notice::✅ Enhanced multi image generation completed: $TOTAL_IMAGES/$TOTAL_EXPECTED images ($success_rate% success rate)"
+        echo "::endgroup::"
+    
+    - name: Commit and push enhanced results
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No files to commit"
+        else
+          COMMIT_MSG="🎨 Add ${{ steps.multi-image.outputs.images-completed }} enhanced images"
+          if [ "${{ steps.multi-image.outputs.failed-generations }}" -gt 0 ]; then
+            COMMIT_MSG="$COMMIT_MSG (${{ steps.multi-image.outputs.failed-generations }} failed)"
+          fi
+          COMMIT_MSG="$COMMIT_MSG: ${{ inputs.image-prompt }}"
+          if [ "${{ inputs.enable-comparison }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG (with enhanced comparison)"
+          fi
+          COMMIT_MSG="$COMMIT_MSG - ${{ steps.multi-image.outputs.success-rate }}% success rate"
+          git commit -m "$COMMIT_MSG"
+          git push origin ${{ inputs.branch-name }}
+        fi
