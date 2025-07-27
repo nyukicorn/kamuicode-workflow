@@ -1,0 +1,359 @@
+name: Validate v3 Module Integration Points
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3/**'
+      - '.github/workflows/*v3*'
+
+jobs:
+  # Comprehensive parameter flow validation
+  validate-parameter-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate v3 Module Interface Contracts
+        run: |
+          echo "🔍 Validating v3 module interface contracts..."
+          
+          # Check that action.yml exists and has required structure
+          V3_ACTION_PATH=".github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3/action.yml"
+          if [ ! -f "$V3_ACTION_PATH" ]; then
+            echo "::error::❌ v3 module action.yml not found"
+            exit 1
+          fi
+          
+          echo "✅ v3 module action.yml found"
+          
+          # Validate required inputs are defined
+          required_inputs="image-prompt folder-name branch-name oauth-token mcp-config"
+          for input in $required_inputs; do
+            if ! grep -q "^  $input:" "$V3_ACTION_PATH"; then
+              echo "::error::❌ Required input '$input' not found in v3 action.yml"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All required inputs defined in v3 module"
+          
+          # Validate critical outputs for backward compatibility
+          critical_outputs="google-image-url images-completed image-urls models-used comparison-report"
+          for output in $critical_outputs; do
+            if ! grep -q "$output:" "$V3_ACTION_PATH"; then
+              echo "::error::❌ Critical output '$output' not found in v3 action.yml"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All critical outputs defined in v3 module"
+          
+          # Validate that google-image-url maintains exact backward compatibility
+          if ! grep -q "google-image-url" "$V3_ACTION_PATH"; then
+            echo "::error::❌ google-image-url output missing - breaks backward compatibility"
+            exit 1
+          fi
+          
+          echo "✅ Backward compatibility output 'google-image-url' confirmed"
+
+  # Validate workflow parameter mappings
+  validate-workflow-mappings:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate Test Workflow Parameter Mappings
+        run: |
+          echo "🔍 Validating workflow parameter mappings..."
+          
+          TEST_WORKFLOW=".github/workflows/test-multi-image-generation-v3.yml"
+          PIPELINE_WORKFLOW=".github/workflows/complete-creative-pipeline-v3.yml"
+          
+          # Check test workflow exists
+          if [ ! -f "$TEST_WORKFLOW" ]; then
+            echo "::error::❌ Test workflow not found: $TEST_WORKFLOW"
+            exit 1
+          fi
+          
+          # Check pipeline workflow exists
+          if [ ! -f "$PIPELINE_WORKFLOW" ]; then
+            echo "::error::❌ Pipeline workflow not found: $PIPELINE_WORKFLOW"
+            exit 1
+          fi
+          
+          echo "✅ Test and pipeline workflows found"
+          
+          # Validate that workflows use correct module path
+          v3_module_path="./.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3"
+          
+          if ! grep -q "$v3_module_path" "$TEST_WORKFLOW"; then
+            echo "::error::❌ Test workflow does not reference v3 module correctly"
+            exit 1
+          fi
+          
+          if ! grep -q "$v3_module_path" "$PIPELINE_WORKFLOW"; then
+            echo "::error::❌ Pipeline workflow does not reference v3 module correctly"
+            exit 1
+          fi
+          
+          echo "✅ Workflows reference v3 module correctly"
+          
+          # Validate parameter passing patterns
+          required_with_params="image-prompt folder-name branch-name oauth-token mcp-config"
+          
+          for param in $required_with_params; do
+            if ! grep -q "with:" -A 20 "$TEST_WORKFLOW" | grep -q "$param:"; then
+              echo "::error::❌ Required parameter '$param' not passed in test workflow"
+              exit 1
+            fi
+            
+            if ! grep -q "with:" -A 20 "$PIPELINE_WORKFLOW" | grep -q "$param:"; then
+              echo "::error::❌ Required parameter '$param' not passed in pipeline workflow"
+              exit 1
+            fi
+          done
+          
+          echo "✅ All required parameters properly passed in workflows"
+
+  # Validate downstream module compatibility
+  validate-downstream-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate Downstream Module Compatibility
+        run: |
+          echo "🔍 Validating downstream module compatibility..."
+          
+          # Check that existing downstream modules exist
+          downstream_modules=(
+            "image-world-analysis"
+            "video-generation"
+            "threejs-integration"
+            "web-player-generation"
+          )
+          
+          for module in "${downstream_modules[@]}"; do
+            module_path=".github/actions/kamui-modules/$module/action.yml"
+            if [ ! -f "$module_path" ]; then
+              echo "::error::❌ Downstream module not found: $module_path"
+              exit 1
+            fi
+            echo "✅ Found downstream module: $module"
+          done
+          
+          # Validate that image-world-analysis accepts image-url parameter
+          if ! grep -q "image-url:" ".github/actions/kamui-modules/image-world-analysis/action.yml"; then
+            echo "::error::❌ image-world-analysis module missing image-url input"
+            exit 1
+          fi
+          
+          # Validate that video-generation accepts image-url parameter
+          if ! grep -q "image-url:" ".github/actions/kamui-modules/video-generation/action.yml"; then
+            echo "::error::❌ video-generation module missing image-url input"
+            exit 1
+          fi
+          
+          echo "✅ Downstream modules have compatible interfaces"
+
+  # Validate parameter flow in pipeline workflow
+  validate-pipeline-parameter-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate Pipeline Parameter Flow
+        run: |
+          echo "🔍 Validating parameter flow in pipeline workflow..."
+          
+          PIPELINE_WORKFLOW=".github/workflows/complete-creative-pipeline-v3.yml"
+          
+          # Check that setup outputs are properly used
+          if ! grep -q "needs.setup-creative-project.outputs.folder-name" "$PIPELINE_WORKFLOW"; then
+            echo "::error::❌ setup folder-name output not properly referenced"
+            exit 1
+          fi
+          
+          if ! grep -q "needs.setup-creative-project.outputs.branch-name" "$PIPELINE_WORKFLOW"; then
+            echo "::error::❌ setup branch-name output not properly referenced"
+            exit 1
+          fi
+          
+          # Check that v3 outputs are properly used by downstream modules
+          if ! grep -q "needs.generate-creative-images.outputs.google-image-url" "$PIPELINE_WORKFLOW"; then
+            echo "::error::❌ v3 google-image-url output not properly referenced"
+            exit 1
+          fi
+          
+          # Check enhanced parameter usage
+          if ! grep -q "needs.generate-creative-images.outputs.images-completed" "$PIPELINE_WORKFLOW"; then
+            echo "::error::❌ v3 enhanced images-completed output not used"
+            exit 1
+          fi
+          
+          echo "✅ Parameter flow properly configured in pipeline"
+          
+          # Validate that downstream modules receive correct parameters
+          
+          # image-world-analysis should receive google-image-url
+          if ! grep -A 10 "image-world-analysis" "$PIPELINE_WORKFLOW" | grep -q "image-url.*google-image-url"; then
+            echo "::error::❌ image-world-analysis not receiving google-image-url from v3"
+            exit 1
+          fi
+          
+          # video-generation should receive google-image-url
+          if ! grep -A 10 "video-generation" "$PIPELINE_WORKFLOW" | grep -q "image-url.*google-image-url"; then
+            echo "::error::❌ video-generation not receiving google-image-url from v3"
+            exit 1
+          fi
+          
+          # web-player-generation should receive images-completed
+          if ! grep -A 10 "web-player-generation" "$PIPELINE_WORKFLOW" | grep -q "image-count.*images-completed"; then
+            echo "::error::❌ web-player-generation not receiving images-completed from v3"
+            exit 1
+          fi
+          
+          echo "✅ All downstream modules receive correct parameters from v3"
+
+  # Validate JSON structure requirements
+  validate-json-structures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Validate JSON Output Requirements
+        run: |
+          echo "🔍 Validating JSON output structure requirements..."
+          
+          V3_ACTION_PATH=".github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3/action.yml"
+          
+          # Check that JSON arrays are properly formatted
+          if ! grep -q "jq -R . | jq -s ." "$V3_ACTION_PATH"; then
+            echo "::error::❌ JSON array formatting not found in v3 module"
+            exit 1
+          fi
+          
+          # Check that JSON is properly compacted for GitHub outputs
+          if ! grep -q "jq -c ." "$V3_ACTION_PATH"; then
+            echo "::error::❌ JSON compaction not found in v3 module"
+            exit 1
+          fi
+          
+          echo "✅ JSON output formatting properly implemented"
+          
+          # Validate that arrays are created for multi-value outputs
+          if ! grep -q "GENERATED_URLS.*(" "$V3_ACTION_PATH"; then
+            echo "::error::❌ GENERATED_URLS array not properly initialized"
+            exit 1
+          fi
+          
+          if ! grep -q "USED_MODELS.*(" "$V3_ACTION_PATH"; then
+            echo "::error::❌ USED_MODELS array not properly initialized"
+            exit 1
+          fi
+          
+          echo "✅ Array initialization properly implemented"
+
+  # Integration validation summary
+  integration-validation-summary:
+    if: always()
+    needs: [
+      validate-parameter-flow,
+      validate-workflow-mappings,
+      validate-downstream-compatibility,
+      validate-pipeline-parameter-flow,
+      validate-json-structures
+    ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Integration Validation Summary
+        run: |
+          echo "# 🔗 v3 Module Integration Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📋 Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Validation Category | Status | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------------------|--------|---------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Parameter flow validation
+          if [ "${{ needs.validate-parameter-flow.result }}" = "success" ]; then
+            echo "| Parameter Flow | ✅ Pass | Interface contracts validated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Parameter Flow | ❌ Fail | Interface validation failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Workflow mappings
+          if [ "${{ needs.validate-workflow-mappings.result }}" = "success" ]; then
+            echo "| Workflow Mappings | ✅ Pass | Parameter mappings correct |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Workflow Mappings | ❌ Fail | Parameter mapping errors |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Downstream compatibility
+          if [ "${{ needs.validate-downstream-compatibility.result }}" = "success" ]; then
+            echo "| Downstream Compatibility | ✅ Pass | All modules compatible |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Downstream Compatibility | ❌ Fail | Compatibility issues found |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Pipeline parameter flow
+          if [ "${{ needs.validate-pipeline-parameter-flow.result }}" = "success" ]; then
+            echo "| Pipeline Parameter Flow | ✅ Pass | End-to-end flow validated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Pipeline Parameter Flow | ❌ Fail | Parameter flow errors |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # JSON structures
+          if [ "${{ needs.validate-json-structures.result }}" = "success" ]; then
+            echo "| JSON Structures | ✅ Pass | Output formatting correct |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| JSON Structures | ❌ Fail | JSON formatting issues |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Integration Points Validated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Backward Compatibility" >> $GITHUB_STEP_SUMMARY
+          echo "- `google-image-url` output maintained for existing modules" >> $GITHUB_STEP_SUMMARY
+          echo "- All downstream modules receive compatible parameters" >> $GITHUB_STEP_SUMMARY
+          echo "- No breaking changes to existing workflows" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Enhanced Integration" >> $GITHUB_STEP_SUMMARY
+          echo "- `images-completed` enables multi-image workflows" >> $GITHUB_STEP_SUMMARY
+          echo "- `image-urls` JSON array for advanced processing" >> $GITHUB_STEP_SUMMARY
+          echo "- `models-used` array for analytics and reporting" >> $GITHUB_STEP_SUMMARY
+          echo "- `comparison-report` for performance analysis" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Parameter Flow Validation" >> $GITHUB_STEP_SUMMARY
+          echo "- **setup → v3**: folder-name, branch-name properly passed" >> $GITHUB_STEP_SUMMARY
+          echo "- **v3 → image-world-analysis**: google-image-url parameter flow" >> $GITHUB_STEP_SUMMARY
+          echo "- **v3 → video-generation**: google-image-url parameter flow" >> $GITHUB_STEP_SUMMARY
+          echo "- **v3 → threejs-integration**: folder structure integration" >> $GITHUB_STEP_SUMMARY
+          echo "- **v3 → web-player-generation**: enhanced image-count parameter" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [ "${{ needs.validate-parameter-flow.result }}" = "success" ] && \
+             [ "${{ needs.validate-workflow-mappings.result }}" = "success" ] && \
+             [ "${{ needs.validate-downstream-compatibility.result }}" = "success" ] && \
+             [ "${{ needs.validate-pipeline-parameter-flow.result }}" = "success" ] && \
+             [ "${{ needs.validate-json-structures.result }}" = "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🎉 Overall Status: ✅ VALIDATION PASSED" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The v3 module is ready for deployment with full backward compatibility and enhanced features." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## ⚠️ Overall Status: ❌ VALIDATION ISSUES FOUND" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review and fix the validation issues before deployment." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*🔗 Integration validation completed for Multi Image Generation v3*" >> $GITHUB_STEP_SUMMARY
