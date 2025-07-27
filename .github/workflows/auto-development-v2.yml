@@ -275,7 +275,6 @@ jobs:
             gh pr create \
               --title "Auto-implement: ${{ inputs.target_module }} module" \
               --body "Auto-Development System Implementation - Requirements: ${{ inputs.requirements_file }}, Module: ${{ inputs.target_module }}, Mode: ${{ inputs.development_mode }}" \
-              --label "auto-development,experimental" \
               --assignee "${{ github.actor }}"
               
             echo "✅ PR作成完了: $BRANCH_NAME"
