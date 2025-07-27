@@ -1051,8 +1051,8 @@ function applyAudioReactiveEffects() {
                 brightnessMultiplier = 1.0;
                 colorIntensity = 1.0;
             } else {
-                // Scale from threshold to maximum for better visual contrast
-                const adjustedVolume = Math.min(1.0, (volumeLevel - 0.06) * 2.0); // Scale from 6% to max
+                // Use volume directly for stronger visual response
+                const adjustedVolume = Math.min(1.0, volumeLevel * 2.5); // Amplify for visibility
                 sizeMultiplier = 1.0 + (adjustedVolume * 1.8); // Up to 2.8x size
                 brightnessMultiplier = 1.0 + (adjustedVolume * 1.5); // Up to 2.5x brightness
                 colorIntensity = 1.0 + (adjustedVolume * 1.2); // Up to 2.2x color
