@@ -1,0 +1,654 @@
+name: 'Multi-Image Music Video Workflow V2'
+description: 'Enhanced multi-image generation with backward compatibility for music video workflows'
+author: 'KamuiCode Workflow'
+
+inputs:
+  # Existing parameters (unchanged for backward compatibility)
+  image-prompt:
+    description: 'The image generation prompt'
+    required: true
+  folder-name:
+    description: 'The folder name for storing image files'
+    required: true
+  branch-name:
+    description: 'The branch to work on'
+    required: true
+  oauth-token:
+    description: 'Claude Code OAuth token'
+    required: true
+  mcp-config:
+    description: 'MCP configuration JSON'
+    required: true
+    
+  # New multi-image parameters (backward compatible defaults)
+  image-count:
+    description: 'Number of images to generate (1-10)'
+    required: false
+    default: '1'
+  models:
+    description: 'Comma-separated list of models (auto/imagen4-ultra/imagen4-fast/imagen3/flux-schnell/photo-flux)'
+    required: false
+    default: 'auto'
+  generation-strategy:
+    description: 'Strategy: sequential/parallel/smart'
+    required: false
+    default: 'smart'
+  enable-comparison:
+    description: 'Enable model comparison mode'
+    required: false
+    default: 'false'
+  quality-threshold:
+    description: 'Minimum quality score (0.0-1.0)'
+    required: false
+    default: '0.7'
+  max-parallel:
+    description: 'Maximum parallel generations'
+    required: false
+    default: '3'
+
+outputs:
+  # Existing outputs (preserved exactly for backward compatibility)
+  image-completed:
+    description: 'Whether image generation was completed successfully'
+    value: ${{ steps.multi-image.outputs.image-completed }}
+  google-image-url:
+    description: 'Google URL of the primary image (backward compatibility)'
+    value: ${{ steps.multi-image.outputs.google-image-url }}
+  used-model:
+    description: 'The image generation model used for primary image'
+    value: ${{ steps.multi-image.outputs.used-model }}
+    
+  # New multi-image outputs
+  images-completed:
+    description: 'Number of images successfully generated'
+    value: ${{ steps.multi-image.outputs.images-completed }}
+  image-urls:
+    description: 'JSON array of all generated image URLs'
+    value: ${{ steps.multi-image.outputs.image-urls }}
+  models-used:
+    description: 'JSON array of models used for each image'
+    value: ${{ steps.multi-image.outputs.models-used }}
+  generation-report:
+    description: 'Path to generation report file'
+    value: ${{ steps.multi-image.outputs.generation-report }}
+  quality-scores:
+    description: 'JSON array of quality scores for each image'
+    value: ${{ steps.multi-image.outputs.quality-scores }}
+  primary-image-index:
+    description: 'Index of the primary image (0-based)'
+    value: ${{ steps.multi-image.outputs.primary-image-index }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.branch-name }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install Claude Code SDK
+      shell: bash
+      run: npm install @anthropic-ai/claude-code
+    
+    - name: Enhanced Multi-Image Generation Engine
+      id: multi-image
+      shell: bash
+      env:
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.oauth-token }}
+      run: |
+        echo "::group::🎨 Enhanced Multi-Image Generation V2"
+        echo "Starting at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+        
+        # =====================================================
+        # INPUT VALIDATION AND SANITIZATION
+        # =====================================================
+        echo "🔍 Input validation and sanitization..."
+        
+        # Validate image count
+        IMAGE_COUNT="${{ inputs.image-count }}"
+        if [[ ! "$IMAGE_COUNT" =~ ^[0-9]+$ ]] || [ "$IMAGE_COUNT" -lt 1 ] || [ "$IMAGE_COUNT" -gt 10 ]; then
+          echo "::warning::Invalid image count: $IMAGE_COUNT. Using default: 1"
+          IMAGE_COUNT=1
+        fi
+        
+        # Validate quality threshold
+        QUALITY_THRESHOLD="${{ inputs.quality-threshold }}"
+        if ! echo "$QUALITY_THRESHOLD" | grep -E '^0*\.?[0-9]+$' > /dev/null || \
+           (( $(echo "$QUALITY_THRESHOLD < 0.0" | bc -l) )) || \
+           (( $(echo "$QUALITY_THRESHOLD > 1.0" | bc -l) )); then
+          echo "::warning::Invalid quality threshold: $QUALITY_THRESHOLD. Using default: 0.7"
+          QUALITY_THRESHOLD=0.7
+        fi
+        
+        # Validate max parallel
+        MAX_PARALLEL="${{ inputs.max-parallel }}"
+        if [[ ! "$MAX_PARALLEL" =~ ^[0-9]+$ ]] || [ "$MAX_PARALLEL" -lt 1 ] || [ "$MAX_PARALLEL" -gt 5 ]; then
+          echo "::warning::Invalid max parallel: $MAX_PARALLEL. Using default: 3"
+          MAX_PARALLEL=3
+        fi
+        
+        # Configuration
+        IMAGE_PROMPT="${{ inputs.image-prompt }}"
+        MODELS="${{ inputs.models }}"
+        GENERATION_STRATEGY="${{ inputs.generation-strategy }}"
+        ENABLE_COMPARISON="${{ inputs.enable-comparison }}"
+        FOLDER_NAME="${{ inputs.folder-name }}"
+        IMAGES_DIR="$FOLDER_NAME/images"
+        METADATA_DIR="$FOLDER_NAME/metadata"
+        
+        echo "📊 Configuration Summary:"
+        echo "  Image prompt: $IMAGE_PROMPT"
+        echo "  Image count: $IMAGE_COUNT"
+        echo "  Models: $MODELS"
+        echo "  Generation strategy: $GENERATION_STRATEGY"
+        echo "  Enable comparison: $ENABLE_COMPARISON"
+        echo "  Quality threshold: $QUALITY_THRESHOLD"
+        echo "  Max parallel: $MAX_PARALLEL"
+        echo "  Target folder: $IMAGES_DIR"
+        
+        # =====================================================
+        # DIRECTORY STRUCTURE SETUP
+        # =====================================================
+        echo "📁 Setting up directory structure..."
+        
+        # Create required directories
+        mkdir -p "$IMAGES_DIR" "$METADATA_DIR"
+        echo "✅ Created directories: $IMAGES_DIR, $METADATA_DIR"
+        
+        # =====================================================
+        # MCP CONFIGURATION OPTIMIZATION
+        # =====================================================
+        echo "⚙️ Setting up optimized MCP configuration..."
+        
+        MCP_CONFIG_PATH=".claude/mcp-optimized.json"
+        MCP_CONFIG_ABS_PATH="$(pwd)/$MCP_CONFIG_PATH"
+        
+        mkdir -p .claude
+        
+        # Extract only T2I services for optimal performance
+        echo '${{ inputs.mcp-config }}' | jq '
+          .mcpServers | 
+          to_entries | 
+          map(select(.key | startswith("t2i-"))) |
+          from_entries |
+          {"mcpServers": .}
+        ' > "$MCP_CONFIG_ABS_PATH"
+        
+        # Validate MCP configuration
+        if ! jq empty "$MCP_CONFIG_ABS_PATH" 2>/dev/null; then
+          echo "::error::Invalid MCP configuration"
+          exit 1
+        fi
+        
+        echo "✅ Optimized MCP config created with $(jq -r '.mcpServers | length' "$MCP_CONFIG_ABS_PATH") T2I services"
+        
+        # =====================================================
+        # MODEL SELECTION AND STRATEGY IMPLEMENTATION
+        # =====================================================
+        echo "🧠 Implementing intelligent model selection..."
+        
+        # Parse models list
+        IFS=',' read -ra MODEL_ARRAY <<< "$MODELS"
+        MODEL_COUNT=${#MODEL_ARRAY[@]}
+        
+        # Smart model selection function
+        get_service_info() {
+          local model="$1"
+          local prompt="$2"
+          
+          case "$model" in
+            "auto")
+              # Intelligent model selection based on prompt analysis
+              if echo "$prompt" | grep -iE "(realistic|photo|portrait|landscape|real)" > /dev/null; then
+                echo "t2i-fal-imagen4-ultra|Imagen4 Ultra"
+              elif echo "$prompt" | grep -iE "(anime|cartoon|illustration|art|artistic)" > /dev/null; then
+                echo "t2i-fal-flux-schnell|Flux Schnell"
+              elif echo "$prompt" | grep -iE "(fast|quick|speed)" > /dev/null; then
+                echo "t2i-fal-imagen4-fast|Imagen4 Fast"
+              else
+                echo "t2i-fal-imagen4-fast|Imagen4 Fast"
+              fi
+              ;;
+            "imagen4-ultra") echo "t2i-fal-imagen4-ultra|Imagen4 Ultra" ;;
+            "imagen4-fast") echo "t2i-fal-imagen4-fast|Imagen4 Fast" ;;
+            "flux-schnell") echo "t2i-fal-flux-schnell|Flux Schnell" ;;
+            "imagen3") echo "t2i-google-imagen3|Google Imagen3" ;;
+            "photo-flux") echo "t2i-fal-rundiffusion-photo-flux|Photo Flux" ;;
+            *) echo "t2i-fal-imagen4-fast|Imagen4 Fast (Fallback)" ;;
+          esac
+        }
+        
+        # Determine generation strategy
+        case "$GENERATION_STRATEGY" in
+          "sequential")
+            echo "📋 Sequential generation strategy selected"
+            STRATEGY_MODE="sequential"
+            ;;
+          "parallel")
+            echo "🚀 Parallel generation strategy selected"
+            STRATEGY_MODE="parallel"
+            ;;
+          "smart"|*)
+            echo "🧠 Smart generation strategy selected"
+            STRATEGY_MODE="smart"
+            # Smart strategy: parallel if multiple images, sequential if quality-focused
+            if [ "$IMAGE_COUNT" -gt 3 ] && [ "$ENABLE_COMPARISON" == "false" ]; then
+              STRATEGY_MODE="parallel"
+            else
+              STRATEGY_MODE="sequential"
+            fi
+            echo "  → Resolved to: $STRATEGY_MODE"
+            ;;
+        esac
+        
+        # =====================================================
+        # GENERATION EXECUTION ENGINE
+        # =====================================================
+        echo "🚀 Starting generation execution engine..."
+        
+        # Initialize tracking arrays
+        declare -a GENERATED_URLS=()
+        declare -a USED_MODELS=()
+        declare -a GENERATION_TIMES=()
+        declare -a QUALITY_SCORES=()
+        declare -a GENERATION_STATUS=()
+        TOTAL_IMAGES=0
+        
+        # Quality assessment function (simplified for now)
+        assess_image_quality() {
+          local image_path="$1"
+          local prompt="$2"
+          
+          if [ ! -f "$image_path" ]; then
+            echo "0.0"
+            return
+          fi
+          
+          # Basic quality metrics
+          local file_size=$(stat -c%s "$image_path" 2>/dev/null || echo "0")
+          local resolution="unknown"
+          
+          # Check if image is valid and has reasonable size
+          if [ "$file_size" -gt 10000 ]; then  # More than 10KB
+            # Simple quality score based on file size (placeholder for actual assessment)
+            local quality_score=$(echo "scale=2; 0.7 + ($file_size / 10000000)" | bc -l 2>/dev/null || echo "0.7")
+            # Cap at 1.0
+            if (( $(echo "$quality_score > 1.0" | bc -l) )); then
+              quality_score="1.0"
+            fi
+            echo "$quality_score"
+          else
+            echo "0.0"
+          fi
+        }
+        
+        # Generation function
+        generate_single_image() {
+          local image_index="$1"
+          local model="$2"
+          local output_filename="$3"
+          
+          echo "  🎨 Generating image $image_index with $model..."
+          
+          START_TIME=$(date +%s)
+          
+          SERVICE_INFO=$(get_service_info "$model" "$IMAGE_PROMPT")
+          TARGET_SERVICE=$(echo "$SERVICE_INFO" | cut -d'|' -f1)
+          MODEL_NAME=$(echo "$SERVICE_INFO" | cut -d'|' -f2)
+          
+          # Generate unique filenames for multi-image
+          if [ "$IMAGE_COUNT" -gt 1 ]; then
+            GOOGLE_URL_FILE="$FOLDER_NAME/google-image-url-${image_index}.txt"
+          else
+            GOOGLE_URL_FILE="$FOLDER_NAME/google-image-url.txt"
+          fi
+          
+          PROMPT="画像生成を実行してください。
+
+          **選択モデル**: $MODEL_NAME
+          **使用サービス**: $TARGET_SERVICE
+          **画像プロンプト（英語）**: $IMAGE_PROMPT
+          **画像番号**: $image_index
+
+          **実行手順**:
+          1. 上記の英語プロンプトを使用して$MODEL_NAMEで画像生成
+          2. 利用可能なMCPツールから$TARGET_SERVICEに対応するツールを使用
+          3. submit → status → result の順序で実行してGoogle URLを取得
+          4. 取得したGoogle URLを「$GOOGLE_URL_FILE」ファイルに保存
+          5. 取得したGoogle URLをBashツールで「$IMAGES_DIR/$output_filename」にダウンロード保存"
+
+          # Add backward compatibility for first image
+          if [ "$image_index" -eq 1 ]; then
+            PROMPT="$PROMPT
+          6. **後方互換性**: 1枚目の画像は「$IMAGES_DIR/generated-image.png」としても保存
+          7. **重要**: 最初の画像のGoogle URLを「$FOLDER_NAME/google-image-url.txt」にも保存（後方互換性用）"
+          fi
+          
+          # Execute Claude Code CLI
+          if npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_ABS_PATH" \
+            --allowedTools "mcp__*,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$PROMPT"; then
+            
+            END_TIME=$(date +%s)
+            GENERATION_TIME=$((END_TIME - START_TIME))
+            
+            # Check if image was generated
+            if [ -f "$IMAGES_DIR/$output_filename" ]; then
+              echo "    ✅ Image $image_index generated successfully: $output_filename"
+              
+              # Read Google URL
+              local google_url=""
+              if [ -f "$GOOGLE_URL_FILE" ]; then
+                google_url=$(cat "$GOOGLE_URL_FILE")
+                echo "    📄 Google URL saved: $google_url"
+              fi
+              
+              # Assess quality
+              local quality_score=$(assess_image_quality "$IMAGES_DIR/$output_filename" "$IMAGE_PROMPT")
+              echo "    📊 Quality score: $quality_score"
+              
+              # Store results
+              GENERATED_URLS+=("$google_url")
+              USED_MODELS+=("$MODEL_NAME")
+              GENERATION_TIMES+=("$GENERATION_TIME")
+              QUALITY_SCORES+=("$quality_score")
+              GENERATION_STATUS+=("success")
+              
+              TOTAL_IMAGES=$((TOTAL_IMAGES + 1))
+              
+              echo "    ⏱️ Generation time: ${GENERATION_TIME}s"
+              return 0
+            else
+              echo "    ❌ Image generation failed for $MODEL_NAME (image $image_index)"
+              GENERATION_STATUS+=("failed")
+              return 1
+            fi
+          else
+            echo "    ❌ Claude Code CLI failed for $MODEL_NAME (image $image_index)"
+            GENERATION_STATUS+=("failed")
+            return 1
+          fi
+        }
+        
+        # =====================================================
+        # EXECUTE GENERATION STRATEGY
+        # =====================================================
+        echo "🎯 Executing $STRATEGY_MODE generation strategy..."
+        
+        if [ "$STRATEGY_MODE" == "parallel" ] && [ "$IMAGE_COUNT" -gt 1 ]; then
+          echo "🚀 Parallel generation mode"
+          
+          # Parallel generation with rate limiting
+          declare -a BACKGROUND_PIDS=()
+          ACTIVE_JOBS=0
+          
+          for ((i=1; i<=IMAGE_COUNT; i++)); do
+            # Determine model for this image
+            if [ "$MODEL_COUNT" -gt 1 ]; then
+              MODEL_INDEX=$(( (i-1) % MODEL_COUNT ))
+              CURRENT_MODEL="${MODEL_ARRAY[$MODEL_INDEX]}"
+              OUTPUT_FILENAME="generated-image-${i}-$(echo "$CURRENT_MODEL" | tr '/' '-').png"
+            else
+              CURRENT_MODEL="${MODEL_ARRAY[0]}"
+              OUTPUT_FILENAME="generated-image-${i}.png"
+            fi
+            
+            # Wait for available slot
+            while [ "$ACTIVE_JOBS" -ge "$MAX_PARALLEL" ]; do
+              for pid in "${!BACKGROUND_PIDS[@]}"; do
+                if ! kill -0 "${BACKGROUND_PIDS[$pid]}" 2>/dev/null; then
+                  unset "BACKGROUND_PIDS[$pid]"
+                  ACTIVE_JOBS=$((ACTIVE_JOBS - 1))
+                fi
+              done
+              sleep 1
+            done
+            
+            echo "🎯 Starting parallel generation $i/$IMAGE_COUNT..."
+            
+            # Start background generation
+            (
+              generate_single_image "$i" "$CURRENT_MODEL" "$OUTPUT_FILENAME"
+            ) &
+            
+            BACKGROUND_PIDS[$!]=$!
+            ACTIVE_JOBS=$((ACTIVE_JOBS + 1))
+          done
+          
+          # Wait for all background jobs to complete
+          echo "⏳ Waiting for all parallel generations to complete..."
+          for pid in "${BACKGROUND_PIDS[@]}"; do
+            wait "$pid"
+          done
+          
+        else
+          echo "📋 Sequential generation mode"
+          
+          # Sequential generation
+          for ((i=1; i<=IMAGE_COUNT; i++)); do
+            # Determine model for this image
+            if [ "$MODEL_COUNT" -gt 1 ]; then
+              MODEL_INDEX=$(( (i-1) % MODEL_COUNT ))
+              CURRENT_MODEL="${MODEL_ARRAY[$MODEL_INDEX]}"
+              OUTPUT_FILENAME="generated-image-${i}-$(echo "$CURRENT_MODEL" | tr '/' '-').png"
+            else
+              CURRENT_MODEL="${MODEL_ARRAY[0]}"
+              OUTPUT_FILENAME="generated-image-${i}.png"
+            fi
+            
+            echo "🎯 Sequential generation $i/$IMAGE_COUNT..."
+            generate_single_image "$i" "$CURRENT_MODEL" "$OUTPUT_FILENAME"
+          done
+        fi
+        
+        # =====================================================
+        # QUALITY-BASED PRIMARY IMAGE SELECTION
+        # =====================================================
+        echo "🏆 Selecting primary image based on quality scores..."
+        
+        PRIMARY_IMAGE_INDEX=0
+        BEST_QUALITY=0.0
+        
+        for ((i=0; i<${#QUALITY_SCORES[@]}; i++)); do
+          local score="${QUALITY_SCORES[i]}"
+          if (( $(echo "$score > $BEST_QUALITY" | bc -l) )); then
+            BEST_QUALITY="$score"
+            PRIMARY_IMAGE_INDEX="$i"
+          fi
+        done
+        
+        echo "🎯 Primary image selected: Index $PRIMARY_IMAGE_INDEX (Quality: $BEST_QUALITY)"
+        
+        # Ensure backward compatibility file exists
+        if [ "$TOTAL_IMAGES" -gt 0 ]; then
+          # Find the primary image file
+          PRIMARY_IMAGE_FILE=""
+          if [ "$IMAGE_COUNT" -gt 1 ] && [ "$MODEL_COUNT" -gt 1 ]; then
+            # Multi-model case
+            MODEL_INDEX=$(( PRIMARY_IMAGE_INDEX % MODEL_COUNT ))
+            MODEL_NAME_CLEAN=$(echo "${MODEL_ARRAY[$MODEL_INDEX]}" | tr '/' '-')
+            PRIMARY_IMAGE_FILE="generated-image-$((PRIMARY_IMAGE_INDEX + 1))-${MODEL_NAME_CLEAN}.png"
+          else
+            # Single model case
+            PRIMARY_IMAGE_FILE="generated-image-$((PRIMARY_IMAGE_INDEX + 1)).png"
+          fi
+          
+          if [ -f "$IMAGES_DIR/$PRIMARY_IMAGE_FILE" ] && [ ! -f "$IMAGES_DIR/generated-image.png" ]; then
+            cp "$IMAGES_DIR/$PRIMARY_IMAGE_FILE" "$IMAGES_DIR/generated-image.png"
+            echo "✅ Primary image copied for backward compatibility: generated-image.png"
+          fi
+        fi
+        
+        # =====================================================
+        # METADATA AND REPORTING
+        # =====================================================
+        echo "📊 Generating metadata and reports..."
+        
+        # Create JSON outputs
+        printf '%s\n' "${GENERATED_URLS[@]}" | jq -R . | jq -s . > "$FOLDER_NAME/image-urls.json"
+        printf '%s\n' "${USED_MODELS[@]}" | jq -R . | jq -s . > "$FOLDER_NAME/models-used.json"
+        printf '%s\n' "${QUALITY_SCORES[@]}" | jq -R . | jq -s . > "$FOLDER_NAME/quality-scores.json"
+        
+        # Generate detailed generation report
+        REPORT_PATH="$METADATA_DIR/generation-report.json"
+        echo "{" > "$REPORT_PATH"
+        echo "  \"generation_summary\": {" >> "$REPORT_PATH"
+        echo "    \"total_images\": $TOTAL_IMAGES," >> "$REPORT_PATH"
+        echo "    \"requested_images\": $IMAGE_COUNT," >> "$REPORT_PATH"
+        echo "    \"primary_image_index\": $PRIMARY_IMAGE_INDEX," >> "$REPORT_PATH"
+        echo "    \"generation_strategy\": \"$STRATEGY_MODE\"," >> "$REPORT_PATH"
+        echo "    \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" >> "$REPORT_PATH"
+        echo "  }," >> "$REPORT_PATH"
+        echo "  \"images\": [" >> "$REPORT_PATH"
+        
+        for ((i=0; i<TOTAL_IMAGES; i++)); do
+          if [ "$i" -gt 0 ]; then echo "    ," >> "$REPORT_PATH"; fi
+          echo "    {" >> "$REPORT_PATH"
+          echo "      \"index\": $i," >> "$REPORT_PATH"
+          echo "      \"model_used\": \"${USED_MODELS[i]:-N/A}\"," >> "$REPORT_PATH"
+          echo "      \"generation_time_seconds\": ${GENERATION_TIMES[i]:-0}," >> "$REPORT_PATH"
+          echo "      \"google_url\": \"${GENERATED_URLS[i]:-}\"," >> "$REPORT_PATH"
+          echo "      \"quality_score\": ${QUALITY_SCORES[i]:-0.0}," >> "$REPORT_PATH"
+          echo "      \"status\": \"${GENERATION_STATUS[i]:-unknown}\"" >> "$REPORT_PATH"
+          echo "    }" >> "$REPORT_PATH"
+        done
+        
+        echo "  ]" >> "$REPORT_PATH"
+        echo "}" >> "$REPORT_PATH"
+        
+        echo "✅ Generation report created: $REPORT_PATH"
+        
+        # Generate comparison report if enabled
+        COMPARISON_REPORT_PATH=""
+        if [ "$ENABLE_COMPARISON" == "true" ] && [ "$TOTAL_IMAGES" -gt 1 ]; then
+          COMPARISON_REPORT_PATH="$METADATA_DIR/model-comparison.md"
+          
+          echo "# Multi-Image Generation Comparison Report" > "$COMPARISON_REPORT_PATH"
+          echo "" >> "$COMPARISON_REPORT_PATH"
+          echo "## Generation Summary" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Prompt**: $IMAGE_PROMPT" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Generated**: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Total Images**: $TOTAL_IMAGES" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Strategy**: $STRATEGY_MODE" >> "$COMPARISON_REPORT_PATH"
+          echo "" >> "$COMPARISON_REPORT_PATH"
+          echo "## Results" >> "$COMPARISON_REPORT_PATH"
+          echo "" >> "$COMPARISON_REPORT_PATH"
+          echo "| Index | Model | Quality Score | Time (s) | Status |" >> "$COMPARISON_REPORT_PATH"
+          echo "|-------|-------|---------------|----------|--------|" >> "$COMPARISON_REPORT_PATH"
+          
+          for ((i=0; i<TOTAL_IMAGES; i++)); do
+            echo "| $i | ${USED_MODELS[i]:-N/A} | ${QUALITY_SCORES[i]:-0.0} | ${GENERATION_TIMES[i]:-0} | ${GENERATION_STATUS[i]:-unknown} |" >> "$COMPARISON_REPORT_PATH"
+          done
+          
+          echo "" >> "$COMPARISON_REPORT_PATH"
+          echo "## Best Results" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Highest Quality**: Index $PRIMARY_IMAGE_INDEX (Score: $BEST_QUALITY)" >> "$COMPARISON_REPORT_PATH"
+          echo "- **Total Images Generated**: $TOTAL_IMAGES" >> "$COMPARISON_REPORT_PATH"
+          echo "" >> "$COMPARISON_REPORT_PATH"
+          echo "---" >> "$COMPARISON_REPORT_PATH"
+          echo "*Generated by KamuiCode Multi-Image Workflow V2*" >> "$COMPARISON_REPORT_PATH"
+          
+          echo "✅ Comparison report created: $COMPARISON_REPORT_PATH"
+        fi
+        
+        # =====================================================
+        # SET GITHUB OUTPUTS
+        # =====================================================
+        echo "🔧 Setting GitHub outputs..."
+        
+        # Existing outputs (backward compatibility)
+        echo "image-completed=$([ "$TOTAL_IMAGES" -gt 0 ] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+        
+        # Primary image URL for backward compatibility
+        if [ "${#GENERATED_URLS[@]}" -gt "$PRIMARY_IMAGE_INDEX" ] && [ -n "${GENERATED_URLS[$PRIMARY_IMAGE_INDEX]}" ]; then
+          echo "google-image-url=${GENERATED_URLS[$PRIMARY_IMAGE_INDEX]}" >> $GITHUB_OUTPUT
+        else
+          echo "google-image-url=" >> $GITHUB_OUTPUT
+        fi
+        
+        # Primary model for backward compatibility
+        if [ "${#USED_MODELS[@]}" -gt "$PRIMARY_IMAGE_INDEX" ]; then
+          echo "used-model=${USED_MODELS[$PRIMARY_IMAGE_INDEX]}" >> $GITHUB_OUTPUT
+        else
+          echo "used-model=" >> $GITHUB_OUTPUT
+        fi
+        
+        # New multi-image outputs
+        echo "images-completed=$TOTAL_IMAGES" >> $GITHUB_OUTPUT
+        echo "image-urls=$(cat "$FOLDER_NAME/image-urls.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "models-used=$(cat "$FOLDER_NAME/models-used.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "quality-scores=$(cat "$FOLDER_NAME/quality-scores.json" | jq -c .)" >> $GITHUB_OUTPUT
+        echo "primary-image-index=$PRIMARY_IMAGE_INDEX" >> $GITHUB_OUTPUT
+        echo "generation-report=$REPORT_PATH" >> $GITHUB_OUTPUT
+        
+        # =====================================================
+        # FINAL VALIDATION AND SUMMARY
+        # =====================================================
+        echo "✅ Final validation and summary..."
+        
+        # Validate backward compatibility requirements
+        VALIDATION_ERRORS=0
+        
+        if [ ! -f "$IMAGES_DIR/generated-image.png" ]; then
+          echo "::error::❌ Backward compatibility error: generated-image.png not found"
+          VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
+        fi
+        
+        if [ ! -f "$FOLDER_NAME/google-image-url.txt" ]; then
+          echo "::error::❌ Backward compatibility error: google-image-url.txt not found"
+          VALIDATION_ERRORS=$((VALIDATION_ERRORS + 1))
+        fi
+        
+        if [ "$VALIDATION_ERRORS" -gt 0 ]; then
+          echo "::error::❌ Backward compatibility validation failed with $VALIDATION_ERRORS errors"
+          exit 1
+        fi
+        
+        # Success summary
+        echo ""
+        echo "🎉 Enhanced Multi-Image Generation V2 completed successfully!"
+        echo "📊 Summary:"
+        echo "  ✅ Images generated: $TOTAL_IMAGES/$IMAGE_COUNT"
+        echo "  🏆 Primary image: Index $PRIMARY_IMAGE_INDEX (Quality: $BEST_QUALITY)"
+        echo "  📄 Backward compatibility: Maintained"
+        echo "  📊 Generation report: $REPORT_PATH"
+        if [ -n "$COMPARISON_REPORT_PATH" ]; then
+          echo "  📈 Comparison report: $COMPARISON_REPORT_PATH"
+        fi
+        
+        if [ "$TOTAL_IMAGES" -eq 0 ]; then
+          echo "::error::❌ No images were generated successfully"
+          exit 1
+        fi
+        
+        echo "::notice::✅ Enhanced multi-image generation completed: $TOTAL_IMAGES images with $STRATEGY_MODE strategy"
+        echo "::endgroup::"
+    
+    - name: Commit and push enhanced results
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.folder-name }}/
+        if git diff --cached --quiet; then
+          echo "No files to commit"
+        else
+          COMMIT_MSG="Enhanced multi-image generation: ${{ steps.multi-image.outputs.images-completed }} images"
+          if [ "${{ inputs.enable-comparison }}" == "true" ]; then
+            COMMIT_MSG="$COMMIT_MSG (with model comparison)"
+          fi
+          
+          git commit -m "$COMMIT_MSG" -m "Generated with enhanced multi-image workflow V2" -m "🤖 Generated with [Claude Code](https://claude.ai/code)" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+          git push origin ${{ inputs.branch-name }}
+        fi
