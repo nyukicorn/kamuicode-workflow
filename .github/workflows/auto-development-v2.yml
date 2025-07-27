@@ -264,6 +264,7 @@ jobs:
           git add docs/design/ || true
           git add docs/requirements/ || true  
           git add .github/actions/kamui-modules/${{ inputs.target_module }}/ || true
+          git add .github/workflows/ || true
           
           if git diff --cached --quiet; then
             echo "::notice::コミットする変更がありません"
