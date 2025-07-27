@@ -96,9 +96,6 @@ function init() {
     // Initialize audio if available
     MUSIC_INIT_PLACEHOLDER
     
-    // Auto-initialize microphone for external audio
-    initializeExternalAudio();
-    
     // Load PLY file
     loadPointCloud();
     
@@ -877,9 +874,6 @@ function setupMicrophoneAnalysis() {
             
             microphoneSource.connect(micAnalyser);
             microphoneEnabled = true;
-            
-            // Automatically enable audio reactive for microphone
-            audioReactiveEnabled = true;
             
             console.log('🎤 Microphone analysis setup complete - External audio ready!');
             return true;
