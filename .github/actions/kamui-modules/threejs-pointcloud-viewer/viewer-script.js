@@ -25,7 +25,8 @@ let frequencyBands = {
     mid: 0,       // 250-2000Hz
     treble: 0     // 2000Hz+
 };
-let frequencyMode = 'volume'; // 'volume' or 'frequency'
+let audioMode = 'music'; // 'music' or 'voice'
+let dynamicModeEnabled = false; // Independent dynamic mode toggle
 
 // Lighting and appearance
 let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
@@ -896,10 +897,8 @@ function getVolumeLevel() {
         volume = Math.max(volume, micVolume);
         hasAudioSource = true;
         
-        // Also analyze frequency bands for microphone
-        if (frequencyMode === 'frequency') {
-            analyzeFrequencyBands(micDataArray, micAnalyser.context.sampleRate);
-        }
+        // Analyze frequency bands for microphone
+        analyzeFrequencyBands(micDataArray, micAnalyser.context.sampleRate);
     }
     
     // Check page music (if playing and no strong microphone signal)
@@ -912,10 +911,8 @@ function getVolumeLevel() {
             volume = Math.max(volume, musicVolume);
             hasAudioSource = true;
             
-            // Also analyze frequency bands for page music
-            if (frequencyMode === 'frequency') {
-                analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
-            }
+            // Analyze frequency bands for page music
+            analyzeFrequencyBands(musicDataArray, musicAnalyser.context.sampleRate);
         }
     }
     
@@ -937,9 +934,17 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
     // Each bin represents (sampleRate / 2) / 128 Hz
     const binSize = (sampleRate / 2) / dataArray.length;
     
-    // Calculate bin ranges for each frequency band
-    const bassEnd = Math.floor(250 / binSize);
-    const midEnd = Math.floor(2000 / binSize);
+    // Calculate bin ranges based on audio mode
+    let bassEnd, midEnd;
+    if (audioMode === 'voice') {
+        // Voice mode: focus on speech frequencies (500-2000Hz for clarity)
+        bassEnd = Math.floor(500 / binSize);
+        midEnd = Math.floor(2000 / binSize);
+    } else {
+        // Music mode: traditional frequency separation
+        bassEnd = Math.floor(250 / binSize);
+        midEnd = Math.floor(2000 / binSize);
+    }
     
     // Calculate average volume for each band
     let bassSum = 0, midSum = 0, trebleSum = 0;
@@ -968,10 +973,10 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
     frequencyBands.mid = frequencyBands.mid * smoothing + newMid * (1 - smoothing);
     frequencyBands.treble = frequencyBands.treble * smoothing + newTreble * (1 - smoothing);
     
-    // Apply final clamp after smoothing and remove excessive boosting
-    frequencyBands.bass = Math.min(1.0, frequencyBands.bass * 1.1);
+    // Apply controlled boosting with proper clamping
+    frequencyBands.bass = Math.min(1.0, frequencyBands.bass * 1.05); // Reduced boost
     frequencyBands.mid = Math.min(1.0, frequencyBands.mid);
-    frequencyBands.treble = Math.min(1.0, frequencyBands.treble * 1.2);
+    frequencyBands.treble = Math.min(1.0, frequencyBands.treble * 1.1); // Reduced boost
 }
 
 function toggleAudioReactive() {
@@ -1026,40 +1031,28 @@ function toggleMicrophone() {
 function applyAudioReactiveEffects() {
     const volumeLevel = getVolumeLevel();
     
-    if (volumeLevel > 0.01 || frequencyMode === 'frequency') { // Apply effects for volume or frequency mode
+    if (volumeLevel > 0.01 || (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
         let sizeMultiplier, brightnessMultiplier, colorIntensity;
         
-        if (frequencyMode === 'frequency' && (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
-            // Frequency-based effects (General Mode - refined response)
-            // Bass: Controls size and "punch" (0-250Hz) 
-            sizeMultiplier = 1.0 + (frequencyBands.bass * 1.5); // Up to 2.5x for bass
-            
-            // Mid: Controls overall brightness (250-2000Hz)
-            brightnessMultiplier = 1.0 + (frequencyBands.mid * 1.0); // Up to 2.0x
-            
-            // Treble: Controls sparkle/color intensity (2000Hz+)
-            colorIntensity = 1.0 + (frequencyBands.treble * 0.8); // Up to 1.8x
+        // Base audio mode effects (Music or Voice)
+        if (audioMode === 'music') {
+            // Music Mode: Traditional frequency separation
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 2.0); // Up to 3.0x
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 1.5); // Up to 2.5x
+            colorIntensity = 1.0 + (frequencyBands.treble * 1.2); // Up to 2.2x
         } else {
-            // Dynamic Mode: Enhanced frequency response + volume boost
-            if (volumeLevel < 0.06) {
-                // Complete silence for low volumes - back to original state
-                sizeMultiplier = 1.0;
-                brightnessMultiplier = 1.0;
-                colorIntensity = 1.0;
-            } else {
-                // Base frequency effects (enhanced from general mode)
-                let baseSizeEffect = 1.0 + (frequencyBands.bass * 2.2); // Up to 3.2x
-                let midBrightnessEffect = 1.0 + (frequencyBands.mid * 1.6); // Up to 2.6x  
-                let trebleColorEffect = 1.0 + (frequencyBands.treble * 1.3); // Up to 2.3x
-                
-                // Volume boost (maintains 6% threshold)
-                const volumeBoost = Math.min(1.0, (volumeLevel - 0.06) * 1.5);
-                
-                // Apply combined effects
-                sizeMultiplier = baseSizeEffect + volumeBoost;
-                brightnessMultiplier = midBrightnessEffect + volumeBoost;
-                colorIntensity = trebleColorEffect + (volumeBoost * 0.8);
-            }
+            // Voice Mode: Focus on speech clarity (500-2000Hz)
+            sizeMultiplier = 1.0 + (frequencyBands.bass * 1.5); // Subdued low freq
+            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.0); // Enhanced speech
+            colorIntensity = 1.0 + (frequencyBands.treble * 1.0); // Moderate high freq
+        }
+        
+        // Apply Dynamic Mode enhancement if enabled
+        if (dynamicModeEnabled) {
+            const dynamicBoost = 1.4; // 40% enhancement
+            sizeMultiplier = (sizeMultiplier - 1.0) * dynamicBoost + 1.0;
+            brightnessMultiplier = (brightnessMultiplier - 1.0) * dynamicBoost + 1.0;
+            colorIntensity = (colorIntensity - 1.0) * dynamicBoost + 1.0;
         }
         
         // 1. Size effect
@@ -1093,8 +1086,8 @@ function applyAudioReactiveEffects() {
             }
         }
         
-        // 4. Audio-based movement effects
-        if (frequencyMode === 'frequency') {
+        // 4. Audio-based movement effects (music mode only)
+        if (audioMode === 'music') {
             // Different movement for different frequencies
             if (originalPositions && particleVelocities) {
                 // Bass: outward expansion (punch effect)
@@ -1146,11 +1139,9 @@ function applyAudioReactiveEffects() {
         
         // Debug log occasionally
         if (Math.random() < 0.01) {
-            if (frequencyMode === 'frequency') {
-                console.log(`🎵 Frequency mode: bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}%`);
-            } else {
-                console.log(`🎵 Dynamic mode: ${(volumeLevel * 100).toFixed(1)}%, size=${sizeMultiplier.toFixed(2)}x`);
-            }
+            const modeIcon = audioMode === 'music' ? '🎵' : '🎤';
+            const dynamicSuffix = dynamicModeEnabled ? ' +Dynamic' : '';
+            console.log(`${modeIcon} ${audioMode} mode${dynamicSuffix}: bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}% → size=${sizeMultiplier.toFixed(2)}x`);
         }
     }
 }
@@ -1218,24 +1209,38 @@ function updateWaveIntensity(value) {
     console.log(`🌊 Wave intensity updated to: ${waveIntensity}`);
 }
 
-function toggleFrequencyMode() {
-    frequencyMode = frequencyMode === 'volume' ? 'frequency' : 'volume';
-    const button = document.getElementById('frequencyModeToggle');
+function toggleAudioMode() {
+    audioMode = audioMode === 'music' ? 'voice' : 'music';
+    const button = document.getElementById('audioModeToggle');
     
     // Reset frequency bands when switching modes to prevent residual effects
-    if (frequencyMode === 'frequency') {
-        frequencyBands.bass = 0;
-        frequencyBands.mid = 0;
-        frequencyBands.treble = 0;
-        button.innerHTML = '🎼 Frequency Mode ON';
-        button.title = 'Currently in frequency mode (bass/mid/treble effects)';
-        console.log('🎼 Switched to frequency analysis mode');
+    frequencyBands.bass = 0;
+    frequencyBands.mid = 0;
+    frequencyBands.treble = 0;
+    
+    if (audioMode === 'music') {
+        button.innerHTML = '🎵 Music Mode ON';
+        button.title = 'Currently in music mode (bass/mid/treble separation)';
+        console.log('🎵 Switched to music mode');
     } else {
-        // Reset to ensure clean dynamic mode
-        currentVolumeLevel = 0;
-        button.innerHTML = '🚀 Dynamic Mode ON';
-        button.title = 'Currently in dynamic mode (enhanced dramatic effects)';
-        console.log('🚀 Switched to dynamic mode');
+        button.innerHTML = '🎤 Voice Mode ON';
+        button.title = 'Currently in voice mode (speech frequency focus)';
+        console.log('🎤 Switched to voice mode');
+    }
+}
+
+function toggleDynamicMode() {
+    dynamicModeEnabled = !dynamicModeEnabled;
+    const button = document.getElementById('dynamicModeToggle');
+    
+    if (dynamicModeEnabled) {
+        button.innerHTML = '🚀 Dynamic ON';
+        button.title = 'Dynamic enhancement is ON (40% boost)';
+        console.log('🚀 Dynamic mode enabled');
+    } else {
+        button.innerHTML = '🚀 Dynamic OFF';
+        button.title = 'Dynamic enhancement is OFF';
+        console.log('🚀 Dynamic mode disabled');
     }
 }
 
@@ -1245,7 +1250,8 @@ window.updateWaveIntensity = updateWaveIntensity;
 window.toggleGravityMode = toggleGravityMode;
 window.toggleAudioReactive = toggleAudioReactive;
 window.toggleMicrophone = toggleMicrophone;
-window.toggleFrequencyMode = toggleFrequencyMode;
+window.toggleAudioMode = toggleAudioMode;
+window.toggleDynamicMode = toggleDynamicMode;
 MUSIC_WINDOW_PLACEHOLDER
 
 // Start the application

@@ -151,7 +151,7 @@ runs:
           # 音楽ボタンを追加（一時ファイルを使用）
           cat > /tmp/music_button.html << 'EOF'
                     <div class="control-item">
-                        <button id="musicToggle" class="music-button">🎵 Play Music</button>
+                        <button id="musicToggle" class="music-button">🎵 Music OFF</button>
                     </div>
         EOF
           sed -i.bak "/MUSIC_BUTTON_PLACEHOLDER/r /tmp/music_button.html" "$OUTPUT_FOLDER/index.html"
@@ -190,7 +190,7 @@ runs:
           echo "        " >> /tmp/music_functions.js
           echo "        if (audio.paused) {" >> /tmp/music_functions.js
           echo "            audio.play().then(() => {" >> /tmp/music_functions.js
-          echo "                playButton.textContent = '🔇 Stop Music';" >> /tmp/music_functions.js
+          echo "                playButton.textContent = '🎵 Music ON';" >> /tmp/music_functions.js
           echo "                playButton.classList.add('playing');" >> /tmp/music_functions.js
           echo "                // Setup audio analysis for music" >> /tmp/music_functions.js
           echo "                setupMusicAnalysis(audio);" >> /tmp/music_functions.js
@@ -207,7 +207,7 @@ runs:
           echo "            });" >> /tmp/music_functions.js
           echo "        } else {" >> /tmp/music_functions.js
           echo "            audio.pause();" >> /tmp/music_functions.js
-          echo "            playButton.textContent = '🎵 Play Music';" >> /tmp/music_functions.js
+          echo "            playButton.textContent = '🎵 Music OFF';" >> /tmp/music_functions.js
           echo "            playButton.classList.remove('playing');" >> /tmp/music_functions.js
           echo "            musicPlaying = false;" >> /tmp/music_functions.js
           echo "        }" >> /tmp/music_functions.js
