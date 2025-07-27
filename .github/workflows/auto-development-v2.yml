@@ -29,14 +29,27 @@ permissions:
   pull-requests: write
   issues: write
   actions: write
+  workflows: write
 
 jobs:
   auto-development:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Generate GitHub App token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+          permission-pull-requests: write
+          
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app_token.outputs.token }}
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -251,7 +264,7 @@ jobs:
       - name: Commit and Create PR
         if: ${{ steps.analysis.outputs.analysis_completed == 'true' }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           # Git設定
           git config user.name "github-actions[bot]"
