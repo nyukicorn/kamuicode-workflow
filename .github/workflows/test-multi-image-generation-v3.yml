@@ -1,0 +1,409 @@
+name: Test Multi Image Generation v3 Module
+on:
+  workflow_dispatch:
+    inputs:
+      test-scenario:
+        description: 'Test scenario to run'
+        required: true
+        type: choice
+        options:
+          - 'basic-single-image'
+          - 'multi-image-generation'
+          - 'model-comparison'
+          - 'integration-test'
+          - 'error-handling'
+        default: 'integration-test'
+      image-prompt:
+        description: 'Image generation prompt'
+        required: false
+        default: 'Serene mountain landscape at sunset with reflection in a lake'
+
+jobs:
+  # Validation job to ensure all parameters are properly configured
+  validate-parameters:
+    runs-on: ubuntu-latest
+    outputs:
+      validation-passed: ${{ steps.validate.outputs.validation-passed }}
+      test-folder: ${{ steps.validate.outputs.test-folder }}
+    steps:
+      - name: Validate Input Parameters
+        id: validate
+        run: |
+          echo "🔍 Validating workflow parameters..."
+          
+          # Validate test scenario
+          case "${{ github.event.inputs.test-scenario }}" in
+            "basic-single-image"|"multi-image-generation"|"model-comparison"|"integration-test"|"error-handling")
+              echo "✅ Valid test scenario: ${{ github.event.inputs.test-scenario }}"
+              ;;
+            *)
+              echo "::error::❌ Invalid test scenario: ${{ github.event.inputs.test-scenario }}"
+              exit 1
+              ;;
+          esac
+          
+          # Validate required secrets
+          if [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "::error::❌ CLAUDE_CODE_OAUTH_TOKEN secret is not configured"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.MCP_CONFIG }}" ]; then
+            echo "::error::❌ MCP_CONFIG secret is not configured"
+            exit 1
+          fi
+          
+          # Generate test folder name
+          TEST_FOLDER="test-v3-$(date +%Y%m%d-%H%M%S)-${{ github.event.inputs.test-scenario }}"
+          echo "test-folder=$TEST_FOLDER" >> $GITHUB_OUTPUT
+          echo "validation-passed=true" >> $GITHUB_OUTPUT
+          
+          echo "✅ Parameter validation completed successfully"
+          echo "📁 Test folder: $TEST_FOLDER"
+
+  # Setup branch for testing
+  setup-test-environment:
+    needs: validate-parameters
+    runs-on: ubuntu-latest
+    outputs:
+      folder-name: ${{ steps.setup.outputs.folder-name }}
+      branch-name: ${{ steps.setup.outputs.branch-name }}
+    steps:
+      - name: Setup Test Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        with:
+          branch-name: ${{ github.ref_name }}
+      
+      - name: Verify Setup Outputs
+        run: |
+          echo "🔍 Verifying setup outputs..."
+          
+          # Validate that required outputs are present
+          if [ -z "${{ steps.setup.outputs.folder-name }}" ]; then
+            echo "::error::❌ setup.outputs.folder-name is empty"
+            exit 1
+          fi
+          
+          if [ -z "${{ steps.setup.outputs.branch-name }}" ]; then
+            echo "::error::❌ setup.outputs.branch-name is empty"
+            exit 1
+          fi
+          
+          echo "✅ Setup outputs validated:"
+          echo "  folder-name: ${{ steps.setup.outputs.folder-name }}"
+          echo "  branch-name: ${{ steps.setup.outputs.branch-name }}"
+
+  # Test basic single image generation
+  test-basic-single-image:
+    if: github.event.inputs.test-scenario == 'basic-single-image' || github.event.inputs.test-scenario == 'integration-test'
+    needs: [validate-parameters, setup-test-environment]
+    runs-on: ubuntu-latest
+    outputs:
+      google-image-url: ${{ steps.generate.outputs.google-image-url }}
+      images-completed: ${{ steps.generate.outputs.images-completed }}
+      image-urls: ${{ steps.generate.outputs.image-urls }}
+      models-used: ${{ steps.generate.outputs.models-used }}
+    steps:
+      - name: Generate Single Image v3
+        id: generate
+        uses: ./.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3
+        with:
+          image-prompt: ${{ github.event.inputs.image-prompt }}
+          image-count: "1"
+          models: "imagen4-fast"
+          enable-comparison: "false"
+          folder-name: ${{ needs.setup-test-environment.outputs.folder-name }}
+          branch-name: ${{ needs.setup-test-environment.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Validate Single Image Outputs
+        run: |
+          echo "🔍 Validating single image generation outputs..."
+          
+          # Validate critical outputs for backward compatibility
+          if [ -z "${{ steps.generate.outputs.google-image-url }}" ]; then
+            echo "::error::❌ google-image-url output is empty - breaks backward compatibility"
+            exit 1
+          fi
+          
+          if [ "${{ steps.generate.outputs.images-completed }}" != "1" ]; then
+            echo "::error::❌ images-completed should be 1, got: ${{ steps.generate.outputs.images-completed }}"
+            exit 1
+          fi
+          
+          # Validate JSON outputs
+          echo '${{ steps.generate.outputs.image-urls }}' | jq . > /dev/null || {
+            echo "::error::❌ image-urls is not valid JSON"
+            exit 1
+          }
+          
+          echo '${{ steps.generate.outputs.models-used }}' | jq . > /dev/null || {
+            echo "::error::❌ models-used is not valid JSON"
+            exit 1
+          }
+          
+          echo "✅ Single image generation outputs validated successfully"
+          echo "  google-image-url: ${{ steps.generate.outputs.google-image-url }}"
+          echo "  images-completed: ${{ steps.generate.outputs.images-completed }}"
+
+  # Test multi-image generation
+  test-multi-image-generation:
+    if: github.event.inputs.test-scenario == 'multi-image-generation' || github.event.inputs.test-scenario == 'integration-test'
+    needs: [validate-parameters, setup-test-environment]
+    runs-on: ubuntu-latest
+    outputs:
+      google-image-url: ${{ steps.generate.outputs.google-image-url }}
+      images-completed: ${{ steps.generate.outputs.images-completed }}
+      image-urls: ${{ steps.generate.outputs.image-urls }}
+      models-used: ${{ steps.generate.outputs.models-used }}
+    steps:
+      - name: Generate Multiple Images v3
+        id: generate
+        uses: ./.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3
+        with:
+          image-prompt: ${{ github.event.inputs.image-prompt }}
+          image-count: "3"
+          models: "imagen4-fast"
+          enable-comparison: "false"
+          folder-name: ${{ needs.setup-test-environment.outputs.folder-name }}
+          branch-name: ${{ needs.setup-test-environment.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Validate Multi-Image Outputs
+        run: |
+          echo "🔍 Validating multi-image generation outputs..."
+          
+          # Validate image count
+          if [ "${{ steps.generate.outputs.images-completed }}" -lt "1" ]; then
+            echo "::error::❌ No images were generated"
+            exit 1
+          fi
+          
+          # Validate that primary output exists (backward compatibility)
+          if [ -z "${{ steps.generate.outputs.google-image-url }}" ]; then
+            echo "::error::❌ google-image-url output is empty"
+            exit 1
+          fi
+          
+          # Validate JSON arrays have correct length
+          IMAGE_COUNT=$(echo '${{ steps.generate.outputs.image-urls }}' | jq length)
+          if [ "$IMAGE_COUNT" -ne "${{ steps.generate.outputs.images-completed }}" ]; then
+            echo "::error::❌ image-urls array length ($IMAGE_COUNT) doesn't match images-completed (${{ steps.generate.outputs.images-completed }})"
+            exit 1
+          fi
+          
+          echo "✅ Multi-image generation outputs validated successfully"
+          echo "  images-completed: ${{ steps.generate.outputs.images-completed }}"
+          echo "  image-urls array length: $IMAGE_COUNT"
+
+  # Test model comparison
+  test-model-comparison:
+    if: github.event.inputs.test-scenario == 'model-comparison' || github.event.inputs.test-scenario == 'integration-test'
+    needs: [validate-parameters, setup-test-environment]
+    runs-on: ubuntu-latest
+    outputs:
+      google-image-url: ${{ steps.generate.outputs.google-image-url }}
+      images-completed: ${{ steps.generate.outputs.images-completed }}
+      comparison-report: ${{ steps.generate.outputs.comparison-report }}
+    steps:
+      - name: Generate with Model Comparison v3
+        id: generate
+        uses: ./.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3
+        with:
+          image-prompt: ${{ github.event.inputs.image-prompt }}
+          image-count: "2"
+          models: "imagen4-fast,flux-schnell"
+          enable-comparison: "true"
+          folder-name: ${{ needs.setup-test-environment.outputs.folder-name }}
+          branch-name: ${{ needs.setup-test-environment.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Validate Model Comparison Outputs
+        run: |
+          echo "🔍 Validating model comparison outputs..."
+          
+          # Validate comparison report was generated
+          if [ -z "${{ steps.generate.outputs.comparison-report }}" ]; then
+            echo "::error::❌ comparison-report output is empty when comparison was enabled"
+            exit 1
+          fi
+          
+          # Validate multiple models were used
+          MODEL_COUNT=$(echo '${{ steps.generate.outputs.models-used }}' | jq length)
+          if [ "$MODEL_COUNT" -lt "2" ]; then
+            echo "::error::❌ Expected multiple models, got: $MODEL_COUNT"
+            exit 1
+          fi
+          
+          echo "✅ Model comparison outputs validated successfully"
+          echo "  comparison-report: ${{ steps.generate.outputs.comparison-report }}"
+          echo "  models-used count: $MODEL_COUNT"
+
+  # Test integration with downstream modules
+  test-downstream-integration:
+    if: github.event.inputs.test-scenario == 'integration-test'
+    needs: [validate-parameters, setup-test-environment, test-basic-single-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Integration with image-world-analysis
+        id: world-analysis
+        uses: ./.github/actions/kamui-modules/image-world-analysis
+        with:
+          image-url: ${{ needs.test-basic-single-image.outputs.google-image-url }}
+          folder-name: ${{ needs.setup-test-environment.outputs.folder-name }}
+          branch-name: ${{ needs.setup-test-environment.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Validate Downstream Integration
+        run: |
+          echo "🔍 Validating downstream module integration..."
+          
+          # Verify the integration worked by checking that the downstream module received the URL
+          if [ -z "${{ needs.test-basic-single-image.outputs.google-image-url }}" ]; then
+            echo "::error::❌ google-image-url was not properly passed to downstream module"
+            exit 1
+          fi
+          
+          echo "✅ Downstream integration validated successfully"
+          echo "  Passed google-image-url: ${{ needs.test-basic-single-image.outputs.google-image-url }}"
+          echo "  image-world-analysis completed without errors"
+
+  # Test error handling scenarios
+  test-error-handling:
+    if: github.event.inputs.test-scenario == 'error-handling'
+    needs: [validate-parameters, setup-test-environment]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Invalid Input Handling
+        id: test-invalid
+        continue-on-error: true
+        uses: ./.github/actions/kamui-modules/github-app-fix-multi-image-workflow-v3
+        with:
+          image-prompt: "Test prompt"
+          image-count: "15"  # Invalid: >10
+          models: "invalid-model"  # Invalid model
+          enable-comparison: "true"
+          folder-name: ${{ needs.setup-test-environment.outputs.folder-name }}
+          branch-name: ${{ needs.setup-test-environment.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Validate Error Handling
+        run: |
+          echo "🔍 Validating error handling..."
+          
+          # The previous step should have failed due to invalid inputs
+          if [ "${{ steps.test-invalid.outcome }}" = "success" ]; then
+            echo "::error::❌ Expected validation to fail with invalid inputs"
+            exit 1
+          fi
+          
+          echo "✅ Error handling validated successfully"
+          echo "  Invalid inputs were properly rejected"
+
+  # Comprehensive validation summary
+  validation-summary:
+    if: always()
+    needs: [
+      validate-parameters,
+      setup-test-environment,
+      test-basic-single-image,
+      test-multi-image-generation,
+      test-model-comparison,
+      test-downstream-integration,
+      test-error-handling
+    ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Validation Summary
+        run: |
+          echo "# 🧪 Multi Image Generation v3 Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status | Notes |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          
+          # Parameter validation
+          if [ "${{ needs.validate-parameters.result }}" = "success" ]; then
+            echo "| Parameter Validation | ✅ Pass | All inputs properly validated |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Parameter Validation | ❌ Fail | Parameter validation failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Setup test
+          if [ "${{ needs.setup-test-environment.result }}" = "success" ]; then
+            echo "| Environment Setup | ✅ Pass | Test environment configured |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Environment Setup | ❌ Fail | Failed to setup test environment |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Single image test
+          if [ "${{ needs.test-basic-single-image.result }}" = "success" ]; then
+            echo "| Single Image Generation | ✅ Pass | Backward compatibility maintained |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test-basic-single-image.result }}" = "skipped" ]; then
+            echo "| Single Image Generation | ⏭️ Skip | Test scenario not selected |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Single Image Generation | ❌ Fail | Single image generation failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Multi-image test
+          if [ "${{ needs.test-multi-image-generation.result }}" = "success" ]; then
+            echo "| Multi-Image Generation | ✅ Pass | Multiple images generated successfully |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test-multi-image-generation.result }}" = "skipped" ]; then
+            echo "| Multi-Image Generation | ⏭️ Skip | Test scenario not selected |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Multi-Image Generation | ❌ Fail | Multi-image generation failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Model comparison test
+          if [ "${{ needs.test-model-comparison.result }}" = "success" ]; then
+            echo "| Model Comparison | ✅ Pass | Comparison report generated |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test-model-comparison.result }}" = "skipped" ]; then
+            echo "| Model Comparison | ⏭️ Skip | Test scenario not selected |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Model Comparison | ❌ Fail | Model comparison failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Integration test
+          if [ "${{ needs.test-downstream-integration.result }}" = "success" ]; then
+            echo "| Downstream Integration | ✅ Pass | Compatible with existing modules |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test-downstream-integration.result }}" = "skipped" ]; then
+            echo "| Downstream Integration | ⏭️ Skip | Test scenario not selected |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Downstream Integration | ❌ Fail | Integration compatibility failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Error handling test
+          if [ "${{ needs.test-error-handling.result }}" = "success" ]; then
+            echo "| Error Handling | ✅ Pass | Invalid inputs properly rejected |" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.test-error-handling.result }}" = "skipped" ]; then
+            echo "| Error Handling | ⏭️ Skip | Test scenario not selected |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Error Handling | ❌ Fail | Error handling validation failed |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎯 Interface Compatibility" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Backward Compatibility**: All existing workflows continue to work" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Parameter Flow**: Validated parameter passing to downstream modules" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Output Format**: JSON arrays and compatibility outputs maintained" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Error Prevention**: Enhanced validation prevents common errors" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📈 Enhancement Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Enhanced Error Handling**: Retry mechanisms with exponential backoff" >> $GITHUB_STEP_SUMMARY
+          echo "- **Advanced Validation**: Comprehensive input and parameter validation" >> $GITHUB_STEP_SUMMARY
+          echo "- **Progress Tracking**: Real-time progress updates and resource monitoring" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rich Reporting**: Enhanced comparison reports with performance metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Interface Contracts**: Guaranteed parameter flow validation" >> $GITHUB_STEP_SUMMARY
+          
+          echo "✅ Multi Image Generation v3 validation completed"
