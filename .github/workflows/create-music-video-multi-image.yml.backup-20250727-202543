@@ -1,0 +1,170 @@
+name: 'Music Video Creation - Multi Image Test'
+
+on:
+  workflow_dispatch:
+    inputs:
+      music_concept:
+        description: '音楽のコンセプト (例: 美しいバラの花束)'
+        required: true
+        default: '美しいバラの花束'
+      image_count:
+        description: '生成する画像の枚数 (1-10)'
+        required: false
+        default: '3'
+      models:
+        description: '使用するモデル (auto/imagen4-ultra/imagen4-fast/flux-schnell)'
+        required: false
+        default: 'auto'
+      enable_comparison:
+        description: 'モデル比較レポートを有効にする'
+        required: false
+        default: 'false'
+
+jobs:
+  create-multi-image-music-video:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        
+      - name: Music Planning (Intent-to-Prompt)
+        id: planning
+        uses: ./.github/actions/kamui-modules/music-planning
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+
+      - name: Music Generation (Intent-to-Prompt)
+        id: music
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ inputs.music_concept }}
+          music-prompt: ${{ steps.planning.outputs.music-prompt }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+
+      - name: Music Analysis
+        id: analysis
+        uses: ./.github/actions/kamui-modules/music-analysis
+        with:
+          original-image-prompt: ${{ steps.planning.outputs.image-prompt }}
+          original-video-prompt: ${{ steps.planning.outputs.video-concept }}
+          music-url: ${{ steps.music.outputs.music-url }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      
+      - name: Multi Image Generation 🎨
+        id: image
+        uses: ./.github/actions/kamui-modules/image-generation-multi
+        with:
+          image-prompt: "${{ steps.analysis.outputs.image-prompt-1 }}"
+          image-count: ${{ inputs.image_count }}
+          models: ${{ inputs.models }}
+          enable-comparison: ${{ inputs.enable_comparison }}
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          branch-name: ${{ steps.setup.outputs.branch-name }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+
+      - name: Video Generation (Intent-to-Prompt)
+        id: video
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          echo "::group::🎬 Video Generation with Multi Images"
+          echo "Starting video generation at: $(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+          
+          # 設定
+          MUSIC_CONCEPT='${{ inputs.music_concept }}'
+          FOLDER_NAME="${{ steps.setup.outputs.folder-name }}"
+          VIDEOS_DIR="$FOLDER_NAME/videos"
+          GOOGLE_IMAGE_URL="${{ steps.image.outputs.google-image-url }}"
+          OPTIMIZED_VIDEO_PROMPT="${{ steps.analysis.outputs.video-prompt-1 }}"
+          IMAGE_COUNT="${{ steps.image.outputs.images-completed }}"
+          
+          echo "Music concept: $MUSIC_CONCEPT"
+          echo "Generated images: $IMAGE_COUNT"
+          echo "First image URL: $GOOGLE_IMAGE_URL"
+          echo "Optimized video prompt: $OPTIMIZED_VIDEO_PROMPT"
+          
+          # フォルダ作成
+          mkdir -p "$VIDEOS_DIR"
+          
+          # MCP設定
+          MCP_CONFIG_PATH=".claude/mcp-kamuicode.json"
+          mkdir -p .claude
+          echo '${{ secrets.MCP_CONFIG }}' > "$MCP_CONFIG_PATH"
+          
+          # Setup Node.js and Claude Code SDK
+          echo "🔧 Installing Node.js and npm..."
+          sudo apt-get update > /dev/null 2>&1
+          sudo apt-get install -y nodejs npm > /dev/null 2>&1
+          echo "✅ Node.js and npm installed successfully"
+          
+          echo "📦 Installing Claude Code SDK..."
+          npm install @anthropic-ai/claude-code
+          echo "✅ Claude Code SDK ready"
+          
+          # マルチ画像対応のビデオ生成プロンプト
+          SMART_PROMPT="マルチ画像音楽ビデオの動画生成を実行してください。
+
+          **音楽コンセプト**: $MUSIC_CONCEPT
+          **生成済み画像数**: $IMAGE_COUNT枚
+          **メイン画像URL**: $GOOGLE_IMAGE_URL
+          **最適化済み動画プロンプト**: $OPTIMIZED_VIDEO_PROMPT
+
+          **実行手順**:
+          1. 音楽コンセプトと複数画像を考慮した魅力的な動画プロンプトを構築
+          2. メイン画像を使用してi2v-fal-hailuo-02-proで動画生成を開始
+          3. プログレッシブ待機処理で結果を取得
+          4. 必須ファイル保存: '$VIDEOS_DIR/segment-1.mp4'に保存
+          
+          **重要**: 複数画像が生成されているため、より豊かな表現の動画を生成してください。"
+
+          echo "🚀 Starting Multi-Image Video Generation..."
+          
+          # Claude Code SDK実行
+          npx @anthropic-ai/claude-code \
+            --mcp-config="$MCP_CONFIG_PATH" \
+            --allowedTools "mcp__i2v-fal-hailuo-02-pro__hailuo_02_submit,mcp__i2v-fal-hailuo-02-pro__hailuo_02_status,mcp__i2v-fal-hailuo-02-pro__hailuo_02_result,Bash" \
+            --max-turns 25 \
+            --verbose \
+            --permission-mode "bypassPermissions" \
+            -p "$SMART_PROMPT" || {
+              echo "::error::❌ Video generation failed"
+              exit 1
+            }
+          
+          echo "::endgroup::"
+
+      - name: Auto-Generate Web Player & Deploy 🌐
+        id: web-player
+        uses: ./.github/actions/kamui-modules/web-player-generation
+        with:
+          folder-name: ${{ steps.setup.outputs.folder-name }}
+          music-concept: ${{ inputs.music_concept }}
+          branch-name: main
+          image-count: ${{ steps.image.outputs.images-completed }}
+
+      - name: Summary
+        run: |
+          echo "🎯 Multi-Image Music Video Creation Summary:"
+          echo "Music Concept: ${{ inputs.music_concept }}"
+          echo "Images Generated: ${{ steps.image.outputs.images-completed }}"
+          echo "Models Used: ${{ steps.image.outputs.models-used }}"
+          echo "Web Player: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.setup.outputs.folder-name }}/"
+          
+          if [ "${{ inputs.enable_comparison }}" == "true" ]; then
+            echo "Comparison Report: ${{ steps.image.outputs.comparison-report }}"
+          fi
