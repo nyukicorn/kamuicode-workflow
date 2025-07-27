@@ -1005,10 +1005,18 @@ function toggleMicrophone() {
     if (!microphoneEnabled) {
         setupMicrophoneAnalysis().then(success => {
             if (success) {
+                // microphoneEnabled is already set to true in setupMicrophoneAnalysis
                 const button = document.getElementById('microphoneToggle');
                 button.innerHTML = '🎤 Mic ON';
                 button.title = 'Microphone is ON (click to disable)';
                 console.log('🎤 Microphone enabled');
+            } else {
+                // Failed to setup microphone, ensure flag remains false
+                microphoneEnabled = false;
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎙️ Mic Failed';
+                button.title = 'Microphone access failed';
+                console.log('🎤 Microphone setup failed');
             }
         });
     } else {
