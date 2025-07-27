@@ -278,6 +278,40 @@ Circuit_Breaker:
 目標: "考えるだけでソフトウェア完成"
 ```
 
+## ワークフローエラー修正の統一ルール
+
+### AI駆動修正プロセス（2025-01-27制定）
+```yaml
+基本方針: "手動修正禁止・AI駆動修正必須・学習データ化"
+
+ファイル管理規則:
+  実用ファイル: "常に最新動作版で上書き（例: create-music-video-multi-image.yml）"
+  学習データ: "日付ベースで履歴保持（ai-memory/workflow-evolution/）"
+
+修正プロセス:
+  1. "AI駆動エラー分析実行"
+  2. "修正版自動生成・適用"
+  3. "オリジナル版を学習データとしてスナップショット保存"
+  4. "修正履歴をgeneration-history.mdに記録"
+  5. "エラーパターンをAuto Development V2改善データとして蓄積"
+
+適用範囲: "全ワークフロー・全モジュールの修正に必須適用"
+```
+
+### 学習データ構造
+```yaml
+ai-memory/workflow-evolution/
+├── [workflow-name]/
+│   ├── generation-history.md      # 生成・修正履歴
+│   ├── error-patterns.md         # エラーパターン集
+│   ├── fix-strategies.md         # 修正戦略集
+│   └── snapshots/
+│       ├── YYYYMMDD-v1-description.yml
+│       └── YYYYMMDD-v2-description.yml
+
+目的: "同一エラーの再発防止・Auto Development V2品質向上"
+```
+
 ## 重要な決定事項まとめ
 
 ### 採用された方針
@@ -287,6 +321,7 @@ AI構成: "専門AI分割 + 段階的統合"
 品質保証: "3段階テスト + エラー耐性"
 学習戦略: "実装過程記録 + パターン抽出"
 実現手法: "GitHub Actions + Claude Code SDK"
+エラー修正: "AI駆動修正 + 学習データ化（手動修正禁止）"
 ```
 
 ### 却下されたアプローチ

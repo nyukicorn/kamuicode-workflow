@@ -65,37 +65,20 @@ jobs:
           REQUIREMENTS_CONTENT=$(cat "${{ inputs.requirements_file }}")
           
           ANALYSIS_PROMPT=$(cat <<'EOF'
-          GitHub Actions Automatic Development System - Enhanced with Interface Validation.
+          GitHub Actions Automatic Development System Experiment.
           
-          Analyze the requirements document and create detailed technical design documents with interface compatibility analysis.
+          Analyze the requirements document and create detailed technical design documents.
           
           Requirements Document - $REQUIREMENTS_CONTENT
-          
-          CRITICAL INTERFACE VALIDATION REQUIREMENTS:
-          1. **Existing Module Analysis**: Read and analyze ALL existing modules in .github/actions/kamui-modules/
-          2. **Downstream Interface Check**: Identify modules that will consume outputs from new module
-          3. **Parameter Flow Validation**: Map input/output parameters across module dependencies
-          4. **Workflow Integration Analysis**: Analyze existing workflows to understand integration patterns
           
           Files to Create -
           - docs/design/${{ inputs.target_module }}-design.md (Detailed Design Document)
           - docs/design/${{ inputs.target_module }}-implementation-plan.md (Implementation Plan)
-          - docs/design/${{ inputs.target_module }}-interface-compatibility.md (Interface Compatibility Analysis)
-          
-          Interface Compatibility Analysis Must Include:
-          - List of modules that will integrate with this new module
-          - Parameter mapping for each integration point
-          - Required vs optional parameters for downstream modules
-          - Backward compatibility validation with existing workflows
-          - Error scenarios and compatibility risks
           
           Important: 
           - Must read and analyze existing image-generation/action.yml
-          - Must read ALL modules in kamui-modules/ directory
-          - Must analyze existing workflows that use similar modules
           - Strictly maintain backward compatibility
           - Follow GitHub Actions best practices
-          - PREVENT parameter passing errors by validating downstream interfaces
           EOF
           )
           
@@ -124,37 +107,21 @@ jobs:
           echo "🛠️ Phase 2: Implementation"
           
           IMPLEMENTATION_PROMPT=$(cat <<'EOF'
-          GitHub Actions Automatic Development System - Phase 2: Enhanced Implementation with Workflow Validation
+          GitHub Actions Automatic Development System - Phase 2: Implementation Phase
           
-          Implement based on the design documents with strict interface validation:
+          Implement based on the design documents:
           
           Implementation Tasks:
-          1. Review ALL design documents including interface-compatibility.md
+          1. Review design document contents
           2. Create new module .github/actions/kamui-modules/${{ inputs.target_module }}/
-          3. Implement action.yml with validated interfaces
+          3. Implement action.yml
           4. Create README.md
-          5. **NEW**: Generate or update workflow files that use this module
-          6. **NEW**: Validate workflow parameter passing before saving
-          
-          CRITICAL WORKFLOW VALIDATION:
-          - If creating/updating workflows, validate ALL parameter passing
-          - Check that downstream modules accept the parameters being passed
-          - Ensure required parameters are provided to downstream modules
-          - Cross-reference interface-compatibility.md for validation rules
           
           Implementation Requirements:
           - Maintain compatibility with existing image-generation module
           - Complete implementation of new features (N-image generation, model comparison)
           - Proper error handling
           - Follow GitHub Actions best practices
-          - **VALIDATE**: All workflow integrations before completion
-          - **PREVENT**: Parameter passing errors through pre-validation
-          
-          Workflow File Requirements (if applicable):
-          - Generate test workflows in .github/workflows/
-          - Ensure ALL parameter mappings are validated
-          - Include proper error handling
-          - Test integration points thoroughly
           EOF
           )
           
@@ -183,52 +150,30 @@ jobs:
           echo "🧪 Phase 3: Testing and Validation"
           
           TESTING_PROMPT=$(cat <<'EOF'
-          GitHub Actions Automatic Development System - Phase 3: Enhanced Testing and Workflow Validation
+          GitHub Actions Automatic Development System - Phase 3: Testing and Validation Phase
           
-          Perform comprehensive quality assurance for the implemented module and workflows:
+          Perform quality assurance for the implemented module:
           
-          Module Test Items:
+          Test Items:
           1. action.yml syntax check
           2. Required input parameter verification
           3. Output specification validation
           4. Error handling verification
           5. Documentation completeness check
           
-          **NEW: WORKFLOW INTEGRATION TESTING**:
-          6. Workflow syntax validation (YAML lint)
-          7. Parameter flow analysis across all steps
-          8. Downstream module interface validation
-          9. Required parameter presence check
-          10. Invalid parameter detection and removal
-          
-          Interface Validation Checks:
-          - Verify all outputs match downstream input requirements
-          - Check for unused/invalid parameters being passed
-          - Validate required parameters are provided
-          - Test parameter data type compatibility
-          - Cross-reference interface-compatibility.md
-          
           Quality Checks:
           - Code review (best practices compliance)
           - Security check
           - Performance considerations verification
-          - **Workflow integration soundness**
-          - **Parameter passing error prevention**
           
           Report Creation:
           - Test results report creation
-          - Workflow validation results
-          - Interface compatibility confirmation
-          - Parameter flow analysis report
           - Issues and improvement suggestions
           - Implementation completion summary
           
           If Issues Are Found:
           - Automatically implement fixes
-          - Fix workflow parameter passing errors
-          - Update interface documentation
           - Record fix details in report
-          - Re-validate after fixes
           EOF
           )
           
