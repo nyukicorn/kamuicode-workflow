@@ -17,16 +17,57 @@ let micDataArray = null;
 let audioReactiveEnabled = false;
 let microphoneEnabled = false;
 let currentVolumeLevel = 0;
-let volumeSmoothing = 0.8; // Smoothing factor for volume changes
+let volumeSmoothing = 0.3; // Improved responsiveness (was 0.8)
 
-// Frequency band analysis
+// Frequency band analysis with enhanced settings
 let frequencyBands = {
-    bass: 0,      // 0-250Hz
+    bass: 0,      // 60-250Hz (adjusted for better bass detection)
     mid: 0,       // 250-2000Hz
-    treble: 0     // 2000Hz+
+    treble: 0     // 2000-8000Hz (extended for better clarity)
 };
 let audioMode = 'music'; // 'music' or 'voice'
 let dynamicModeEnabled = false; // Independent dynamic mode toggle
+
+// Enhanced audio analysis system
+let adaptiveSystem = {
+    // Dynamic thresholds based on audio history
+    frequencyThresholds: {
+        bass: 0.08,   // Lowered for better microphone sensitivity
+        mid: 0.06,    // Lowered for better microphone sensitivity  
+        treble: 0.04  // Lowered for better microphone sensitivity
+    },
+    volumeThreshold: 0.08, // Lowered for better microphone sensitivity
+    // Human auditory perception weights
+    perceptualWeight: { 
+        bass: 0.8,   // Lower weight as humans are less sensitive to bass
+        mid: 1.2,    // Higher weight for speech/melody range
+        treble: 1.0  // Standard weight
+    },
+    // Audio history for adaptive thresholds
+    history: {
+        bass: [],
+        mid: [], 
+        treble: [],
+        volume: [],
+        maxHistoryLength: 120 // 2 seconds at 60fps
+    }
+};
+
+// Effect decay system for natural fade-out
+let effectDecay = {
+    size: 0.95,       // 5% decay per frame
+    brightness: 0.92, // 8% decay per frame  
+    color: 0.90,      // 10% decay per frame
+    movement: 0.88    // 12% decay per frame
+};
+
+// Current effect intensities for decay tracking
+let currentEffects = {
+    sizeMultiplier: 1.0,
+    brightnessMultiplier: 1.0,
+    colorIntensity: 1.0,
+    movementIntensity: 0.0
+};
 
 // Lighting and appearance
 let ambientLight, directionalLight, brightnessLevel, glowIntensity;  // Declare without initialization
@@ -934,14 +975,14 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
     // Each bin represents (sampleRate / 2) / 128 Hz
     const binSize = (sampleRate / 2) / dataArray.length;
     
-    // Calculate bin ranges based on audio mode
+    // Enhanced frequency ranges based on musical perception
     let bassEnd, midEnd;
     if (audioMode === 'voice') {
         // Voice mode: focus on speech frequencies (500-2000Hz for clarity)
         bassEnd = Math.floor(500 / binSize);
         midEnd = Math.floor(2000 / binSize);
     } else {
-        // Music mode: traditional frequency separation
+        // Music mode: improved frequency separation (60-250Hz, 250-2000Hz, 2000-8000Hz)
         bassEnd = Math.floor(250 / binSize);
         midEnd = Math.floor(2000 / binSize);
     }
@@ -963,20 +1004,84 @@ function analyzeFrequencyBands(dataArray, sampleRate) {
         }
     }
     
-    // Apply smoothing to frequency bands
-    const smoothing = 0.7;
+    // Improved smoothing for better responsiveness
+    const smoothing = 0.4; // Reduced from 0.7 for better responsiveness
     let newBass = Math.min(1.0, (bassSum / bassCount / 255));
     let newMid = Math.min(1.0, (midSum / midCount / 255));
     let newTreble = Math.min(1.0, (trebleSum / trebleCount / 255));
+    
+    // Apply perceptual weighting with microphone boost
+    const isMicrophoneInput = microphoneEnabled && currentVolumeLevel > 0;
+    const micBoost = isMicrophoneInput ? 2.5 : 1.0; // 2.5x boost for microphone input
+    
+    newBass *= adaptiveSystem.perceptualWeight.bass * micBoost;
+    newMid *= adaptiveSystem.perceptualWeight.mid * micBoost;
+    newTreble *= adaptiveSystem.perceptualWeight.treble * micBoost;
     
     frequencyBands.bass = frequencyBands.bass * smoothing + newBass * (1 - smoothing);
     frequencyBands.mid = frequencyBands.mid * smoothing + newMid * (1 - smoothing);
     frequencyBands.treble = frequencyBands.treble * smoothing + newTreble * (1 - smoothing);
     
-    // Apply controlled boosting with proper clamping
-    frequencyBands.bass = Math.min(1.0, frequencyBands.bass * 1.05); // Reduced boost
-    frequencyBands.mid = Math.min(1.0, frequencyBands.mid);
-    frequencyBands.treble = Math.min(1.0, frequencyBands.treble * 1.1); // Reduced boost
+    // Update adaptive history
+    updateAdaptiveHistory();
+    
+    // Update dynamic thresholds
+    updateDynamicThresholds();
+    
+    // Peak detection for enhanced responsiveness
+    detectAudioPeaks();
+}
+
+// New function: Update adaptive history for dynamic thresholds
+function updateAdaptiveHistory() {
+    const history = adaptiveSystem.history;
+    const maxLength = history.maxHistoryLength;
+    
+    // Add current values to history
+    history.bass.push(frequencyBands.bass);
+    history.mid.push(frequencyBands.mid);
+    history.treble.push(frequencyBands.treble);
+    history.volume.push(currentVolumeLevel);
+    
+    // Keep history within max length
+    if (history.bass.length > maxLength) history.bass.shift();
+    if (history.mid.length > maxLength) history.mid.shift();
+    if (history.treble.length > maxLength) history.treble.shift();
+    if (history.volume.length > maxLength) history.volume.shift();
+}
+
+// New function: Update dynamic thresholds based on audio history
+function updateDynamicThresholds() {
+    const history = adaptiveSystem.history;
+    
+    if (history.bass.length < 30) return; // Wait for enough history
+    
+    // Calculate adaptive thresholds (80% of recent average)
+    const getAverage = (arr) => arr.slice(-60).reduce((a, b) => a + b, 0) / Math.min(arr.length, 60);
+    
+    adaptiveSystem.frequencyThresholds.bass = Math.max(0.05, getAverage(history.bass) * 0.8);
+    adaptiveSystem.frequencyThresholds.mid = Math.max(0.05, getAverage(history.mid) * 0.8);
+    adaptiveSystem.frequencyThresholds.treble = Math.max(0.05, getAverage(history.treble) * 0.8);
+    adaptiveSystem.volumeThreshold = Math.max(0.1, getAverage(history.volume) * 0.8);
+}
+
+// New function: Detect audio peaks for enhanced response
+function detectAudioPeaks() {
+    const history = adaptiveSystem.history;
+    if (history.bass.length < 5) return;
+    
+    // Simple peak detection (current > 150% of recent average)
+    const recent = 5;
+    const getRecentAvg = (arr) => arr.slice(-recent).reduce((a, b) => a + b, 0) / recent;
+    
+    const bassAvg = getRecentAvg(history.bass.slice(0, -1));
+    const midAvg = getRecentAvg(history.mid.slice(0, -1));
+    const trebleAvg = getRecentAvg(history.treble.slice(0, -1));
+    
+    // Apply peak boost for immediate response
+    if (frequencyBands.bass > bassAvg * 1.5) frequencyBands.bass *= 1.2;
+    if (frequencyBands.mid > midAvg * 1.5) frequencyBands.mid *= 1.2;
+    if (frequencyBands.treble > trebleAvg * 1.5) frequencyBands.treble *= 1.2;
 }
 
 function toggleAudioReactive() {
@@ -1005,10 +1110,18 @@ function toggleMicrophone() {
     if (!microphoneEnabled) {
         setupMicrophoneAnalysis().then(success => {
             if (success) {
+                // microphoneEnabled is already set to true in setupMicrophoneAnalysis
                 const button = document.getElementById('microphoneToggle');
                 button.innerHTML = '🎤 Mic ON';
                 button.title = 'Microphone is ON (click to disable)';
                 console.log('🎤 Microphone enabled');
+            } else {
+                // Failed to setup microphone, ensure flag remains false
+                microphoneEnabled = false;
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎙️ Mic Failed';
+                button.title = 'Microphone access failed';
+                console.log('🎤 Microphone setup failed');
             }
         });
     } else {
@@ -1031,121 +1144,179 @@ function toggleMicrophone() {
 function applyAudioReactiveEffects() {
     const volumeLevel = getVolumeLevel();
     
-    if (volumeLevel > 0.01 || (frequencyBands.bass > 0.01 || frequencyBands.mid > 0.01 || frequencyBands.treble > 0.01)) {
-        let sizeMultiplier, brightnessMultiplier, colorIntensity;
+    // Use adaptive thresholds instead of fixed ones
+    const shouldTrigger = volumeLevel > adaptiveSystem.volumeThreshold || 
+                         frequencyBands.bass > adaptiveSystem.frequencyThresholds.bass || 
+                         frequencyBands.mid > adaptiveSystem.frequencyThresholds.mid || 
+                         frequencyBands.treble > adaptiveSystem.frequencyThresholds.treble;
+    
+    if (shouldTrigger) {
+        // Calculate new effect intensities
+        let newSizeMultiplier, newBrightnessMultiplier, newColorIntensity;
         
-        // Volume factor for dynamic response to music amplitude
-        const volumeFactor = Math.max(0.1, volumeLevel * 2.0); // Min 10%, max 200% based on volume
-        
-        // Base audio mode effects (Music or Voice) with volume modulation
-        if (audioMode === 'music') {
-            // Music Mode: Traditional frequency separation × volume
-            sizeMultiplier = 1.0 + (frequencyBands.bass * 2.5 * volumeFactor); // Stronger base effect
-            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.0 * volumeFactor);
-            colorIntensity = 1.0 + (frequencyBands.treble * 1.5 * volumeFactor);
+        // Enhanced volume-responsive system
+        if (volumeLevel > adaptiveSystem.volumeThreshold) {
+            // Volume-level based effects with improved mapping
+            if (volumeLevel < 0.25) {
+                // Low volume: subtle pulse
+                newSizeMultiplier = 1.0 + (volumeLevel * 0.8);
+                newBrightnessMultiplier = 1.0 + (volumeLevel * 0.6);
+                newColorIntensity = 1.0 + (volumeLevel * 0.4);
+            } else if (volumeLevel < 0.6) {
+                // Medium volume: wave ripple
+                newSizeMultiplier = 1.0 + (frequencyBands.bass * 1.8);
+                newBrightnessMultiplier = 1.0 + (frequencyBands.mid * 1.6);
+                newColorIntensity = 1.0 + (frequencyBands.treble * 1.4);
+            } else {
+                // High volume: dramatic expansion
+                newSizeMultiplier = 1.0 + (frequencyBands.bass * 2.2);
+                newBrightnessMultiplier = 1.0 + (frequencyBands.mid * 2.0);
+                newColorIntensity = 1.0 + (frequencyBands.treble * 1.8);
+            }
         } else {
-            // Voice Mode: Focus on speech clarity × volume
-            sizeMultiplier = 1.0 + (frequencyBands.bass * 1.5 * volumeFactor);
-            brightnessMultiplier = 1.0 + (frequencyBands.mid * 2.5 * volumeFactor); // Enhanced speech
-            colorIntensity = 1.0 + (frequencyBands.treble * 1.2 * volumeFactor);
+            // Frequency-only effects (when volume is low but frequencies detected)
+            newSizeMultiplier = 1.0 + (frequencyBands.bass * 1.2);
+            newBrightnessMultiplier = 1.0 + (frequencyBands.mid * 1.0);
+            newColorIntensity = 1.0 + (frequencyBands.treble * 0.8);
         }
         
-        // Apply Dynamic Mode enhancement if enabled (only when sound is present)
-        if (dynamicModeEnabled && volumeLevel > 0.1) {
-            const dynamicBoost = 1.6; // 60% enhancement
-            sizeMultiplier = (sizeMultiplier - 1.0) * dynamicBoost + 1.0;
-            brightnessMultiplier = (brightnessMultiplier - 1.0) * dynamicBoost + 1.0;
-            colorIntensity = (colorIntensity - 1.0) * dynamicBoost + 1.0;
+        // Apply dynamic mode boost
+        if (dynamicModeEnabled) {
+            const boost = 1.4;
+            newSizeMultiplier = (newSizeMultiplier - 1.0) * boost + 1.0;
+            newBrightnessMultiplier = (newBrightnessMultiplier - 1.0) * boost + 1.0;
+            newColorIntensity = (newColorIntensity - 1.0) * boost + 1.0;
         }
         
-        // 1. Size effect
-        pointCloud.material.size = pointSize * sizeMultiplier;
+        // Update current effects (for decay system)
+        currentEffects.sizeMultiplier = Math.max(currentEffects.sizeMultiplier, newSizeMultiplier);
+        currentEffects.brightnessMultiplier = Math.max(currentEffects.brightnessMultiplier, newBrightnessMultiplier);
+        currentEffects.colorIntensity = Math.max(currentEffects.colorIntensity, newColorIntensity);
+    }
+    
+    // Apply decay to all effects for natural fade-out
+    currentEffects.sizeMultiplier = Math.max(1.0, currentEffects.sizeMultiplier * effectDecay.size);
+    currentEffects.brightnessMultiplier = Math.max(1.0, currentEffects.brightnessMultiplier * effectDecay.brightness);
+    currentEffects.colorIntensity = Math.max(1.0, currentEffects.colorIntensity * effectDecay.color);
+    currentEffects.movementIntensity *= effectDecay.movement;
+    
+    // Apply effects to visual elements
+    applyVisualEffects();
+    
+    // Apply movement effects
+    applyMovementEffects();
+    
+    // Enhanced debug logging
+    if (Math.random() < 0.01) {
+        const modeIcon = audioMode === 'music' ? '🎵' : '🎤';
+        const dynamicSuffix = dynamicModeEnabled ? ' +Dynamic' : '';
+        console.log(`${modeIcon} ${audioMode} mode${dynamicSuffix}: vol=${(volumeLevel * 100).toFixed(1)}% bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}% → size=${currentEffects.sizeMultiplier.toFixed(2)}x bright=${currentEffects.brightnessMultiplier.toFixed(2)}x color=${currentEffects.colorIntensity.toFixed(2)}x`);
+    }
+}
+
+// New function: Apply visual effects (size, brightness, color)
+function applyVisualEffects() {
+    if (!pointCloud) return;
+    
+    // 1. Size effect
+    pointCloud.material.size = pointSize * currentEffects.sizeMultiplier;
+    
+    // 2. Brightness effect
+    if (ambientLight) {
+        ambientLight.intensity = brightnessLevel * currentEffects.brightnessMultiplier;
+    }
+    if (directionalLight) {
+        directionalLight.intensity = brightnessLevel * 1.5 * currentEffects.brightnessMultiplier;
+    }
+    
+    // 3. Enhanced color intensity effect with better performance
+    if (pointCloud.geometry.attributes.color) {
+        const colors = pointCloud.geometry.attributes.color;
+        const originalColors = pointCloud.geometry.userData.originalColors;
         
-        // 2. Brightness effect
-        if (ambientLight) {
-            ambientLight.intensity = brightnessLevel * brightnessMultiplier;
-        }
-        if (directionalLight) {
-            directionalLight.intensity = brightnessLevel * 1.5 * brightnessMultiplier;
-        }
-        
-        // 3. Color intensity effect
-        if (pointCloud.geometry.attributes.color) {
-            const colors = pointCloud.geometry.attributes.color;
-            const originalColors = pointCloud.geometry.userData.originalColors;
+        if (originalColors) {
+            const colorArray = colors.array;
+            const step = Math.max(12, Math.floor(colorArray.length / 1000)); // Adaptive step size
             
-            if (originalColors) {
-                const colorArray = colors.array;
-                
-                // Apply to a subset of particles for performance
-                for (let i = 0; i < colorArray.length; i += 30) { // Every 10th particle
-                    if (i + 2 < colorArray.length) {
-                        colorArray[i] = Math.min(1.0, originalColors[i] * colorIntensity);     // R
-                        colorArray[i + 1] = Math.min(1.0, originalColors[i + 1] * colorIntensity); // G
-                        colorArray[i + 2] = Math.min(1.0, originalColors[i + 2] * colorIntensity); // B
-                    }
+            for (let i = 0; i < colorArray.length; i += step) {
+                if (i + 2 < colorArray.length) {
+                    colorArray[i] = Math.min(1.0, originalColors[i] * currentEffects.colorIntensity);
+                    colorArray[i + 1] = Math.min(1.0, originalColors[i + 1] * currentEffects.colorIntensity);
+                    colorArray[i + 2] = Math.min(1.0, originalColors[i + 2] * currentEffects.colorIntensity);
                 }
-                colors.needsUpdate = true;
             }
+            colors.needsUpdate = true;
+        }
+    }
+}
+
+// New function: Apply movement effects based on frequency analysis
+function applyMovementEffects() {
+    if (!originalPositions || !particleVelocities) return;
+    
+    // Enhanced movement effects using adaptive thresholds
+    if (audioMode === 'music') {
+        // Bass: outward expansion with adaptive threshold
+        if (frequencyBands.bass > adaptiveSystem.frequencyThresholds.bass * 1.5) {
+            const expansionForce = frequencyBands.bass * 0.12;
+            currentEffects.movementIntensity = Math.max(currentEffects.movementIntensity, expansionForce);
+            
+            applyExpansionEffect(expansionForce, 35); // Every 35th particle
         }
         
-        // 4. Audio-based movement effects (music mode only)
-        if (audioMode === 'music') {
-            // Different movement for different frequencies
-            if (originalPositions && particleVelocities) {
-                // Bass: outward expansion (punch effect)
-                if (frequencyBands.bass > 0.3) {
-                    const expansionForce = frequencyBands.bass * 0.15;
-                    for (let i = 0; i < particleVelocities.length; i += 40) {
-                        const centerX = 0, centerY = 0, centerZ = 0;
-                        const dx = originalPositions[i] - centerX;
-                        const dy = originalPositions[i + 1] - centerY;
-                        const dz = originalPositions[i + 2] - centerZ;
-                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                        if (distance > 0) {
-                            particleVelocities[i] += (dx / distance) * expansionForce;
-                            particleVelocities[i + 1] += (dy / distance) * expansionForce;
-                            particleVelocities[i + 2] += (dz / distance) * expansionForce;
-                        }
-                    }
-                }
-                
-                // Treble: subtle shimmer/vibration
-                if (frequencyBands.treble > 0.2) {
-                    const shimmerForce = frequencyBands.treble * 0.05;
-                    for (let i = 0; i < particleVelocities.length; i += 60) {
-                        particleVelocities[i] += (Math.random() - 0.5) * shimmerForce;
-                        particleVelocities[i + 1] += (Math.random() - 0.5) * shimmerForce;
-                        particleVelocities[i + 2] += (Math.random() - 0.5) * shimmerForce;
-                    }
-                }
-            }
-        } else if (volumeLevel > 0.3) {
-            // Volume-based expansion (original behavior)
-            const audioGravityStrength = volumeLevel * 0.5;
-            if (originalPositions && particleVelocities) {
-                const expansionForce = audioGravityStrength * 0.1;
-                for (let i = 0; i < particleVelocities.length; i += 30) {
-                    const centerX = 0, centerY = 0, centerZ = 0;
-                    const dx = originalPositions[i] - centerX;
-                    const dy = originalPositions[i + 1] - centerY;
-                    const dz = originalPositions[i + 2] - centerZ;
-                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                    if (distance > 0) {
-                        particleVelocities[i] += (dx / distance) * expansionForce;
-                        particleVelocities[i + 1] += (dy / distance) * expansionForce;
-                        particleVelocities[i + 2] += (dz / distance) * expansionForce;
-                    }
-                }
-            }
+        // Mid: rotating wave effect
+        if (frequencyBands.mid > adaptiveSystem.frequencyThresholds.mid * 1.2) {
+            const waveForce = frequencyBands.mid * 0.08;
+            applyWaveEffect(waveForce, 45); // Every 45th particle
         }
         
-        // Debug log occasionally
-        if (Math.random() < 0.01) {
-            const modeIcon = audioMode === 'music' ? '🎵' : '🎤';
-            const dynamicSuffix = dynamicModeEnabled ? ' +Dynamic' : '';
-            console.log(`${modeIcon} ${audioMode} mode${dynamicSuffix}: bass=${(frequencyBands.bass * 100).toFixed(1)}% mid=${(frequencyBands.mid * 100).toFixed(1)}% treble=${(frequencyBands.treble * 100).toFixed(1)}% → size=${sizeMultiplier.toFixed(2)}x`);
+        // Treble: shimmer effect with improved distribution
+        if (frequencyBands.treble > adaptiveSystem.frequencyThresholds.treble * 1.1) {
+            const shimmerForce = frequencyBands.treble * 0.04;
+            applyShimmerEffect(shimmerForce, 50); // Every 50th particle
         }
+    } else {
+        // Voice mode: gentler volume-based expansion
+        if (volumeLevel > adaptiveSystem.volumeThreshold * 1.5) {
+            const expansionForce = volumeLevel * 0.08;
+            applyExpansionEffect(expansionForce, 40);
+        }
+    }
+}
+
+// Helper function: Apply expansion effect
+function applyExpansionEffect(force, step) {
+    for (let i = 0; i < particleVelocities.length; i += step) {
+        const centerX = 0, centerY = 0, centerZ = 0;
+        const dx = originalPositions[i] - centerX;
+        const dy = originalPositions[i + 1] - centerY;
+        const dz = originalPositions[i + 2] - centerZ;
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (distance > 0) {
+            particleVelocities[i] += (dx / distance) * force;
+            particleVelocities[i + 1] += (dy / distance) * force;
+            particleVelocities[i + 2] += (dz / distance) * force;
+        }
+    }
+}
+
+// Helper function: Apply wave effect
+function applyWaveEffect(force, step) {
+    const time = Date.now() * 0.001;
+    for (let i = 0; i < particleVelocities.length; i += step) {
+        const angle = time + (i / step) * 0.1;
+        particleVelocities[i] += Math.sin(angle) * force * 0.5;
+        particleVelocities[i + 1] += Math.cos(angle) * force * 0.5;
+        particleVelocities[i + 2] += Math.sin(angle * 1.3) * force * 0.3;
+    }
+}
+
+// Helper function: Apply shimmer effect
+function applyShimmerEffect(force, step) {
+    for (let i = 0; i < particleVelocities.length; i += step) {
+        particleVelocities[i] += (Math.random() - 0.5) * force;
+        particleVelocities[i + 1] += (Math.random() - 0.5) * force;
+        particleVelocities[i + 2] += (Math.random() - 0.5) * force;
     }
 }
 
