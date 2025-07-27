@@ -181,7 +181,7 @@ jobs:
         if: inputs.enable-music == true
         run: |
           # Find the generated music (avoiding duplicated paths)
-          MUSIC_FILE=$(find immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.wav" -o -name "*.mp3" | head -1)
+          MUSIC_FILE=$(find archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.wav" -o -name "*.mp3" | head -1)
           if [ -n "$MUSIC_FILE" ]; then
             # Clean up duplicated path segments
             CLEAN_MUSIC_FILE=$(echo "$MUSIC_FILE" | sed 's|immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/|immersive-pointcloud-${{ steps.timestamp.outputs.value }}/music/|g')
