@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かわいいいちごとオルゴールの音楽ビデオ | Music Video Player</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            background: linear-gradient(135deg, #ffb6c1, #ffc0cb, #ffe4e1);
+            min-height: 100vh;
+            padding: 20px;
+            animation: backgroundShift 15s ease-in-out infinite;
+        }
+
+        @keyframes backgroundShift {
+            0%, 100% { background: linear-gradient(135deg, #ffb6c1, #ffc0cb, #ffe4e1); }
+            50% { background: linear-gradient(135deg, #ffe4e1, #ffb6c1, #ffc0cb); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #d63384;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header .subtitle {
+            color: #6c757d;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .metadata {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .metadata-item {
+            background: rgba(255, 192, 203, 0.3);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(214, 51, 132, 0.2);
+        }
+
+        .metadata-item strong {
+            color: #d63384;
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .media-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 182, 193, 0.5);
+        }
+
+        .media-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.15);
+        }
+
+        .media-section h2 {
+            color: #d63384;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ffb6c1;
+        }
+
+        .media-content {
+            position: relative;
+            width: 100%;
+            min-height: 200px;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .media-content img {
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .media-content video {
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+            border-radius: 15px;
+        }
+
+        .media-content audio {
+            width: 100%;
+            height: 60px;
+        }
+
+        .media-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: linear-gradient(45deg, #d63384, #e91e63);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .control-btn:hover {
+            background: linear-gradient(45deg, #c02c6b, #d81b60);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(214, 51, 132, 0.3);
+        }
+
+        .download-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255, 182, 193, 0.5);
+        }
+
+        .download-section h2 {
+            color: #d63384;
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+        }
+
+        .download-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .download-item {
+            background: rgba(255, 192, 203, 0.2);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(214, 51, 132, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .download-item:hover {
+            background: rgba(255, 192, 203, 0.4);
+            transform: translateY(-3px);
+        }
+
+        .download-item h3 {
+            color: #d63384;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .download-item p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #d63384;
+            border-radius: 50%;
+            animation: sparkle 2s infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { opacity: 0; transform: scale(0); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .media-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .metadata {
+                grid-template-columns: 1fr;
+            }
+            
+            .download-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍓 かわいいいちごとオルゴールの音楽ビデオ 🎵</h1>
+            <p class="subtitle">Cute Strawberry & Music Box - Musical Experience</p>
+            
+            <div class="metadata">
+                <div class="metadata-item">
+                    <strong>音楽コンセプト:</strong> かわいいいちごとオルゴールの曲
+                </div>
+                <div class="metadata-item">
+                    <strong>プロジェクトID:</strong> music-video-20250728-16568543273
+                </div>
+                <div class="metadata-item">
+                    <strong>ブランチ:</strong> music-video/20250728-16568543273
+                </div>
+                <div class="metadata-item">
+                    <strong>生成日時:</strong> 2025-07-28T16:56:85:43:273Z
+                </div>
+            </div>
+        </div>
+
+        <div class="media-grid">
+            <!-- Generated Image Section -->
+            <div class="media-section">
+                <h2>🖼️ Generated Image</h2>
+                <div class="media-content">
+                    <img src="images/generated-image.png" alt="Generated Strawberry Image" loading="lazy">
+                </div>
+                <div class="media-controls">
+                    <a href="images/generated-image.png" download class="control-btn">📥 画像をダウンロード</a>
+                    <button class="control-btn" onclick="openFullscreen('generated-image')">🔍 フルスクリーン表示</button>
+                </div>
+            </div>
+
+            <!-- Generated Music Section -->
+            <div class="media-section">
+                <h2>🎵 Generated Music</h2>
+                <div class="media-content">
+                    <audio controls preload="metadata" id="music-player">
+                        <source src="music/generated-music.wav" type="audio/wav">
+                        お使いのブラウザは音楽再生をサポートしていません。
+                    </audio>
+                </div>
+                <div class="media-controls">
+                    <a href="music/generated-music.wav" download class="control-btn">📥 音楽をダウンロード</a>
+                    <button class="control-btn" onclick="toggleMusic()">⏯️ 再生/停止</button>
+                    <button class="control-btn" onclick="toggleLoop()">🔄 ループ再生</button>
+                </div>
+            </div>
+
+            <!-- Individual Video Section -->
+            <div class="media-section">
+                <h2>🎬 Individual Video</h2>
+                <div class="media-content">
+                    <video controls preload="metadata" id="video-player" muted>
+                        <source src="videos/segment-1.mp4" type="video/mp4">
+                        お使いのブラウザは動画再生をサポートしていません。
+                    </video>
+                </div>
+                <div class="media-controls">
+                    <a href="videos/segment-1.mp4" download class="control-btn">📥 動画をダウンロード</a>
+                    <button class="control-btn" onclick="toggleVideo()">⏯️ 再生/停止</button>
+                    <button class="control-btn" onclick="toggleVideoFullscreen()">📺 フルスクリーン</button>
+                </div>
+            </div>
+
+            <!-- Final Music Video Section -->
+            <div class="media-section">
+                <h2>🎥 Final Music Video</h2>
+                <div class="media-content">
+                    <video controls preload="metadata" id="final-video-player">
+                        <source src="final/final-music-video.mp4" type="video/mp4">
+                        お使いのブラウザは動画再生をサポートしていません。
+                    </video>
+                </div>
+                <div class="media-controls">
+                    <a href="final/final-music-video.mp4" download class="control-btn">📥 最終動画をダウンロード</a>
+                    <button class="control-btn" onclick="toggleFinalVideo()">⏯️ 再生/停止</button>
+                    <button class="control-btn" onclick="toggleFinalVideoFullscreen()">📺 フルスクリーン</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="download-section">
+            <h2>📦 ダウンロードセンター</h2>
+            <p>すべてのメディアファイルを個別にダウンロードできます</p>
+            
+            <div class="download-grid">
+                <div class="download-item">
+                    <h3>🍓 画像ファイル</h3>
+                    <p>生成されたかわいいいちごの画像</p>
+                    <a href="images/generated-image.png" download class="control-btn">PNG形式でダウンロード</a>
+                </div>
+                
+                <div class="download-item">
+                    <h3>🎵 音楽ファイル</h3>
+                    <p>オルゴールの美しいメロディー</p>
+                    <a href="music/generated-music.wav" download class="control-btn">WAV形式でダウンロード</a>
+                </div>
+                
+                <div class="download-item">
+                    <h3>🎬 個別動画</h3>
+                    <p>音楽なしの純粋な映像</p>
+                    <a href="videos/segment-1.mp4" download class="control-btn">MP4形式でダウンロード</a>
+                </div>
+                
+                <div class="download-item">
+                    <h3>🎥 完成版動画</h3>
+                    <p>音楽と映像が統合された最終作品</p>
+                    <a href="final/final-music-video.mp4" download class="control-btn">MP4形式でダウンロード</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>🎀 Generated with AI Magic ✨ | 2025-07-28 🌸</p>
+            <p>GitHub Pages で公開中 | Optimized for all devices 📱💻</p>
+        </div>
+    </div>
+
+    <!-- Sparkle Effects -->
+    <div class="sparkle" style="top: 10%; left: 5%; animation-delay: 0s;"></div>
+    <div class="sparkle" style="top: 20%; right: 10%; animation-delay: 0.5s;"></div>
+    <div class="sparkle" style="top: 60%; left: 15%; animation-delay: 1s;"></div>
+    <div class="sparkle" style="bottom: 30%; right: 20%; animation-delay: 1.5s;"></div>
+    <div class="sparkle" style="bottom: 10%; left: 30%; animation-delay: 2s;"></div>
+
+    <script>
+        // Music player controls
+        function toggleMusic() {
+            const audio = document.getElementById('music-player');
+            if (audio.paused) {
+                audio.play();
+            } else {
+                audio.pause();
+            }
+        }
+
+        function toggleLoop() {
+            const audio = document.getElementById('music-player');
+            audio.loop = !audio.loop;
+            event.target.style.background = audio.loop ? 
+                'linear-gradient(45deg, #28a745, #20c997)' : 
+                'linear-gradient(45deg, #d63384, #e91e63)';
+            event.target.innerHTML = audio.loop ? '🔄 ループ中' : '🔄 ループ再生';
+        }
+
+        // Video player controls
+        function toggleVideo() {
+            const video = document.getElementById('video-player');
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        }
+
+        function toggleVideoFullscreen() {
+            const video = document.getElementById('video-player');
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        }
+
+        // Final video player controls
+        function toggleFinalVideo() {
+            const video = document.getElementById('final-video-player');
+            if (video.paused) {
+                video.play();
+            } else {
+                video.pause();
+            }
+        }
+
+        function toggleFinalVideoFullscreen() {
+            const video = document.getElementById('final-video-player');
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        }
+
+        // Image fullscreen
+        function openFullscreen(imageId) {
+            const img = document.querySelector(`img[alt*="Strawberry"]`);
+            const fullscreenDiv = document.createElement('div');
+            fullscreenDiv.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                cursor: pointer;
+            `;
+            
+            const fullImg = img.cloneNode();
+            fullImg.style.cssText = `
+                max-width: 90vw;
+                max-height: 90vh;
+                object-fit: contain;
+                border-radius: 10px;
+            `;
+            
+            fullscreenDiv.appendChild(fullImg);
+            fullscreenDiv.onclick = () => document.body.removeChild(fullscreenDiv);
+            document.body.appendChild(fullscreenDiv);
+        }
+
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects to media sections
+            const mediaSections = document.querySelectorAll('.media-section');
+            mediaSections.forEach(section => {
+                section.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-8px) scale(1.02)';
+                });
+                
+                section.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+
+            // Auto-pause other media when one starts playing
+            const audioElements = document.querySelectorAll('audio, video');
+            audioElements.forEach(element => {
+                element.addEventListener('play', function() {
+                    audioElements.forEach(other => {
+                        if (other !== this && !other.paused) {
+                            other.pause();
+                        }
+                    });
+                });
+            });
+
+            // Add loading states
+            const mediaElements = document.querySelectorAll('img, audio, video');
+            mediaElements.forEach(element => {
+                element.addEventListener('loadstart', function() {
+                    this.parentElement.style.opacity = '0.7';
+                });
+                
+                element.addEventListener('loadeddata', function() {
+                    this.parentElement.style.opacity = '1';
+                });
+            });
+        });
+
+        // Create floating strawberry animation
+        function createFloatingStrawberry() {
+            const strawberry = document.createElement('div');
+            strawberry.innerHTML = '🍓';
+            strawberry.style.cssText = `
+                position: fixed;
+                font-size: 20px;
+                pointer-events: none;
+                z-index: 1000;
+                animation: float 6s linear infinite;
+                left: ${Math.random() * 100}vw;
+                top: 100vh;
+            `;
+            
+            document.body.appendChild(strawberry);
+            
+            setTimeout(() => {
+                if (strawberry.parentNode) {
+                    strawberry.parentNode.removeChild(strawberry);
+                }
+            }, 6000);
+        }
+
+        // Add floating strawberry CSS
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes float {
+                0% {
+                    transform: translateY(0) rotate(0deg);
+                    opacity: 1;
+                }
+                100% {
+                    transform: translateY(-100vh) rotate(360deg);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Create strawberries periodically
+        setInterval(createFloatingStrawberry, 3000);
+    </script>
+</body>
+</html>
