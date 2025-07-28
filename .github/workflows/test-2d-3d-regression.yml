@@ -93,7 +93,7 @@ jobs:
           
       - name: 📊 Test Results Summary  
         run: |
-          LIVE_URL="https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
+          LIVE_URL="https://nyukicorn.github.io/kamuicode-workflow/"
           
           echo "# 🧪 2D→3D Regression Test Results" > docs/${{ steps.setup.outputs.folder-name }}/test-report.md
           echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
@@ -169,12 +169,12 @@ jobs:
           
           echo ""
           echo "✅ All validations passed!"
-          echo "🌐 GitHub Pages URL: ${{ steps.pages.outputs.page_url }}${{ steps.setup.outputs.folder-name }}/"
+          echo "🌐 GitHub Pages URL: ${{ steps.pages.outputs.page_url }}"
           
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/
+          path: docs/${{ steps.setup.outputs.folder-name }}/
       
       - name: 🚀 Deploy to GitHub Pages
         id: pages
