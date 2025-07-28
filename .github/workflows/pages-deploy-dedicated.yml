@@ -1,0 +1,54 @@
+name: 🚀 Deploy to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: ["🧪 2D→3D Regression Test"]
+    types:
+      - completed
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: 📥 Download Test Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          pattern: regression-test-2d-3d-*
+          path: ./downloaded-artifacts
+          
+      - name: 📁 Prepare Pages Content
+        run: |
+          # Find the latest regression test folder
+          LATEST_FOLDER=$(ls -1 downloaded-artifacts/regression-test-2d-3d-*/test-2d-3d-* | head -1)
+          echo "Latest folder: $LATEST_FOLDER"
+          
+          # Copy to pages directory
+          mkdir -p pages-content
+          cp -r "$LATEST_FOLDER"/* pages-content/
+          
+      - name: 📦 Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-content/
+          
+      - name: 🚀 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
