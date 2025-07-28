@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Three.js Viewer System - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(45deg, #4ecdc4, #44a08d, #ff6b6b, #ffd93d);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .test-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            border-color: rgba(255,255,255,0.3);
+        }
+        
+        .test-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-card .icon {
+            font-size: 2em;
+        }
+        
+        .test-card p {
+            margin-bottom: 20px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        
+        .test-features {
+            list-style: none;
+            margin-bottom: 20px;
+        }
+        
+        .test-features li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .test-features li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+        
+        .test-button {
+            display: inline-block;
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            text-decoration: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(78,205,196,0.3);
+        }
+        
+        .test-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(78,205,196,0.5);
+        }
+        
+        .integration-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .integration-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .integration-card {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .integration-button {
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            box-shadow: 0 5px 15px rgba(255,107,107,0.3);
+        }
+        
+        .integration-button:hover {
+            box-shadow: 0 8px 25px rgba(255,107,107,0.5);
+        }
+        
+        .instructions {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 15px;
+            color: #4ecdc4;
+        }
+        
+        .instructions code {
+            background: rgba(0,0,0,0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: rgba(78,205,196,0.2);
+            color: #4ecdc4;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Three.js Viewer System Test Suite</h1>
+            <p>Complete unit tests for all shared components and panorama viewer</p>
+            <div class="status-badge">✅ All Tests Ready</div>
+        </div>
+
+        <div class="test-grid">
+            <!-- Audio Reactive System Test -->
+            <div class="test-card">
+                <h3><span class="icon">🎵</span>Audio Reactive System</h3>
+                <p>Test Web Audio API integration, microphone access, and frequency analysis capabilities.</p>
+                <ul class="test-features">
+                    <li>Web Audio API initialization</li>
+                    <li>Microphone access permissions</li>
+                    <li>Real-time frequency analysis</li>
+                    <li>Audio reactive effects</li>
+                    <li>Performance monitoring</li>
+                </ul>
+                <a href="shared-viewer-components/test-audio-reactive-system.html" class="test-button" target="_blank">
+                    🚀 Run Audio Test
+                </a>
+            </div>
+
+            <!-- Camera Controls Test -->
+            <div class="test-card">
+                <h3><span class="icon">📷</span>Camera Controls</h3>
+                <p>Test Three.js camera system, OrbitControls, and positioning functions.</p>
+                <ul class="test-features">
+                    <li>Camera system initialization</li>
+                    <li>OrbitControls configuration</li>
+                    <li>Position accuracy testing</li>
+                    <li>Auto-rotation controls</li>
+                    <li>Window resize handling</li>
+                </ul>
+                <a href="shared-viewer-components/test-camera-controls.html" class="test-button" target="_blank">
+                    🚀 Run Camera Test
+                </a>
+            </div>
+
+            <!-- Mouse Interaction Test -->
+            <div class="test-card">
+                <h3><span class="icon">🖱️</span>Mouse Interaction</h3>
+                <p>Test gravity effects, mouse trails, and interactive particle manipulation.</p>
+                <ul class="test-features">
+                    <li>3 gravity modes (Circle/Square/Linear)</li>
+                    <li>Mouse trail visualization</li>
+                    <li>Wave effect intensity</li>
+                    <li>Real-time parameter control</li>
+                    <li>5000 particle interaction</li>
+                </ul>
+                <a href="shared-viewer-components/test-mouse-interaction.html" class="test-button" target="_blank">
+                    🚀 Run Mouse Test
+                </a>
+            </div>
+
+            <!-- Particle Effects Test -->
+            <div class="test-card">
+                <h3><span class="icon">⚡</span>Particle Effects</h3>
+                <p>Test depth effects, color mapping, and GPU-accelerated particle rendering.</p>
+                <ul class="test-features">
+                    <li>Dynamic depth-based coloring</li>
+                    <li>GPU shader optimization</li>
+                    <li>Real-time color adjustment</li>
+                    <li>Performance monitoring</li>
+                    <li>WebGL compatibility</li>
+                </ul>
+                <a href="shared-viewer-components/test-particle-effects.html" class="test-button" target="_blank">
+                    🚀 Run Particle Test
+                </a>
+            </div>
+
+            <!-- UI Controls Test -->
+            <div class="test-card">
+                <h3><span class="icon">🎮</span>UI Controls</h3>
+                <p>Test auto-hide interface, keyboard shortcuts, and responsive design.</p>
+                <ul class="test-features">
+                    <li>Auto-hide UI panels</li>
+                    <li>Keyboard shortcuts (WASD, Space)</li>
+                    <li>Responsive design</li>
+                    <li>Loading indicators</li>
+                    <li>Modern UX patterns</li>
+                </ul>
+                <a href="shared-viewer-components/test-ui-controls.html" class="test-button" target="_blank">
+                    🚀 Run UI Test
+                </a>
+            </div>
+
+            <!-- Panorama Script Test -->
+            <div class="test-card">
+                <h3><span class="icon">🌐</span>Panorama Script</h3>
+                <p>Test spherical particle distribution, image analysis, and 360° panoramic viewing.</p>
+                <ul class="test-features">
+                    <li>Uniform spherical distribution</li>
+                    <li>Image pixel analysis</li>
+                    <li>25,000 particle generation</li>
+                    <li>360° camera placement</li>
+                    <li>Density level testing</li>
+                </ul>
+                <a href="threejs-panorama-viewer/test-panorama-unit.html" class="test-button" target="_blank">
+                    🚀 Run Panorama Test
+                </a>
+            </div>
+        </div>
+
+        <div class="integration-section">
+            <h2>🔄 Integration Tests</h2>
+            <p>Test complete systems with all components working together</p>
+            
+            <div class="integration-grid">
+                <div class="integration-card">
+                    <h3>📊 Point Cloud Viewer (Integrated)</h3>
+                    <p>Complete point cloud viewer with all shared components integrated. Tests PLY loading, 15,000+ particles, and full feature set.</p>
+                    <a href="threejs-pointcloud-viewer/test-refactored-viewer.html" class="test-button integration-button" target="_blank">
+                        🚀 Run Point Cloud Integration
+                    </a>
+                </div>
+                
+                <div class="integration-card">
+                    <h3>🌐 Panorama Viewer (Integrated)</h3>
+                    <p>Complete 360° panorama viewer with spherical particle system. Tests image loading, 25,000 particles, and panoramic experience.</p>
+                    <a href="threejs-panorama-viewer/test-panorama-viewer.html" class="test-button integration-button" target="_blank">
+                        🚀 Run Panorama Integration
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h3>📋 How to Use These Tests</h3>
+            <p><strong>Option 1 - Direct File Access:</strong> Click any test button above to open the test directly in your browser.</p>
+            <p><strong>Option 2 - Local Server (Recommended):</strong></p>
+            <p>Run the test server for better performance and shared component loading:</p>
+            <p><code>cd /Users/nukuiyuki/Dev/kamuicode-workflow/.github/actions/kamui-modules</code></p>
+            <p><code>./unit-test-server.sh</code></p>
+            <p>Then access: <code>http://localhost:8002/test-index.html</code></p>
+            
+            <h3 style="margin-top: 20px;">🧪 What Each Test Does</h3>
+            <p><strong>Unit Tests:</strong> Verify individual component functionality, API correctness, and error handling.</p>
+            <p><strong>Integration Tests:</strong> Verify complete systems working together with real user scenarios.</p>
+            <p><strong>Performance Tests:</strong> Monitor frame rates, memory usage, and GPU utilization.</p>
+            <p><strong>Manual Tests:</strong> Interactive controls for visual verification and user experience testing.</p>
+        </div>
+    </div>
+
+    <script>
+        // Add some interactive feedback
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.test-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-5px) scale(1.02)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0) scale(1)';
+                });
+            });
+            
+            // Add click tracking
+            const buttons = document.querySelectorAll('.test-button');
+            buttons.forEach(button => {
+                button.addEventListener('click', function() {
+                    console.log('🚀 Opening test:', this.textContent.trim());
+                });
+            });
+        });
+    </script>
+</body>
+</html>

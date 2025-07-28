@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Audio Reactive System - Unit Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 10px;
+        }
+        
+        .test-section {
+            background: rgba(255,255,255,0.1);
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        button.active {
+            background: rgba(0,150,255,0.6);
+            border-color: rgba(0,150,255,0.8);
+        }
+        
+        .test-results {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .test-canvas {
+            width: 100%;
+            height: 200px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success { color: #4ecdc4; }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffd93d; }
+        
+        .frequency-bars {
+            display: flex;
+            height: 100px;
+            align-items: end;
+            gap: 2px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .frequency-bar {
+            flex: 1;
+            background: linear-gradient(to top, #ff6b6b, #4ecdc4);
+            min-height: 2px;
+            border-radius: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🎵 Audio Reactive System - Unit Test</h1>
+            <p>Testing Web Audio API integration, frequency analysis, and audio-reactive effects</p>
+        </div>
+
+        <div class="test-section">
+            <h3>📊 Audio System Status</h3>
+            <div id="audio-status" class="test-results">
+                Initializing audio system tests...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎮 Audio Controls Test</h3>
+            <div class="test-controls">
+                <button onclick="testAudioInitialization()">🔧 Test Audio Init</button>
+                <button onclick="testMicrophoneAccess()">🎙️ Test Microphone</button>
+                <button onclick="testFrequencyAnalysis()">📈 Test Frequency Analysis</button>
+                <button onclick="testAudioReactiveEffects()">⚡ Test Audio Effects</button>
+            </div>
+            
+            <div class="test-section">
+                <h4>🎚️ Frequency Visualization</h4>
+                <div id="frequency-display" class="frequency-bars">
+                    <!-- Frequency bars will be generated here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Manual Tests</h3>
+            <div class="test-controls">
+                <button onclick="toggleAudioReactiveTest()">🔇 Toggle Audio Reactive</button>
+                <button onclick="toggleMicrophoneTest()">🎙️ Toggle Microphone</button>
+                <button onclick="toggleAudioModeTest()">🎵 Toggle Audio Mode</button>
+                <button onclick="resetAudioSystemTest()">🔄 Reset Audio System</button>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Test Results</h3>
+            <div id="test-results" class="test-results">
+                Ready to run tests...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📈 Performance Metrics</h3>
+            <div id="performance-metrics" class="test-results">
+                Performance data will appear here...
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js for testing integration -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Audio Reactive System -->
+    <script src="audio-reactive-system.js"></script>
+    
+    <!-- Unit Test Script -->
+    <script>
+        // Test state tracking
+        let testResults = [];
+        let performanceMetrics = [];
+        let testStartTime = Date.now();
+        
+        // Utility functions
+        function logTest(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            testResults.push({message: logEntry, type});
+            updateTestResultsDisplay();
+            console.log(logEntry);
+        }
+        
+        function updateTestResultsDisplay() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.map(result => 
+                `<div class="${result.type}">${result.message}</div>`
+            ).join('');
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function updateAudioStatus(message) {
+            document.getElementById('audio-status').innerHTML = `<div class="success">${message}</div>`;
+        }
+        
+        function updatePerformanceMetrics() {
+            const metricsDiv = document.getElementById('performance-metrics');
+            const uptime = ((Date.now() - testStartTime) / 1000).toFixed(1);
+            
+            metricsDiv.innerHTML = `
+                <div>⏱️ Test Uptime: ${uptime}s</div>
+                <div>🔊 Audio Context State: ${typeof AudioContext !== 'undefined' ? 'Available' : 'Not Available'}</div>
+                <div>🎙️ Microphone Support: ${navigator.mediaDevices ? 'Supported' : 'Not Supported'}</div>
+                <div>📊 Test Count: ${testResults.length}</div>
+                <div>✅ Success Rate: ${testResults.filter(r => r.type === 'success').length}/${testResults.length}</div>
+            `;
+        }
+        
+        // Initialize frequency visualization
+        function initializeFrequencyDisplay() {
+            const display = document.getElementById('frequency-display');
+            display.innerHTML = '';
+            for (let i = 0; i < 32; i++) {
+                const bar = document.createElement('div');
+                bar.className = 'frequency-bar';
+                bar.style.height = '2px';
+                display.appendChild(bar);
+            }
+        }
+        
+        function updateFrequencyDisplay(frequencies = null) {
+            const bars = document.querySelectorAll('.frequency-bar');
+            if (frequencies && frequencies.length > 0) {
+                bars.forEach((bar, index) => {
+                    const value = frequencies[index] || 0;
+                    const height = Math.max(2, (value / 255) * 90);
+                    bar.style.height = `${height}px`;
+                });
+            } else {
+                // Demo pattern when no audio
+                bars.forEach((bar, index) => {
+                    const time = Date.now() / 1000;
+                    const height = 20 + Math.sin(time * 2 + index * 0.5) * 15;
+                    bar.style.height = `${height}px`;
+                });
+            }
+        }
+        
+        // Test Functions
+        async function testAudioInitialization() {
+            logTest('🔧 Testing Audio System Initialization...', 'info');
+            
+            try {
+                // Test if audio reactive system functions exist
+                const requiredFunctions = [
+                    'initializeAudioReactiveSystem',
+                    'applyAudioReactiveEffects',
+                    'toggleAudioReactive',
+                    'toggleMicrophone'
+                ];
+                
+                let missingFunctions = [];
+                requiredFunctions.forEach(funcName => {
+                    if (typeof window[funcName] !== 'function') {
+                        missingFunctions.push(funcName);
+                    }
+                });
+                
+                if (missingFunctions.length > 0) {
+                    logTest(`❌ Missing functions: ${missingFunctions.join(', ')}`, 'error');
+                    return false;
+                }
+                
+                // Test Web Audio API availability
+                if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') {
+                    logTest('❌ Web Audio API not supported', 'error');
+                    return false;
+                }
+                
+                logTest('✅ Audio system initialization test passed', 'success');
+                updateAudioStatus('Audio system functions are properly loaded');
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Audio initialization test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testMicrophoneAccess() {
+            logTest('🎙️ Testing Microphone Access...', 'info');
+            
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    logTest('❌ getUserMedia not supported', 'error');
+                    return false;
+                }
+                
+                // Test microphone permission (will prompt user)
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                logTest('✅ Microphone access granted', 'success');
+                
+                // Stop the stream immediately after testing
+                stream.getTracks().forEach(track => track.stop());
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`⚠️ Microphone access denied or failed: ${error.message}`, 'warning');
+                return false;
+            }
+        }
+        
+        function testFrequencyAnalysis() {
+            logTest('📈 Testing Frequency Analysis...', 'info');
+            
+            try {
+                // Create a test audio context
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                const testContext = new AudioContextClass();
+                
+                // Create test analyser
+                const analyser = testContext.createAnalyser();
+                analyser.fftSize = 256;
+                
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+                
+                // Test frequency data retrieval
+                analyser.getByteFrequencyData(dataArray);
+                
+                logTest(`✅ Frequency analysis test passed - Buffer size: ${bufferLength}`, 'success');
+                
+                // Clean up
+                testContext.close();
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Frequency analysis test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testAudioReactiveEffects() {
+            logTest('⚡ Testing Audio Reactive Effects...', 'info');
+            
+            try {
+                // Test if global audio reactive variables exist
+                const audioVars = ['audioReactiveEnabled', 'microphoneEnabled'];
+                
+                audioVars.forEach(varName => {
+                    if (typeof window[varName] === 'undefined') {
+                        logTest(`⚠️ Audio variable ${varName} not found`, 'warning');
+                    } else {
+                        logTest(`✅ Audio variable ${varName} exists: ${window[varName]}`, 'success');
+                    }
+                });
+                
+                // Test if we can call audio reactive functions without errors
+                if (typeof window.applyAudioReactiveEffects === 'function') {
+                    // This should not throw an error even without audio context
+                    window.applyAudioReactiveEffects();
+                    logTest('✅ applyAudioReactiveEffects() callable', 'success');
+                } else {
+                    logTest('❌ applyAudioReactiveEffects() not found', 'error');
+                }
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Audio reactive effects test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Manual test functions
+        function toggleAudioReactiveTest() {
+            try {
+                if (typeof toggleAudioReactive === 'function') {
+                    toggleAudioReactive();
+                    logTest('✅ toggleAudioReactive() executed', 'success');
+                } else {
+                    logTest('❌ toggleAudioReactive() not available', 'error');
+                }
+            } catch (error) {
+                logTest(`❌ toggleAudioReactive() failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function toggleMicrophoneTest() {
+            try {
+                if (typeof toggleMicrophone === 'function') {
+                    toggleMicrophone();
+                    logTest('✅ toggleMicrophone() executed', 'success');
+                } else {
+                    logTest('❌ toggleMicrophone() not available', 'error');
+                }
+            } catch (error) {
+                logTest(`❌ toggleMicrophone() failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function toggleAudioModeTest() {
+            try {
+                if (typeof toggleAudioMode === 'function') {
+                    toggleAudioMode();
+                    logTest('✅ toggleAudioMode() executed', 'success');
+                } else {
+                    logTest('❌ toggleAudioMode() not available', 'error');
+                }
+            } catch (error) {
+                logTest(`❌ toggleAudioMode() failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function resetAudioSystemTest() {
+            try {
+                if (typeof resetToNormalState === 'function') {
+                    resetToNormalState();
+                    logTest('✅ resetToNormalState() executed', 'success');
+                } else {
+                    logTest('❌ resetToNormalState() not available', 'error');
+                }
+            } catch (error) {
+                logTest(`❌ resetToNormalState() failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Run comprehensive test suite
+        async function runAllTests() {
+            logTest('🚀 Starting comprehensive audio system tests...', 'info');
+            
+            const tests = [
+                testAudioInitialization,
+                testFrequencyAnalysis,
+                testAudioReactiveEffects
+            ];
+            
+            let passedTests = 0;
+            
+            for (const test of tests) {
+                const result = await test();
+                if (result) passedTests++;
+            }
+            
+            logTest(`📊 Test Summary: ${passedTests}/${tests.length} tests passed`, 
+                   passedTests === tests.length ? 'success' : 'warning');
+        }
+        
+        // Initialize the test environment
+        function initializeTests() {
+            logTest('🧪 Audio Reactive System Unit Test initialized', 'info');
+            updateAudioStatus('Test environment ready');
+            initializeFrequencyDisplay();
+            
+            // Update performance metrics every second
+            setInterval(updatePerformanceMetrics, 1000);
+            setInterval(updateFrequencyDisplay, 100);
+            
+            // Run initial tests
+            setTimeout(runAllTests, 1000);
+        }
+        
+        // Start tests when page loads
+        document.addEventListener('DOMContentLoaded', initializeTests);
+    </script>
+</body>
+</html>

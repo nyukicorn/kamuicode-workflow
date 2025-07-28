@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📷 Camera Controls - Unit Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border-radius: 10px;
+        }
+        
+        .test-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        
+        .test-canvas-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-controls-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-section {
+            background: rgba(0,0,0,0.3);
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        button.active {
+            background: rgba(68,181,209,0.6);
+            border-color: rgba(68,181,209,0.8);
+        }
+        
+        .test-results {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .camera-info {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .success { color: #4ecdc4; }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffd93d; }
+        .info { color: #87ceeb; }
+        
+        #test-canvas {
+            width: 100%;
+            height: 400px;
+            border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>📷 Camera Controls System - Unit Test</h1>
+            <p>Testing Three.js camera initialization, OrbitControls, and navigation functions</p>
+        </div>
+
+        <div class="test-layout">
+            <div class="test-canvas-container">
+                <h3>🎥 Camera Test Viewport</h3>
+                <div id="test-canvas"></div>
+                
+                <div class="test-section">
+                    <h4>📊 Camera Information</h4>
+                    <div id="camera-info" class="camera-info">
+                        Camera system not initialized...
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-controls-container">
+                <div class="test-section">
+                    <h3>🔧 Initialization Tests</h3>
+                    <div class="test-controls">
+                        <button onclick="testCameraSystemInit()">🚀 Test Init</button>
+                        <button onclick="testOrbitControlsSetup()">🎮 Test Controls</button>
+                        <button onclick="testCameraPositioning()">📍 Test Position</button>
+                        <button onclick="testWindowResize()">📱 Test Resize</button>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>🎮 Manual Controls</h3>
+                    <div class="test-controls">
+                        <button onclick="toggleAutoRotateTest()">🔄 Auto Rotate</button>
+                        <button onclick="resetCameraTest()">🏠 Reset Camera</button>
+                        <button onclick="updateRotationSpeedTest()">⚡ Speed Test</button>
+                        <button onclick="testKeyboardControls()">⌨️ Keyboard</button>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label>Rotation Speed:</label>
+                        <input type="range" id="rotationSpeed" min="0.1" max="5.0" step="0.1" value="1.0" 
+                               onchange="updateRotationSpeedTest(this.value)">
+                        <span id="speedValue">1.0</span>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>📐 Camera Positioning</h3>
+                    <div>
+                        <label>X: <input type="range" id="camX" min="-200" max="200" step="10" value="0" 
+                                        onchange="setCameraPositionTest()"></label>
+                    </div>
+                    <div>
+                        <label>Y: <input type="range" id="camY" min="-200" max="200" step="10" value="0" 
+                                        onchange="setCameraPositionTest()"></label>
+                    </div>
+                    <div>
+                        <label>Z: <input type="range" id="camZ" min="10" max="500" step="10" value="100" 
+                                        onchange="setCameraPositionTest()"></label>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>📋 Test Results</h3>
+                    <div id="test-results" class="test-results">
+                        Ready to run camera tests...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Camera Controls System -->
+    <script src="camera-controls.js"></script>
+    
+    <!-- Unit Test Script -->
+    <script>
+        // Test state
+        let testResults = [];
+        let testStartTime = Date.now();
+        let cameraSystemInitialized = false;
+        let testScene, testRenderer;
+        
+        // Utility functions
+        function logTest(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            testResults.push({message: logEntry, type});
+            updateTestResultsDisplay();
+            console.log(logEntry);
+        }
+        
+        function updateTestResultsDisplay() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.map(result => 
+                `<div class="${result.type}">${result.message}</div>`
+            ).join('');
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function updateCameraInfo() {
+            if (!cameraSystemInitialized || !camera) {
+                document.getElementById('camera-info').innerHTML = 'Camera system not initialized...';
+                return;
+            }
+            
+            const info = `
+                <div><strong>📷 Camera Position:</strong> x=${camera.position.x.toFixed(1)}, y=${camera.position.y.toFixed(1)}, z=${camera.position.z.toFixed(1)}</div>
+                <div><strong>🎯 Camera Target:</strong> x=${controls.target.x.toFixed(1)}, y=${controls.target.y.toFixed(1)}, z=${controls.target.z.toFixed(1)}</div>
+                <div><strong>🔄 Auto Rotate:</strong> ${controls.autoRotate ? 'ON' : 'OFF'} (Speed: ${controls.autoRotateSpeed})</div>
+                <div><strong>🎮 Controls:</strong> Damping: ${controls.enableDamping}, Zoom: ${controls.enableZoom}</div>
+                <div><strong>📐 FOV:</strong> ${camera.fov}°, Aspect: ${camera.aspect.toFixed(2)}</div>
+                <div><strong>🖥️ Renderer:</strong> ${renderer.domElement.width}x${renderer.domElement.height}</div>
+            `;
+            document.getElementById('camera-info').innerHTML = info;
+        }
+        
+        // Test Functions
+        function testCameraSystemInit() {
+            logTest('🚀 Testing Camera System Initialization...', 'info');
+            
+            try {
+                // Check if required functions exist
+                const requiredFunctions = [
+                    'initializeCameraSystem',
+                    'setCameraPosition',
+                    'setAutoRotateSettings',
+                    'updateCameraControls',
+                    'renderScene'
+                ];
+                
+                let missingFunctions = [];
+                requiredFunctions.forEach(funcName => {
+                    if (typeof window[funcName] !== 'function') {
+                        missingFunctions.push(funcName);
+                    }
+                });
+                
+                if (missingFunctions.length > 0) {
+                    logTest(`❌ Missing functions: ${missingFunctions.join(', ')}`, 'error');
+                    return false;
+                }
+                
+                // Initialize camera system
+                const containerElement = document.getElementById('test-canvas');
+                const cameraData = initializeCameraSystem(containerElement, '#1a1a1a');
+                
+                if (!cameraData || !cameraData.scene || !cameraData.camera || !cameraData.renderer || !cameraData.controls) {
+                    logTest('❌ Camera system initialization returned invalid data', 'error');
+                    return false;
+                }
+                
+                // Store global references
+                testScene = cameraData.scene;
+                
+                // Add test geometry to scene
+                const geometry = new THREE.BoxGeometry(10, 10, 10);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0x4ecdc4,
+                    wireframe: true 
+                });
+                const testCube = new THREE.Mesh(geometry, material);
+                testScene.add(testCube);
+                
+                // Add grid helper
+                const gridHelper = new THREE.GridHelper(100, 10, 0x444444, 0x222222);
+                testScene.add(gridHelper);
+                
+                cameraSystemInitialized = true;
+                logTest('✅ Camera system initialization successful', 'success');
+                
+                // Start render loop
+                startRenderLoop();
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Camera system initialization failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testOrbitControlsSetup() {
+            logTest('🎮 Testing OrbitControls Setup...', 'info');
+            
+            if (!cameraSystemInitialized || !controls) {
+                logTest('❌ Camera system not initialized', 'error');
+                return false;
+            }
+            
+            try {
+                // Test OrbitControls properties
+                const expectedProperties = [
+                    'enableDamping',
+                    'dampingFactor', 
+                    'autoRotate',
+                    'autoRotateSpeed',
+                    'enableZoom',
+                    'enablePan',
+                    'enableRotate'
+                ];
+                
+                expectedProperties.forEach(prop => {
+                    if (controls[prop] === undefined) {
+                        logTest(`⚠️ OrbitControls property ${prop} not found`, 'warning');
+                    } else {
+                        logTest(`✅ OrbitControls.${prop}: ${controls[prop]}`, 'success');
+                    }
+                });
+                
+                // Test controls methods
+                if (typeof controls.update !== 'function') {
+                    logTest('❌ OrbitControls.update() method not found', 'error');
+                    return false;
+                }
+                
+                controls.update();
+                logTest('✅ OrbitControls setup test passed', 'success');
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ OrbitControls setup test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testCameraPositioning() {
+            logTest('📍 Testing Camera Positioning...', 'info');
+            
+            if (!cameraSystemInitialized) {
+                logTest('❌ Camera system not initialized', 'error');
+                return false;
+            }
+            
+            try {
+                // Test setCameraPosition function
+                const testPositions = [
+                    [50, 50, 100],
+                    [-30, 20, 80],
+                    [0, 0, 150]
+                ];
+                
+                testPositions.forEach(([x, y, z], index) => {
+                    setCameraPosition(x, y, z);
+                    
+                    const actualX = camera.position.x;
+                    const actualY = camera.position.y;
+                    const actualZ = camera.position.z;
+                    
+                    const tolerance = 0.1;
+                    if (Math.abs(actualX - x) < tolerance && 
+                        Math.abs(actualY - y) < tolerance && 
+                        Math.abs(actualZ - z) < tolerance) {
+                        logTest(`✅ Position test ${index + 1}: (${x},${y},${z}) ✓`, 'success');
+                    } else {
+                        logTest(`❌ Position test ${index + 1}: Expected (${x},${y},${z}), got (${actualX.toFixed(1)},${actualY.toFixed(1)},${actualZ.toFixed(1)})`, 'error');
+                    }
+                });
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Camera positioning test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testWindowResize() {
+            logTest('📱 Testing Window Resize Handling...', 'info');
+            
+            if (!cameraSystemInitialized || !renderer || !camera) {
+                logTest('❌ Camera system not initialized', 'error');
+                return false;
+            }
+            
+            try {
+                // Get original dimensions
+                const originalWidth = renderer.domElement.width;
+                const originalHeight = renderer.domElement.height;
+                const originalAspect = camera.aspect;
+                
+                // Simulate window resize
+                const newWidth = 800;
+                const newHeight = 600;
+                
+                // Update renderer size
+                renderer.setSize(newWidth, newHeight);
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+                
+                if (renderer.domElement.width === newWidth && 
+                    renderer.domElement.height === newHeight) {
+                    logTest(`✅ Renderer resize successful: ${newWidth}x${newHeight}`, 'success');
+                } else {
+                    logTest('❌ Renderer resize failed', 'error');
+                }
+                
+                if (Math.abs(camera.aspect - (newWidth / newHeight)) < 0.01) {
+                    logTest(`✅ Camera aspect ratio updated: ${camera.aspect.toFixed(2)}`, 'success');
+                } else {
+                    logTest('❌ Camera aspect ratio update failed', 'error');
+                }
+                
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Window resize test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Manual test functions
+        function toggleAutoRotateTest() {
+            if (!cameraSystemInitialized) {
+                logTest('❌ Camera system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                if (typeof toggleAutoRotate === 'function') {
+                    toggleAutoRotate();
+                    logTest(`✅ Auto rotate toggled: ${controls.autoRotate}`, 'success');
+                } else {
+                    logTest('❌ toggleAutoRotate() function not found', 'error');
+                }
+            } catch (error) {
+                logTest(`❌ Auto rotate toggle failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function resetCameraTest() {
+            if (!cameraSystemInitialized) {
+                logTest('❌ Camera system not initialized', 'error');
+                return;
+            }
+            
+            try {
+                if (typeof resetCamera === 'function') {
+                    resetCamera();
+                    logTest('✅ Camera reset executed', 'success');
+                } else {
+                    // Use direct reset
+                    setCameraPosition(0, 0, 100);
+                    controls.target.set(0, 0, 0);
+                    controls.update();
+                    logTest('✅ Camera reset (manual) executed', 'success');
+                }
+            } catch (error) {
+                logTest(`❌ Camera reset failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function updateRotationSpeedTest(value) {
+            if (!cameraSystemInitialized) {
+                logTest('❌ Camera system not initialized', 'error');
+                return;
+            }
+            
+            const speed = parseFloat(value) || 1.0;
+            document.getElementById('speedValue').textContent = speed.toFixed(1);
+            
+            try {
+                if (typeof updateRotationSpeed === 'function') {
+                    updateRotationSpeed(speed);
+                    logTest(`✅ Rotation speed updated: ${speed}`, 'success');
+                } else {
+                    controls.autoRotateSpeed = speed;
+                    logTest(`✅ Rotation speed updated (manual): ${speed}`, 'success');
+                }
+            } catch (error) {
+                logTest(`❌ Rotation speed update failed: ${error.message}`, 'error');
+            }
+        }
+        
+        function setCameraPositionTest() {
+            if (!cameraSystemInitialized) return;
+            
+            const x = parseFloat(document.getElementById('camX').value);
+            const y = parseFloat(document.getElementById('camY').value);
+            const z = parseFloat(document.getElementById('camZ').value);
+            
+            setCameraPosition(x, y, z);
+            logTest(`📍 Camera moved to: (${x}, ${y}, ${z})`, 'info');
+        }
+        
+        function testKeyboardControls() {
+            logTest('⌨️ Testing keyboard controls integration...', 'info');
+            
+            // Simulate key events
+            const testKeys = ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space'];
+            let keyTestsPassed = 0;
+            
+            testKeys.forEach(key => {
+                try {
+                    const event = new KeyboardEvent('keydown', { code: key });
+                    document.dispatchEvent(event);
+                    keyTestsPassed++;
+                } catch (error) {
+                    logTest(`⚠️ Key test failed for ${key}: ${error.message}`, 'warning');
+                }
+            });
+            
+            logTest(`✅ Keyboard controls test: ${keyTestsPassed}/${testKeys.length} keys processed`, 
+                   keyTestsPassed === testKeys.length ? 'success' : 'warning');
+        }
+        
+        function startRenderLoop() {
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                if (cameraSystemInitialized) {
+                    updateCameraControls();
+                    renderScene();
+                    updateCameraInfo();
+                }
+            }
+            animate();
+        }
+        
+        // Run comprehensive test suite
+        async function runAllTests() {
+            logTest('🚀 Starting comprehensive camera system tests...', 'info');
+            
+            const tests = [
+                testCameraSystemInit,
+                testOrbitControlsSetup,
+                testCameraPositioning,
+                testWindowResize
+            ];
+            
+            let passedTests = 0;
+            
+            for (const test of tests) {
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+                const result = await test();
+                if (result) passedTests++;
+            }
+            
+            logTest(`📊 Test Summary: ${passedTests}/${tests.length} tests passed`, 
+                   passedTests === tests.length ? 'success' : 'warning');
+        }
+        
+        // Initialize tests
+        function initializeTests() {
+            logTest('🧪 Camera Controls Unit Test initialized', 'info');
+            
+            // Run initial tests
+            setTimeout(runAllTests, 1000);
+        }
+        
+        // Start tests when page loads
+        document.addEventListener('DOMContentLoaded', initializeTests);
+    </script>
+</body>
+</html>

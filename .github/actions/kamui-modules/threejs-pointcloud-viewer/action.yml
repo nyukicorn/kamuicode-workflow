@@ -128,7 +128,17 @@ runs:
         # テンプレートファイルをコピーして生成
         SCRIPT_DIR="${GITHUB_ACTION_PATH}"
         cp "$SCRIPT_DIR/viewer-template.html" "$OUTPUT_FOLDER/index.html"
-        cp "$SCRIPT_DIR/viewer-script.js" "$OUTPUT_FOLDER/viewer-script.js"
+        cp "$SCRIPT_DIR/viewer-script-refactored.js" "$OUTPUT_FOLDER/viewer-script.js"
+        
+        # 共通コンポーネントをコピー
+        SHARED_DIR="${SCRIPT_DIR}/../shared-viewer-components"
+        mkdir -p "$OUTPUT_FOLDER/shared-components"
+        cp "$SHARED_DIR/audio-reactive-system.js" "$OUTPUT_FOLDER/shared-components/"
+        cp "$SHARED_DIR/camera-controls.js" "$OUTPUT_FOLDER/shared-components/"
+        cp "$SHARED_DIR/mouse-interaction.js" "$OUTPUT_FOLDER/shared-components/"
+        cp "$SHARED_DIR/ui-controls.js" "$OUTPUT_FOLDER/shared-components/"
+        cp "$SHARED_DIR/particle-effects.js" "$OUTPUT_FOLDER/shared-components/"
+        echo "✅ Shared components copied to viewer assets"
         
         # HTMLファイル内のプレースホルダーを置換
         sed -i.bak "s/VIEWER_TITLE_PLACEHOLDER/$VIEWER_TITLE/g" "$OUTPUT_FOLDER/index.html"

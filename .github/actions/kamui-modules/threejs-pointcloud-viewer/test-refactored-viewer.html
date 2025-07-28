@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refactored Point Cloud Viewer Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 100;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 200;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 200px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        
+        #controls.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .control-item {
+            margin-bottom: 8px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+        }
+        
+        button {
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        
+        button:hover {
+            background: #555;
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 12px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        .test-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,100,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="loading">🔄 Loading Test Point Cloud...</div>
+    
+    <div class="test-status">
+        <strong>🧪 Refactored Viewer Test</strong><br>
+        All shared components loaded<br>
+        Modern UI auto-hide active
+    </div>
+    
+    <div id="controls">
+        <div class="control-item">
+            <strong>🎮 Refactored Viewer Test</strong>
+        </div>
+        <div class="control-item">
+            <button onclick="toggleAutoRotate()">🔄 Auto Rotate</button>
+            <button onclick="resetCamera()">📷 Reset Cam</button>
+        </div>
+        <div class="control-item">
+            <button onclick="toggleBrightness()">🌙 Dark Mode ON</button>
+        </div>
+        <div class="control-item">
+            Point Size: <input type="range" id="pointSize" min="0.5" max="5.0" step="0.1" value="1.5" onchange="updatePointSize(this.value)">
+        </div>
+        <div class="control-item">
+            Glow: <input type="range" id="glow" min="0" max="100" step="5" value="0" onchange="updateGlowIntensity(this.value)">
+        </div>
+        <div class="control-item">
+            <button onclick="toggleMouseGravity()">🚫 Gravity OFF</button>
+            <button onclick="toggleGravityMode()">🎯 Circle</button>
+        </div>
+        <div class="control-item">
+            Gravity Range: <input type="range" id="gravityRange" min="50" max="300" step="10" value="100" onchange="updateGravityRange(this.value)">
+        </div>
+        <div class="control-item">
+            Gravity Strength: <input type="range" id="gravityStrength" min="10" max="100" step="5" value="30" onchange="updateGravityStrength(this.value)">
+        </div>
+        <div class="control-item">
+            Wave Intensity: <input type="range" id="waveIntensity" min="0" max="100" step="10" value="0" onchange="updateWaveIntensity(this.value)">
+        </div>
+        <div class="control-item">
+            <button onclick="toggleAudioReactive()">🔇 Audio React OFF</button>
+        </div>
+        <div class="control-item">
+            <button onclick="toggleMicrophone()">🎙️ Mic OFF</button>
+        </div>
+        <div class="control-item" style="font-size: 0.7em; opacity: 0.6; margin-top: 8px;">
+            Double-click or Space: Toggle rotation
+        </div>
+        <div class="control-item">
+            Rotation Speed: <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="1.0" onchange="updateRotationSpeed(this.value)">
+        </div>
+    </div>
+    
+    <div id="info">
+        <div>🎮 Mouse: Orbit | Wheel: Zoom | WASD: Move</div>
+        <div id="stats">Points: Loading...</div>
+    </div>
+
+    <!-- Three.js Global Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls and PLYLoader for r128 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/PLYLoader.js"></script>
+    
+    <!-- Shared Viewer Components -->
+    <script src="shared-components/audio-reactive-system.js"></script>
+    <script src="shared-components/camera-controls.js"></script>
+    <script src="shared-components/mouse-interaction.js"></script>
+    <script src="shared-components/ui-controls.js"></script>
+    <script src="shared-components/particle-effects.js"></script>
+    
+    <!-- Test Point Cloud Viewer Script -->
+    <script>
+        // Test configuration - simulate placeholders
+        // These variables are declared in shared components, so we just set values
+        pointSize = 1.5;        // declared in ui-controls.js
+        autoRotate = false;     // declared in camera-controls.js
+        rotationSpeed = 1.0;    // declared in camera-controls.js
+        
+        // Global variables (point cloud specific)
+        let pointCloud = null;
+        let lights = null;
+        
+        // Mock music functions for testing
+        function setupMusic() {
+            console.log('🎵 Mock music setup for testing');
+        }
+        
+        // Initialize the viewer with shared components
+        function init() {
+            console.log('🚀 Initializing Test Point Cloud Viewer with shared components');
+            
+            // Initialize camera system
+            const containerElement = document.getElementById('container');
+            const cameraData = initializeCameraSystem(containerElement, '#1a1a1a');
+            
+            // Store global references from camera system
+            // scene, camera, renderer, controls are declared in camera-controls.js
+            scene = cameraData.scene;
+            camera = cameraData.camera;
+            renderer = cameraData.renderer;
+            controls = cameraData.controls;
+            
+            // Set initial camera position and auto-rotate settings
+            setCameraPosition(0, 0, 100);
+            setAutoRotateSettings(autoRotate, rotationSpeed);
+            
+            // Initialize UI system with lighting
+            lights = initializeCompleteUISystem(scene, '#1a1a1a');
+            
+            // Create test point cloud instead of loading PLY
+            createTestPointCloud();
+            
+            // Start animation loop
+            animate();
+            
+            console.log('✅ Test Point Cloud Viewer initialization complete');
+        }
+        
+        function createTestPointCloud() {
+            showLoadingIndicator('🔄 Creating test point cloud...');
+            
+            // Create test geometry
+            const particleCount = 15000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            // Create a complex 3D structure (double helix)
+            for (let i = 0; i < particleCount; i++) {
+                const t = (i / particleCount) * Math.PI * 10;
+                const radius1 = 30;
+                const radius2 = 25;
+                const height = (i / particleCount - 0.5) * 100;
+                
+                if (i % 2 === 0) {
+                    // First helix
+                    positions[i * 3] = Math.cos(t) * radius1;
+                    positions[i * 3 + 1] = height;
+                    positions[i * 3 + 2] = Math.sin(t) * radius1;
+                    
+                    colors[i * 3] = 0.3;
+                    colors[i * 3 + 1] = 0.7;
+                    colors[i * 3 + 2] = 1.0;
+                } else {
+                    // Second helix
+                    positions[i * 3] = Math.cos(t + Math.PI) * radius2;
+                    positions[i * 3 + 1] = height;
+                    positions[i * 3 + 2] = Math.sin(t + Math.PI) * radius2;
+                    
+                    colors[i * 3] = 1.0;
+                    colors[i * 3 + 1] = 0.3;
+                    colors[i * 3 + 2] = 0.7;
+                }
+                
+                // Add some randomness
+                positions[i * 3] += (Math.random() - 0.5) * 3;
+                positions[i * 3 + 1] += (Math.random() - 0.5) * 3;
+                positions[i * 3 + 2] += (Math.random() - 0.5) * 3;
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.computeBoundingBox();
+            geometry.center();
+            
+            // Create particle system using shared component
+            pointCloud = createParticleSystem(geometry, {
+                size: pointSize,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 1.0
+            });
+            
+            scene.add(pointCloud);
+            
+            // Auto-fit camera using shared function
+            fitCameraToObject(pointCloud);
+            
+            // Initialize mouse interaction with the point cloud
+            initializeMouseInteraction(pointCloud, camera);
+            
+            // Update UI
+            updateStatsDisplay(pointCloud);
+            hideLoadingIndicator();
+            
+            console.log('✅ Test point cloud created:', particleCount, 'particles');
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update camera controls (shared component)
+            updateCameraControls();
+            
+            // Apply mouse gravity effect (shared component)
+            if (pointCloud) {
+                applyMouseGravity(pointCloud);
+            }
+            
+            // Apply audio-reactive effects (shared component)
+            if ((audioReactiveEnabled || microphoneEnabled) && pointCloud) {
+                applyAudioReactiveEffects();
+            }
+            
+            // Update particle system effects (shared component)
+            if (pointCloud) {
+                updateParticleSystem(pointCloud, camera, lights.ambientLight, lights.directionalLight);
+            }
+            
+            // Render scene (shared component)
+            renderScene();
+        }
+        
+        // Point cloud specific control functions that integrate with shared components
+        function resetCamera() {
+            if (pointCloud) {
+                resetCameraToObject(pointCloud);
+            } else {
+                window.resetCamera();
+            }
+        }
+        
+        function updatePointSize(value) {
+            window.updatePointSize(value, pointCloud);
+        }
+        
+        function toggleBrightness() {
+            window.toggleBrightness(scene, lights.ambientLight, lights.directionalLight, '#1a1a1a');
+        }
+        
+        function updateGlowIntensity(value) {
+            window.updateGlowIntensity(value, pointCloud);
+        }
+        
+        // Export functions to global scope for HTML events
+        window.resetCamera = resetCamera;
+        window.updatePointSize = updatePointSize;
+        window.toggleBrightness = toggleBrightness;
+        window.updateGlowIntensity = updateGlowIntensity;
+        
+        // Start the test
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+=== YOLO v11 Object Detection Report ===
+
+Video: /Users/nukuiyuki/神威/20250727_ラグーナ/動画_シーン15-2025-07-27T16-47-06/output/rose_scene_video2.mp4
+Duration: 5.10 seconds
+Resolution: 1632x1216
+Total frames: 153
+
+Detected Objects Summary:
+----------------------------------------
+cup: 61 detections
+person: 31 detections
+bowl: 28 detections
+donut: 6 detections
+apple: 3 detections
+spoon: 1 detections
+
+========================================

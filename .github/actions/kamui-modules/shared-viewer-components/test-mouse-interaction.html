@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🖱️ Mouse Interaction System - Unit Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            border-radius: 10px;
+        }
+        
+        .test-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        
+        .test-canvas-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-controls-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-section {
+            background: rgba(0,0,0,0.3);
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        button.active {
+            background: rgba(255,107,107,0.6);
+            border-color: rgba(255,107,107,0.8);
+        }
+        
+        .test-results {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .mouse-info {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .success { color: #4ecdc4; }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffd93d; }
+        .info { color: #87ceeb; }
+        
+        #test-canvas {
+            width: 100%;
+            height: 500px;
+            border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.1);
+            cursor: crosshair;
+        }
+        
+        .interaction-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .status-item {
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="controls">
+        <h3>🖱️ Mouse Interaction Test</h3>
+        <div class="control-item">
+            <button id="gravityToggle" onclick="toggleMouseGravity()">🚫 Gravity OFF</button>
+        </div>
+        <div class="control-item">
+            <button id="gravityModeToggle" onclick="toggleGravityMode()">🎯 Circle</button>
+        </div>
+        <div class="control-item">
+            <label>Gravity Range: </label>
+            <input type="range" min="50" max="300" value="100" oninput="updateGravityRange(this.value)">
+            <span id="rangeValue">100</span>
+        </div>
+        <div class="control-item">
+            <label>Gravity Strength: </label>
+            <input type="range" min="10" max="100" value="30" oninput="updateGravityStrength(this.value)">
+            <span id="strengthValue">30</span>
+        </div>
+        <div class="control-item">
+            <label>Wave Intensity: </label>
+            <input type="range" min="0" max="100" value="0" oninput="updateWaveIntensity(this.value)">
+            <span id="waveValue">0</span>
+        </div>
+    </div>
+    
+    <div id="info">
+        <div><strong>Test Status:</strong> <span id="status">Loading...</span></div>
+        <div><strong>Particles:</strong> <span id="particleCount">0</span></div>
+        <div><strong>Mouse Position:</strong> <span id="mousePos">-</span></div>
+        <div><strong>Gravity Mode:</strong> <span id="gravityInfo">Circle</span></div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Mouse Interaction System -->
+    <script src="mouse-interaction.js"></script>
+    
+    <script>
+        // Test setup
+        let scene, camera, renderer, controls;
+        let testPointCloud = null;
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1a1a1a');
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(0, 0, 200);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Create test point cloud
+            createTestPointCloud();
+            
+            // Initialize mouse interaction
+            initializeMouseInteraction(testPointCloud, camera);
+            
+            // Update status
+            document.getElementById('status').textContent = 'Ready';
+            document.getElementById('particleCount').textContent = testPointCloud.geometry.attributes.position.count.toLocaleString();
+            
+            // Start animation
+            animate();
+            
+            console.log('🧪 Mouse interaction test initialized');
+        }
+        
+        function createTestPointCloud() {
+            const particleCount = 5000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            // Create a sphere of particles
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Random position in sphere
+                const radius = Math.random() * 80 + 20;
+                const phi = Math.random() * Math.PI * 2;
+                const theta = Math.random() * Math.PI;
+                
+                positions[i3] = radius * Math.sin(theta) * Math.cos(phi);
+                positions[i3 + 1] = radius * Math.cos(theta);
+                positions[i3 + 2] = radius * Math.sin(theta) * Math.sin(phi);
+                
+                // Random colors
+                colors[i3] = Math.random();
+                colors[i3 + 1] = Math.random();
+                colors[i3 + 2] = Math.random();
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                vertexColors: true,
+                size: 2,
+                sizeAttenuation: true
+            });
+            
+            testPointCloud = new THREE.Points(geometry, material);
+            scene.add(testPointCloud);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Apply mouse gravity effect
+            if (testPointCloud) {
+                applyMouseGravity(testPointCloud);
+            }
+            
+            // Update UI
+            updateUI();
+            
+            renderer.render(scene, camera);
+        }
+        
+        function updateUI() {
+            // Update mouse position display
+            document.getElementById('mousePos').textContent = 
+                `(${mousePosition.x.toFixed(2)}, ${mousePosition.y.toFixed(2)})`;
+            
+            // Update gravity mode display
+            document.getElementById('gravityInfo').textContent = gravityMode;
+            
+            // Update slider values
+            document.getElementById('rangeValue').textContent = gravityRange;
+            document.getElementById('strengthValue').textContent = Math.round(gravityStrength * 100);
+            document.getElementById('waveValue').textContent = Math.round(waveIntensity * 100);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start the test
+        init();
+    </script>
+</body>
+</html>

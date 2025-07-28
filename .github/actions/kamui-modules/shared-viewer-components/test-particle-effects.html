@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Effects System Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: Arial, sans-serif;
+        }
+        #container { 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 1000;
+            max-width: 350px;
+        }
+        .control-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .control-item {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background: #555;
+            border-color: #888;
+        }
+        button.active {
+            background: #006600;
+            border-color: #00aa00;
+        }
+        input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+        }
+        label {
+            font-size: 12px;
+            min-width: 80px;
+        }
+        .value-display {
+            font-weight: bold;
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+        }
+        #info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            max-width: 250px;
+        }
+        .test-status {
+            color: #00ff00;
+            font-weight: bold;
+        }
+        .performance-info {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="controls">
+        <h3>🎆 Particle Effects Test</h3>
+        
+        <div class="control-section">
+            <h4>Effects Tests</h4>
+            <div class="control-item">
+                <button id="depthToggle" onclick="toggleDepthEffects()">📐 Depth Effects ON</button>
+            </div>
+            <div class="control-item">
+                <button id="colorToggle" onclick="toggleColorEffects()">🌈 Color Effects OFF</button>
+            </div>
+            <div class="control-item">
+                <button id="sizeToggle" onclick="toggleSizeEffects()">📏 Size Effects OFF</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Effect Intensity</h4>
+            <div class="control-item">
+                <label>Size:</label>
+                <input type="range" id="sizeSlider" min="100" max="300" value="100" 
+                       oninput="updateEffectSize(this.value)">
+                <span class="value-display" id="sizeValue">100%</span>
+            </div>
+            <div class="control-item">
+                <label>Color:</label>
+                <input type="range" id="colorSlider" min="100" max="300" value="100" 
+                       oninput="updateEffectColor(this.value)">
+                <span class="value-display" id="colorValue">100%</span>
+            </div>
+            <div class="control-item">
+                <label>Brightness:</label>
+                <input type="range" id="brightnessSlider" min="100" max="300" value="100" 
+                       oninput="updateEffectBrightness(this.value)">
+                <span class="value-display" id="brightnessValue">100%</span>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Performance</h4>
+            <div class="control-item">
+                <button onclick="optimizeParticles()">🚀 Optimize Particles</button>
+                <button onclick="showPerformance()">📊 Performance</button>
+            </div>
+            <div class="control-item">
+                <button onclick="resetEffects()">🔄 Reset All</button>
+                <button onclick="createNewSystem()">🆕 New System</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="info">
+        <div class="test-status">Particle Effects Test</div>
+        <div id="infoContent">
+            <div>Particles: <span id="particleCount">0</span></div>
+            <div>Depth Effects: <span id="depthStatus">ON</span></div>
+            <div>Memory: <span id="memoryUsage">0 MB</span></div>
+            <div>FPS Est: <span id="fpsEstimate">60+</span></div>
+        </div>
+        <div class="performance-info">
+            Move camera to test depth effects<br>
+            Use sliders to test visual effects
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Particle Effects System -->
+    <script src="particle-effects.js"></script>
+    
+    <script>
+        // Test setup
+        let scene, camera, renderer, controls;
+        let testPointCloud = null;
+        let ambientLight, directionalLight;
+        let effectsEnabled = {
+            depth: true,
+            color: false,
+            size: false
+        };
+        
+        // Mock current effects for testing
+        let currentEffects = {
+            sizeMultiplier: 1.0,
+            brightnessMultiplier: 1.0,
+            colorIntensity: 1.0
+        };
+        let pointSize = 1.5;
+        let brightnessLevel = 0.3;
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1a1a1a');
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(50, 50, 150);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Lighting setup
+            ambientLight = new THREE.AmbientLight(0xffffff, brightnessLevel);
+            scene.add(ambientLight);
+            directionalLight = new THREE.DirectionalLight(0xffffff, brightnessLevel * 1.5);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // Create test particle system
+            createTestParticleSystem();
+            
+            // Update UI
+            updateInfoDisplay();
+            
+            // Start animation
+            animate();
+            
+            console.log('🧪 Particle effects test initialized');
+        }
+        
+        function createTestParticleSystem() {
+            const particleCount = 12000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            // Create a complex 3D structure (torus knot)
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const t = (i / particleCount) * Math.PI * 6;
+                const p = 2;
+                const q = 3;
+                const scale = 40;
+                
+                // Torus knot equations
+                const r = Math.cos(q * t) + 2;
+                positions[i3] = scale * r * Math.cos(p * t);
+                positions[i3 + 1] = scale * Math.sin(q * t);
+                positions[i3 + 2] = scale * r * Math.sin(p * t);
+                
+                // Add some randomness
+                positions[i3] += (Math.random() - 0.5) * 5;
+                positions[i3 + 1] += (Math.random() - 0.5) * 5;
+                positions[i3 + 2] += (Math.random() - 0.5) * 5;
+                
+                // Color based on position for depth testing
+                const distanceFromCenter = Math.sqrt(
+                    positions[i3] ** 2 + 
+                    positions[i3 + 1] ** 2 + 
+                    positions[i3 + 2] ** 2
+                );
+                const hue = (distanceFromCenter / 100) % 1;
+                const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            // Create particle system using our system
+            testPointCloud = createParticleSystem(geometry, {
+                size: pointSize,
+                sizeAttenuation: true
+            });
+            
+            scene.add(testPointCloud);
+            console.log('🎆 Test particle system created');
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Update particle system effects
+            if (testPointCloud) {
+                updateParticleSystem(testPointCloud, camera, ambientLight, directionalLight);
+            }
+            
+            // Apply custom effects based on toggles
+            applyTestEffects();
+            
+            renderer.render(scene, camera);
+        }
+        
+        function applyTestEffects() {
+            if (!testPointCloud) return;
+            
+            // Apply effects based on toggles
+            if (effectsEnabled.size) {
+                testPointCloud.material.size = pointSize * currentEffects.sizeMultiplier;
+            }
+            
+            if (effectsEnabled.color && testPointCloud.geometry.attributes.color) {
+                // Color effects are handled by applyVisualEffects in updateParticleSystem
+            }
+            
+            // Brightness effects
+            if (ambientLight) {
+                ambientLight.intensity = brightnessLevel * currentEffects.brightnessMultiplier;
+            }
+            if (directionalLight) {
+                directionalLight.intensity = brightnessLevel * 1.5 * currentEffects.brightnessMultiplier;
+            }
+        }
+        
+        // Control functions
+        function toggleDepthEffects() {
+            effectsEnabled.depth = !effectsEnabled.depth;
+            const button = document.getElementById('depthToggle');
+            if (effectsEnabled.depth) {
+                button.innerHTML = '📐 Depth Effects ON';
+                button.classList.add('active');
+            } else {
+                button.innerHTML = '📐 Depth Effects OFF';
+                button.classList.remove('active');
+                // Reset colors when disabled
+                resetParticleColors(testPointCloud);
+            }
+            updateInfoDisplay();
+        }
+        
+        function toggleColorEffects() {
+            effectsEnabled.color = !effectsEnabled.color;
+            const button = document.getElementById('colorToggle');
+            if (effectsEnabled.color) {
+                button.innerHTML = '🌈 Color Effects ON';
+                button.classList.add('active');
+            } else {
+                button.innerHTML = '🌈 Color Effects OFF';
+                button.classList.remove('active');
+            }
+        }
+        
+        function toggleSizeEffects() {
+            effectsEnabled.size = !effectsEnabled.size;
+            const button = document.getElementById('sizeToggle');
+            if (effectsEnabled.size) {
+                button.innerHTML = '📏 Size Effects ON';
+                button.classList.add('active');
+            } else {
+                button.innerHTML = '📏 Size Effects OFF';
+                button.classList.remove('active');
+                // Reset size when disabled
+                testPointCloud.material.size = pointSize;
+            }
+        }
+        
+        function updateEffectSize(value) {
+            currentEffects.sizeMultiplier = parseFloat(value) / 100;
+            document.getElementById('sizeValue').textContent = value + '%';
+        }
+        
+        function updateEffectColor(value) {
+            currentEffects.colorIntensity = parseFloat(value) / 100;
+            document.getElementById('colorValue').textContent = value + '%';
+        }
+        
+        function updateEffectBrightness(value) {
+            currentEffects.brightnessMultiplier = parseFloat(value) / 100;
+            document.getElementById('brightnessValue').textContent = value + '%';
+        }
+        
+        function optimizeParticles() {
+            if (testPointCloud) {
+                const beforeCount = testPointCloud.geometry.attributes.position.count;
+                optimizeParticleSystem(testPointCloud, 8000);
+                const afterCount = testPointCloud.geometry.attributes.position.count;
+                alert(`Particles optimized: ${beforeCount.toLocaleString()} → ${afterCount.toLocaleString()}`);
+                updateInfoDisplay();
+            }
+        }
+        
+        function showPerformance() {
+            if (testPointCloud) {
+                const perf = monitorParticlePerformance(testPointCloud);
+                alert(`Performance Info:\nParticles: ${perf.particleCount.toLocaleString()}\nMemory: ${perf.memoryMB} MB\nEstimated FPS: ${perf.estimatedFPS}\n\nMemory breakdown:\nPositions: ${Math.round(perf.memoryUsage.positions/1024)} KB\nColors: ${Math.round(perf.memoryUsage.colors/1024)} KB`);
+            }
+        }
+        
+        function resetEffects() {
+            currentEffects = {
+                sizeMultiplier: 1.0,
+                brightnessMultiplier: 1.0,
+                colorIntensity: 1.0
+            };
+            
+            document.getElementById('sizeSlider').value = 100;
+            document.getElementById('colorSlider').value = 100;
+            document.getElementById('brightnessSlider').value = 100;
+            document.getElementById('sizeValue').textContent = '100%';
+            document.getElementById('colorValue').textContent = '100%';
+            document.getElementById('brightnessValue').textContent = '100%';
+            
+            if (testPointCloud) {
+                resetToNormalVisualState(testPointCloud, ambientLight, directionalLight);
+            }
+        }
+        
+        function createNewSystem() {
+            if (testPointCloud) {
+                scene.remove(testPointCloud);
+                testPointCloud.geometry.dispose();
+                testPointCloud.material.dispose();
+            }
+            createTestParticleSystem();
+            updateInfoDisplay();
+        }
+        
+        function updateInfoDisplay() {
+            if (testPointCloud) {
+                const perf = monitorParticlePerformance(testPointCloud);
+                document.getElementById('particleCount').textContent = perf.particleCount.toLocaleString();
+                document.getElementById('memoryUsage').textContent = perf.memoryMB + ' MB';
+                document.getElementById('fpsEstimate').textContent = perf.estimatedFPS;
+            }
+            
+            document.getElementById('depthStatus').textContent = effectsEnabled.depth ? 'ON' : 'OFF';
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start the test
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Load Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #004400; }
+        .error { background: #440000; }
+        .info { background: #000044; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Shared Components Load Test</h1>
+    <div id="status"></div>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        
+        function addStatus(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            statusDiv.appendChild(div);
+            console.log(message);
+        }
+        
+        addStatus('Starting shared components load test...', 'info');
+        
+        // Test Three.js load
+        const script1 = document.createElement('script');
+        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+        script1.onload = () => {
+            addStatus('✅ Three.js loaded successfully', 'success');
+            testSharedComponents();
+        };
+        script1.onerror = () => {
+            addStatus('❌ Three.js failed to load', 'error');
+        };
+        document.head.appendChild(script1);
+        
+        function testSharedComponents() {
+            const components = [
+                'shared-components/audio-reactive-system.js',
+                'shared-components/camera-controls.js',
+                'shared-components/mouse-interaction.js',
+                'shared-components/ui-controls.js',
+                'shared-components/particle-effects.js'
+            ];
+            
+            let loadedCount = 0;
+            
+            components.forEach((src, index) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    addStatus(`✅ ${src.split('/').pop()} loaded`, 'success');
+                    loadedCount++;
+                    if (loadedCount === components.length) {
+                        testFunctions();
+                    }
+                };
+                script.onerror = () => {
+                    addStatus(`❌ ${src.split('/').pop()} failed to load`, 'error');
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        function testFunctions() {
+            addStatus('Testing shared component functions...', 'info');
+            
+            // Test function availability
+            const functions = [
+                'initializeCameraSystem',
+                'initializeCompleteUISystem',
+                'createParticleSystem',
+                'initializeMouseInteraction',
+                'applyMouseGravity'
+            ];
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    addStatus(`✅ Function ${funcName} available`, 'success');
+                } else {
+                    addStatus(`❌ Function ${funcName} missing`, 'error');
+                }
+            });
+            
+            addStatus('Load test complete!', 'info');
+        }
+    </script>
+</body>
+</html>

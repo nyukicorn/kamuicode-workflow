@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI Controls System Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        #container { 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 15px;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+        #controls.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .control-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        .control-item {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        button:hover {
+            background: #555;
+            border-color: #888;
+        }
+        input[type="range"] {
+            flex: 1;
+            margin: 0 10px;
+        }
+        label {
+            font-size: 12px;
+            min-width: 100px;
+        }
+        .value-display {
+            font-weight: bold;
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 18px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        #stats {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: monospace;
+            max-width: 300px;
+            display: none;
+        }
+        .help-text {
+            font-size: 10px;
+            color: #888;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="loading">🔄 Initializing UI Test...</div>
+    
+    <div id="controls">
+        <h3>🎛️ UI Controls Test</h3>
+        
+        <div class="control-section">
+            <h4>Visual Controls</h4>
+            <div class="control-item">
+                <button id="brightnessToggle" onclick="testBrightnessToggle()">🌙 Dark Mode ON</button>
+            </div>
+            <div class="control-item">
+                <label>Point Size:</label>
+                <input type="range" id="pointSizeSlider" min="0.5" max="5.0" step="0.1" value="1.5" 
+                       oninput="testUpdatePointSize(this.value)">
+                <span class="value-display" id="pointSizeValue">1.5</span>
+            </div>
+            <div class="control-item">
+                <label>Glow Intensity:</label>
+                <input type="range" id="glowSlider" min="0" max="100" value="0" 
+                       oninput="testUpdateGlowIntensity(this.value)">
+                <span class="value-display" id="glowValue">0</span>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>Test Buttons</h4>
+            <div class="control-item">
+                <button onclick="testAutoHide()">Test Auto-Hide</button>
+                <button onclick="testKeyboardShortcuts()">Test Shortcuts</button>
+            </div>
+            <div class="control-item">
+                <button onclick="testResponsiveUI()">Test Mobile UI</button>
+                <button onclick="toggleInfoPanel()">Toggle Info (I)</button>
+            </div>
+        </div>
+        
+        <div class="help-text">
+            Keyboard: B-Brightness, I-Info, H-Help<br>
+            Auto-hide: Move mouse/click to show controls
+        </div>
+    </div>
+    
+    <div id="stats">Points: 0</div>
+    
+    <div id="info">
+        <strong>UI System Test Status</strong><br>
+        <div id="infoContent">
+            Auto-hide: Active<br>
+            Keyboard shortcuts: Active<br>
+            Responsive: Active<br>
+            Point size: 1.5<br>
+            Brightness: Dark mode<br>
+            Glow: 0%
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- UI Controls System -->
+    <script src="ui-controls.js"></script>
+    
+    <script>
+        // Test setup
+        let scene, camera, renderer, controls;
+        let testPointCloud = null;
+        let lights = null;
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#1a1a1a');
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(0, 0, 200);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Controls setup
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            
+            // Create test point cloud
+            createTestPointCloud();
+            
+            // Initialize UI system
+            lights = initializeCompleteUISystem(scene, '#1a1a1a');
+            
+            // Update UI
+            updateStatsDisplay(testPointCloud);
+            hideLoadingIndicator();
+            updateInfoContent();
+            
+            // Start animation
+            animate();
+            
+            console.log('🧪 UI controls test initialized');
+        }
+        
+        function createTestPointCloud() {
+            const particleCount = 8000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            // Create a colorful spiral
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                const t = (i / particleCount) * Math.PI * 20;
+                const radius = t * 2;
+                
+                positions[i3] = Math.cos(t) * radius;
+                positions[i3 + 1] = Math.sin(t) * radius;
+                positions[i3 + 2] = (i / particleCount - 0.5) * 200;
+                
+                // Rainbow colors based on position
+                const hue = (i / particleCount) * 360;
+                const color = new THREE.Color().setHSL(hue / 360, 0.8, 0.6);
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            // Store original colors for glow effect
+            geometry.userData = { originalColors: new Float32Array(colors) };
+            
+            const material = new THREE.PointsMaterial({
+                vertexColors: true,
+                size: 1.5,
+                sizeAttenuation: true
+            });
+            
+            testPointCloud = new THREE.Points(geometry, material);
+            testPointCloud.userData.originalColors = new Float32Array(colors);
+            scene.add(testPointCloud);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            
+            // Rotate the point cloud for visual effect
+            if (testPointCloud) {
+                testPointCloud.rotation.z += 0.005;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Test functions
+        function testBrightnessToggle() {
+            toggleBrightness(scene, lights.ambientLight, lights.directionalLight, '#1a1a1a');
+            updateInfoContent();
+        }
+        
+        function testUpdatePointSize(value) {
+            updatePointSize(value, testPointCloud);
+            updateInfoContent();
+        }
+        
+        function testUpdateGlowIntensity(value) {
+            updateGlowIntensity(value, testPointCloud);
+            updateInfoContent();
+        }
+        
+        function testAutoHide() {
+            const controlsElement = document.getElementById('controls');
+            controlsElement.classList.remove('visible');
+            setTimeout(() => {
+                alert('Controls should hide in 3 seconds. Move mouse to left edge to show again.');
+            }, 100);
+        }
+        
+        function testKeyboardShortcuts() {
+            alert('Test keyboard shortcuts:\nB - Toggle brightness\nI - Toggle info panel\nH - Show help\n\nTry pressing these keys!');
+        }
+        
+        function testResponsiveUI() {
+            alert('Responsive UI active!\nOn mobile: Touch controls to show/hide\nOn desktop: Hover left edge or controls');
+        }
+        
+        function updateInfoContent() {
+            const infoContent = document.getElementById('infoContent');
+            if (infoContent) {
+                infoContent.innerHTML = `
+                    Auto-hide: Active<br>
+                    Keyboard shortcuts: Active<br>
+                    Responsive: Active<br>
+                    Point size: ${pointSize.toFixed(1)}<br>
+                    Brightness: ${brightnessLevel > 0.5 ? 'Light' : 'Dark'} mode<br>
+                    Glow: ${Math.round(glowIntensity * 100)}%<br>
+                    Particles: ${testPointCloud ? testPointCloud.geometry.attributes.position.count.toLocaleString() : 0}
+                `;
+            }
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Start the test
+        init();
+    </script>
+</body>
+</html>

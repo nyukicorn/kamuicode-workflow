@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 Test 360° Panorama Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000814;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 100;
+            text-align: center;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 200;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 12px;
+            max-width: 220px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        #controls.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .control-section {
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .control-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 11px;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .control-item {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        input[type="range"] {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 10px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        button.active {
+            background: rgba(0,150,255,0.6);
+            border-color: rgba(0,150,255,0.8);
+        }
+        
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: white;
+            font-size: 11px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+        
+        .panorama-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .test-status {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(0,200,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .instruction-hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 11px;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 12px;
+            border-radius: 8px;
+            opacity: 0;
+            animation: fadeInOut 4s ease-in-out 2s;
+        }
+        
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            20%, 80% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="loading">
+        <div class="loading-spinner"></div>
+        <div>🌐 Loading Test Panorama...</div>
+    </div>
+    
+    <div class="panorama-badge">
+        <span>🌐 360° Panorama Test</span>
+    </div>
+    
+    <div class="test-status">
+        <strong>🧪 Test Environment</strong><br>
+        Shared components loaded<br>
+        Spherical particle system active
+    </div>
+    
+    <div id="controls">
+        <div class="control-section">
+            <h4>🎮 Navigation</h4>
+            <div class="control-item">
+                <button onclick="toggleAutoRotate()">🔄 Auto Rotate</button>
+                <button onclick="resetCamera()">📷 Reset</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>🎨 Appearance</h4>
+            <div class="control-item">
+                <span style="font-size: 10px; width: 60px;">Size:</span>
+                <input type="range" id="particleSize" min="0.5" max="4.0" step="0.1" value="2.0" onchange="updateParticleSize(this.value)">
+            </div>
+            <div class="control-item">
+                <span style="font-size: 10px; width: 60px;">Glow:</span>
+                <input type="range" id="glow" min="0" max="100" step="5" value="20" onchange="updateGlowIntensity(this.value)">
+            </div>
+            <div class="control-item">
+                <button onclick="toggleBrightness()">🌙 Dark Mode</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>🌊 Interaction</h4>
+            <div class="control-item">
+                <button onclick="toggleMouseGravity()">🚫 Gravity OFF</button>
+                <button onclick="toggleGravityMode()">🎯 Mode</button>
+            </div>
+            <div class="control-item">
+                <span style="font-size: 10px; width: 60px;">Range:</span>
+                <input type="range" id="gravityRange" min="50" max="300" step="10" value="120" onchange="updateGravityRange(this.value)">
+            </div>
+            <div class="control-item">
+                <span style="font-size: 10px; width: 60px;">Wave:</span>
+                <input type="range" id="waveIntensity" min="0" max="100" step="10" value="30" onchange="updateWaveIntensity(this.value)">
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>🎵 Audio</h4>
+            <div class="control-item">
+                <button onclick="toggleAudioReactive()">🔇 Audio OFF</button>
+                <button onclick="toggleMicrophone()">🎙️ Mic OFF</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <h4>⚡ Speed</h4>
+            <div class="control-item">
+                <span style="font-size: 10px; width: 60px;">Rotation:</span>
+                <input type="range" id="rotSpeed" min="0.1" max="3.0" step="0.1" value="1.0" onchange="updateRotationSpeed(this.value)">
+            </div>
+        </div>
+    </div>
+    
+    <div class="instruction-hint">
+        🖱️ Drag to look around • 🎯 Scroll to zoom • ⌨️ Space to pause rotation
+    </div>
+    
+    <div id="info">
+        <div><strong>🌐 360° Panoramic Test</strong></div>
+        <div id="stats">Particles: Loading...</div>
+        <div style="margin-top: 8px; font-size: 10px; opacity: 0.8;">
+            🖱️ Mouse orbit • 🔍 Wheel zoom • ⌨️ WASD move • 🎮 Space toggle rotation
+        </div>
+    </div>
+
+    <!-- Three.js Core Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TextureLoader.js"></script>
+    
+    <!-- Shared Viewer Components -->
+    <script src="../shared-viewer-components/audio-reactive-system.js"></script>
+    <script src="../shared-viewer-components/camera-controls.js"></script>
+    <script src="../shared-viewer-components/mouse-interaction.js"></script>
+    <script src="../shared-viewer-components/ui-controls.js"></script>
+    <script src="../shared-viewer-components/particle-effects.js"></script>
+    
+    <!-- Test Panorama Script -->
+    <script>
+        // Test configuration - simulating template placeholders
+        // These variables are declared in shared components, so we just set values
+        particleSize = 2.0;     // declared in ui-controls.js
+        autoRotate = true;      // declared in camera-controls.js
+        rotationSpeed = 1.0;    // declared in camera-controls.js
+        let particleDensity = 'medium';
+        let sphereRadius = 200;
+
+        // Global variables (panorama specific)
+        let panoramaParticles = null;
+        let panoramaTexture = null;
+        let lights = null;
+
+        // Mock music functions for testing
+        function setupMusic() {
+            console.log('🎵 Mock music setup for panorama testing');
+        }
+
+        // Initialize the panorama viewer with shared components
+        function init() {
+            console.log('🌐 Initializing Test 360° Panorama Viewer with shared components');
+            
+            // Initialize camera system
+            const containerElement = document.getElementById('container');
+            const cameraData = initializeCameraSystem(containerElement, '#000814');
+            
+            // Store global references from camera system
+            scene = cameraData.scene;
+            camera = cameraData.camera;
+            renderer = cameraData.renderer;
+            controls = cameraData.controls;
+            
+            // Set initial camera position (inside the sphere)
+            setCameraPosition(0, 0, 0); // Center of the sphere
+            
+            // Configure controls for panoramic experience
+            controls.enablePan = false; // Disable panning for true panoramic experience
+            controls.minDistance = 5;   // Minimum zoom in
+            controls.maxDistance = 180; // Maximum zoom out (stay inside sphere)
+            
+            // Set auto-rotate settings
+            setAutoRotateSettings(autoRotate, rotationSpeed);
+            
+            // Initialize UI system with lighting
+            lights = initializeCompleteUISystem(scene, '#000814');
+            
+            // Create test spherical pattern (since we don't have a real image)
+            createTestSphericalPattern();
+            
+            console.log('OrbitControls configured for panoramic viewing');
+            console.log('Camera positioned at center, looking outward');
+            
+            // Start animation loop
+            animate();
+            
+            console.log('✅ Test 360° Panorama Viewer initialization complete');
+        }
+
+        function createTestSphericalPattern() {
+            console.log('🧪 Creating test spherical pattern...');
+            
+            showLoadingIndicator('🌐 Generating test panorama...');
+            
+            const particleCount = 25000;
+            const positions = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            // Create test pattern with multiple colored regions
+            for (let i = 0; i < particleCount; i++) {
+                // Uniform distribution on sphere
+                const u = Math.random();
+                const v = Math.random();
+                
+                const phi = u * 2 * Math.PI;
+                const theta = Math.acos(2 * v - 1);
+                
+                const x = sphereRadius * Math.sin(theta) * Math.cos(phi);
+                const y = sphereRadius * Math.cos(theta);
+                const z = sphereRadius * Math.sin(theta) * Math.sin(phi);
+                
+                positions[i * 3] = x;
+                positions[i * 3 + 1] = y;
+                positions[i * 3 + 2] = z;
+                
+                // Create gradient pattern based on spherical coordinates
+                const latNorm = theta / Math.PI; // 0 to 1
+                const lonNorm = phi / (2 * Math.PI); // 0 to 1
+                
+                // Create complex color patterns
+                const r = Math.sin(lonNorm * Math.PI * 4) * 0.5 + 0.5;
+                const g = Math.sin(latNorm * Math.PI * 3) * 0.5 + 0.5;
+                const b = Math.sin((lonNorm + latNorm) * Math.PI * 2) * 0.5 + 0.5;
+                
+                // Add brightness variation
+                const brightness = 0.7 + Math.random() * 0.3;
+                
+                colors[i * 3] = r * brightness;
+                colors[i * 3 + 1] = g * brightness;
+                colors[i * 3 + 2] = b * brightness;
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.computeBoundingSphere();
+            
+            panoramaParticles = createParticleSystem(geometry, {
+                size: particleSize,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.9,
+                vertexColors: true
+            });
+            
+            scene.add(panoramaParticles);
+            initializeMouseInteraction(panoramaParticles, camera);
+            updateStatsDisplay(panoramaParticles);
+            hideLoadingIndicator();
+            
+            console.log(`✅ Test spherical panorama created: ${particleCount.toLocaleString()} particles`);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update camera controls (shared component)
+            updateCameraControls();
+            
+            // Apply mouse gravity effect (shared component)
+            if (panoramaParticles) {
+                applyMouseGravity(panoramaParticles);
+            }
+            
+            // Apply audio-reactive effects (shared component)
+            if ((audioReactiveEnabled || microphoneEnabled) && panoramaParticles) {
+                applyAudioReactiveEffects();
+            }
+            
+            // Update particle system effects (shared component)
+            if (panoramaParticles) {
+                updateParticleSystem(panoramaParticles, camera, lights.ambientLight, lights.directionalLight);
+            }
+            
+            // Render scene (shared component)
+            renderScene();
+        }
+
+        // Panorama-specific control functions
+        function resetCamera() {
+            setCameraPosition(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            console.log('📷 Camera reset to panorama center');
+        }
+
+        function updateParticleSize(value) {
+            particleSize = parseFloat(value);
+            window.updatePointSize(value, panoramaParticles);
+        }
+
+        function toggleBrightness() {
+            window.toggleBrightness(scene, lights.ambientLight, lights.directionalLight, '#000814');
+        }
+
+        function updateGlowIntensity(value) {
+            window.updateGlowIntensity(value, panoramaParticles);
+        }
+
+        // Export functions to global scope for HTML events
+        window.resetCamera = resetCamera;
+        window.updateParticleSize = updateParticleSize;
+        window.toggleBrightness = toggleBrightness;
+        window.updateGlowIntensity = updateGlowIntensity;
+
+        // Start the test
+        init();
+    </script>
+</body>
+</html>

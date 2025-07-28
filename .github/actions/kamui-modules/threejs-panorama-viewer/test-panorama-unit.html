@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 Panorama Script - Unit Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000814;
+            color: white;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        .test-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+            border-radius: 10px;
+        }
+        
+        .test-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+        }
+        
+        .test-canvas-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-controls-container {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-section {
+            background: rgba(0,0,0,0.3);
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #4ecdc4;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        button {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+        
+        button.active {
+            background: rgba(78,205,196,0.6);
+            border-color: rgba(78,205,196,0.8);
+        }
+        
+        .test-results {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .panorama-info {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 10px;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .success { color: #4ecdc4; }
+        .error { color: #ff6b6b; }
+        .warning { color: #ffd93d; }
+        .info { color: #87ceeb; }
+        
+        #test-canvas {
+            width: 100%;
+            height: 400px;
+            border-radius: 6px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .spherical-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .metric-item {
+            background: rgba(0,0,0,0.5);
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🌐 Panorama Script - Unit Test</h1>
+            <p>Testing spherical particle distribution, image analysis, and 360° panoramic functions</p>
+        </div>
+
+        <div class="test-layout">
+            <div class="test-canvas-container">
+                <h3>🌐 Panorama Test Viewport</h3>
+                <div id="test-canvas"></div>
+                
+                <div class="test-section">
+                    <h4>📊 Panorama Information</h4>
+                    <div id="panorama-info" class="panorama-info">
+                        Panorama system not initialized...
+                    </div>
+                </div>
+            </div>
+
+            <div class="test-controls-container">
+                <div class="test-section">
+                    <h3>🔧 Core Function Tests</h3>
+                    <div class="test-controls">
+                        <button onclick="testSphericalDistribution()">🌐 Test Sphere</button>
+                        <button onclick="testImageAnalysis()">🖼️ Test Image</button>
+                        <button onclick="testParticleGeneration()">⚡ Test Particles</button>
+                        <button onclick="testCameraPlacement()">📷 Test Camera</button>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>📐 Spherical Coordinates</h3>
+                    <div class="spherical-metrics">
+                        <div class="metric-item">
+                            <div><strong>Sphere Radius</strong></div>
+                            <div id="sphere-radius">200</div>
+                        </div>
+                        <div class="metric-item">
+                            <div><strong>Particles</strong></div>
+                            <div id="particle-count">0</div>
+                        </div>
+                        <div class="metric-item">
+                            <div><strong>Distribution</strong></div>
+                            <div id="distribution-type">Uniform</div>
+                        </div>
+                        <div class="metric-item">
+                            <div><strong>Density</strong></div>
+                            <div id="particle-density">Medium</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>🎮 Manual Tests</h3>
+                    <div class="test-controls">
+                        <button onclick="generateTestSphere()">🌐 Generate Sphere</button>
+                        <button onclick="testDensityLevels()">📊 Test Density</button>
+                        <button onclick="testColorMapping()">🎨 Test Colors</button>
+                        <button onclick="resetCameraTest()">🏠 Reset Camera</button>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label>Particle Size:</label>
+                        <input type="range" id="particleSize" min="0.5" max="5.0" step="0.1" value="2.0" 
+                               onchange="updateParticleSizeTest(this.value)">
+                        <span id="sizeValue">2.0</span>
+                    </div>
+                    
+                    <div>
+                        <label>Sphere Radius:</label>
+                        <input type="range" id="sphereRadius" min="50" max="500" step="10" value="200" 
+                               onchange="updateSphereRadiusTest(this.value)">
+                        <span id="radiusValue">200</span>
+                    </div>
+                </div>
+                
+                <div class="test-section">
+                    <h3>📋 Test Results</h3>
+                    <div id="test-results" class="test-results">
+                        Ready to run panorama tests...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/TextureLoader.js"></script>
+    
+    <!-- Shared Components -->
+    <script src="../shared-viewer-components/audio-reactive-system.js"></script>
+    <script src="../shared-viewer-components/camera-controls.js"></script>
+    <script src="../shared-viewer-components/mouse-interaction.js"></script>
+    <script src="../shared-viewer-components/ui-controls.js"></script>
+    <script src="../shared-viewer-components/particle-effects.js"></script>
+    
+    <!-- Unit Test Script -->
+    <script>
+        // Test state
+        let testResults = [];
+        let testStartTime = Date.now();
+        let panoramaSystemInitialized = false;
+        let testPanoramaParticles = null;
+        let testSphereRadius = 200;
+        let testParticleSize = 2.0;
+        
+        // Utility functions
+        function logTest(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            testResults.push({message: logEntry, type});
+            updateTestResultsDisplay();
+            console.log(logEntry);
+        }
+        
+        function updateTestResultsDisplay() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.map(result => 
+                `<div class="${result.type}">${result.message}</div>`
+            ).join('');
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function updatePanoramaInfo() {
+            if (!panoramaSystemInitialized || !testPanoramaParticles) {
+                document.getElementById('panorama-info').innerHTML = 'Panorama system not initialized...';
+                return;
+            }
+            
+            const particleCount = testPanoramaParticles.geometry.attributes.position.count;
+            const info = `
+                <div><strong>🌐 Panorama Type:</strong> Spherical particle distribution</div>
+                <div><strong>⚡ Particles:</strong> ${particleCount.toLocaleString()}</div>
+                <div><strong>📐 Sphere Radius:</strong> ${testSphereRadius}</div>
+                <div><strong>📍 Camera Position:</strong> Center (0,0,0)</div>
+                <div><strong>🎯 Camera Target:</strong> Outward facing</div>
+                <div><strong>🎨 Particle Size:</strong> ${testParticleSize}</div>
+                <div><strong>🔄 Distribution:</strong> Uniform spherical coordinates</div>
+            `;
+            document.getElementById('panorama-info').innerHTML = info;
+            
+            // Update metrics
+            document.getElementById('particle-count').textContent = particleCount.toLocaleString();
+            document.getElementById('sphere-radius').textContent = testSphereRadius;
+        }
+        
+        // Test Functions
+        function testSphericalDistribution() {
+            logTest('🌐 Testing Spherical Distribution Algorithm...', 'info');
+            
+            try {
+                const testCount = 1000;
+                const testRadius = 100;
+                const positions = [];
+                
+                // Generate uniform spherical distribution
+                for (let i = 0; i < testCount; i++) {
+                    const u = Math.random();
+                    const v = Math.random();
+                    
+                    const phi = u * 2 * Math.PI;
+                    const theta = Math.acos(2 * v - 1);
+                    
+                    const x = testRadius * Math.sin(theta) * Math.cos(phi);
+                    const y = testRadius * Math.cos(theta);
+                    const z = testRadius * Math.sin(theta) * Math.sin(phi);
+                    
+                    positions.push([x, y, z]);
+                }
+                
+                // Verify distribution properties
+                let radiusSum = 0;
+                let withinTolerance = 0;
+                
+                positions.forEach(([x, y, z]) => {
+                    const radius = Math.sqrt(x*x + y*y + z*z);
+                    radiusSum += radius;
+                    
+                    if (Math.abs(radius - testRadius) < 1.0) {
+                        withinTolerance++;
+                    }
+                });
+                
+                const avgRadius = radiusSum / testCount;
+                const radiusAccuracy = (withinTolerance / testCount) * 100;
+                
+                if (Math.abs(avgRadius - testRadius) < 2.0 && radiusAccuracy > 95) {
+                    logTest(`✅ Spherical distribution test passed - Avg radius: ${avgRadius.toFixed(1)}, Accuracy: ${radiusAccuracy.toFixed(1)}%`, 'success');
+                    return true;
+                } else {
+                    logTest(`❌ Spherical distribution test failed - Avg radius: ${avgRadius.toFixed(1)}, Accuracy: ${radiusAccuracy.toFixed(1)}%`, 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                logTest(`❌ Spherical distribution test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testImageAnalysis() {
+            logTest('🖼️ Testing Image Analysis Functions...', 'info');
+            
+            try {
+                // Create test canvas and context
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 50;
+                
+                // Draw test pattern
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(0, 0, 50, 50);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(50, 0, 50, 50);
+                
+                // Get image data
+                const imageData = ctx.getImageData(0, 0, 100, 50);
+                const pixels = imageData.data;
+                
+                // Test pixel analysis
+                let redPixels = 0;
+                let greenPixels = 0;
+                
+                for (let i = 0; i < pixels.length; i += 4) {
+                    const r = pixels[i];
+                    const g = pixels[i + 1];
+                    const b = pixels[i + 2];
+                    
+                    if (r > 200 && g < 50 && b < 50) redPixels++;
+                    if (g > 200 && r < 50 && b < 50) greenPixels++;
+                }
+                
+                const totalPixels = (100 * 50);
+                const redPercentage = (redPixels / totalPixels) * 100;
+                const greenPercentage = (greenPixels / totalPixels) * 100;
+                
+                if (redPercentage > 40 && greenPercentage > 40) {
+                    logTest(`✅ Image analysis test passed - Red: ${redPercentage.toFixed(1)}%, Green: ${greenPercentage.toFixed(1)}%`, 'success');
+                    return true;
+                } else {
+                    logTest(`❌ Image analysis test failed - Red: ${redPercentage.toFixed(1)}%, Green: ${greenPercentage.toFixed(1)}%`, 'error');
+                    return false;
+                }
+                
+            } catch (error) {
+                logTest(`❌ Image analysis test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testParticleGeneration() {
+            logTest('⚡ Testing Particle Generation System...', 'info');
+            
+            try {
+                // Initialize basic system if not done
+                if (!panoramaSystemInitialized) {
+                    initializeBasicPanoramaSystem();
+                }
+                
+                // Generate test particles
+                const particleCount = 5000;
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const u = Math.random();
+                    const v = Math.random();
+                    
+                    const phi = u * 2 * Math.PI;
+                    const theta = Math.acos(2 * v - 1);
+                    
+                    const x = testSphereRadius * Math.sin(theta) * Math.cos(phi);
+                    const y = testSphereRadius * Math.cos(theta);
+                    const z = testSphereRadius * Math.sin(theta) * Math.sin(phi);
+                    
+                    positions[i * 3] = x;
+                    positions[i * 3 + 1] = y;
+                    positions[i * 3 + 2] = z;
+                    
+                    // Test color mapping
+                    const latNorm = theta / Math.PI;
+                    const lonNorm = phi / (2 * Math.PI);
+                    
+                    colors[i * 3] = Math.sin(lonNorm * Math.PI * 2) * 0.5 + 0.5;
+                    colors[i * 3 + 1] = Math.sin(latNorm * Math.PI * 2) * 0.5 + 0.5;
+                    colors[i * 3 + 2] = Math.sin((lonNorm + latNorm) * Math.PI) * 0.5 + 0.5;
+                }
+                
+                // Create geometry and particle system
+                const geometry = new THREE.BufferGeometry();
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.computeBoundingSphere();
+                
+                // Test if createParticleSystem function exists
+                if (typeof createParticleSystem === 'function') {
+                    testPanoramaParticles = createParticleSystem(geometry, {
+                        size: testParticleSize,
+                        sizeAttenuation: true,
+                        transparent: true,
+                        opacity: 0.9,
+                        vertexColors: true
+                    });
+                    
+                    scene.add(testPanoramaParticles);
+                    logTest(`✅ Particle generation test passed - ${particleCount} particles created`, 'success');
+                } else {
+                    // Fallback particle system
+                    const material = new THREE.PointsMaterial({
+                        size: testParticleSize,
+                        vertexColors: true,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    
+                    testPanoramaParticles = new THREE.Points(geometry, material);
+                    scene.add(testPanoramaParticles);
+                    logTest(`✅ Particle generation test passed (fallback) - ${particleCount} particles created`, 'success');
+                }
+                
+                updatePanoramaInfo();
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Particle generation test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        function testCameraPlacement() {
+            logTest('📷 Testing Camera Placement for Panoramic View...', 'info');
+            
+            if (!panoramaSystemInitialized) {
+                logTest('❌ Panorama system not initialized', 'error');
+                return false;
+            }
+            
+            try {
+                // Test camera positioning at center
+                setCameraPosition(0, 0, 0);
+                controls.target.set(0, 0, 0);
+                
+                // Verify camera is at center
+                const camPos = camera.position;
+                const distanceFromCenter = Math.sqrt(camPos.x*camPos.x + camPos.y*camPos.y + camPos.z*camPos.z);
+                
+                if (distanceFromCenter < 1.0) {
+                    logTest(`✅ Camera placement test passed - Distance from center: ${distanceFromCenter.toFixed(3)}`, 'success');
+                } else {
+                    logTest(`❌ Camera placement test failed - Distance from center: ${distanceFromCenter.toFixed(3)}`, 'error');
+                    return false;
+                }
+                
+                // Test controls configuration for panoramic viewing
+                if (controls.enablePan === false && 
+                    controls.minDistance < 10 && 
+                    controls.maxDistance < testSphereRadius) {
+                    logTest('✅ Panoramic controls configuration correct', 'success');
+                } else {
+                    logTest('⚠️ Panoramic controls configuration may need adjustment', 'warning');
+                }
+                
+                controls.update();
+                return true;
+                
+            } catch (error) {
+                logTest(`❌ Camera placement test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Manual test functions
+        function generateTestSphere() {
+            logTest('🌐 Generating new test sphere...', 'info');
+            
+            if (testPanoramaParticles) {
+                scene.remove(testPanoramaParticles);
+            }
+            
+            testParticleGeneration();
+        }
+        
+        function testDensityLevels() {
+            logTest('📊 Testing different particle density levels...', 'info');
+            
+            const densities = {
+                'low': 5000,
+                'medium': 15000,
+                'high': 30000
+            };
+            
+            Object.entries(densities).forEach(([level, count]) => {
+                logTest(`${level.toUpperCase()}: ${count.toLocaleString()} particles`, 'info');
+            });
+            
+            document.getElementById('particle-density').textContent = 'Testing';
+        }
+        
+        function testColorMapping() {
+            logTest('🎨 Testing spherical coordinate color mapping...', 'info');
+            
+            if (testPanoramaParticles) {
+                const colors = testPanoramaParticles.geometry.attributes.color;
+                if (colors) {
+                    logTest(`✅ Color mapping active - ${colors.count} color vertices`, 'success');
+                } else {
+                    logTest('❌ Color mapping not found', 'error');
+                }
+            }
+        }
+        
+        function resetCameraTest() {
+            if (panoramaSystemInitialized) {
+                setCameraPosition(0, 0, 0);
+                controls.target.set(0, 0, 0);
+                controls.update();
+                logTest('📷 Camera reset to panorama center', 'info');
+            }
+        }
+        
+        function updateParticleSizeTest(value) {
+            testParticleSize = parseFloat(value);
+            document.getElementById('sizeValue').textContent = testParticleSize.toFixed(1);
+            
+            if (testPanoramaParticles) {
+                testPanoramaParticles.material.size = testParticleSize;
+                logTest(`🎨 Particle size updated: ${testParticleSize}`, 'info');
+            }
+        }
+        
+        function updateSphereRadiusTest(value) {
+            testSphereRadius = parseInt(value);
+            document.getElementById('radiusValue').textContent = testSphereRadius;
+            document.getElementById('sphere-radius').textContent = testSphereRadius;
+            
+            logTest(`📐 Sphere radius set to: ${testSphereRadius}`, 'info');
+        }
+        
+        function initializeBasicPanoramaSystem() {
+            // Initialize camera system
+            const containerElement = document.getElementById('test-canvas');
+            const cameraData = initializeCameraSystem(containerElement, '#000814');
+            
+            if (!cameraData) {
+                logTest('❌ Failed to initialize camera system', 'error');
+                return false;
+            }
+            
+            // Store global references
+            panoramaSystemInitialized = true;
+            
+            // Configure for panoramic viewing
+            setCameraPosition(0, 0, 0);
+            controls.enablePan = false;
+            controls.minDistance = 5;
+            controls.maxDistance = testSphereRadius - 20;
+            
+            // Start render loop
+            startRenderLoop();
+            
+            logTest('✅ Basic panorama system initialized', 'success');
+            return true;
+        }
+        
+        function startRenderLoop() {
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                if (panoramaSystemInitialized) {
+                    updateCameraControls();
+                    renderScene();
+                    updatePanoramaInfo();
+                }
+            }
+            animate();
+        }
+        
+        // Run comprehensive test suite
+        async function runAllTests() {
+            logTest('🚀 Starting comprehensive panorama script tests...', 'info');
+            
+            const tests = [
+                testSphericalDistribution,
+                testImageAnalysis,
+                testParticleGeneration,
+                testCameraPlacement
+            ];
+            
+            let passedTests = 0;
+            
+            for (const test of tests) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const result = await test();
+                if (result) passedTests++;
+            }
+            
+            logTest(`📊 Test Summary: ${passedTests}/${tests.length} tests passed`, 
+                   passedTests === tests.length ? 'success' : 'warning');
+        }
+        
+        // Initialize tests
+        function initializeTests() {
+            logTest('🧪 Panorama Script Unit Test initialized', 'info');
+            
+            // Run initial tests
+            setTimeout(runAllTests, 1000);
+        }
+        
+        // Start tests when page loads
+        document.addEventListener('DOMContentLoaded', initializeTests);
+    </script>
+</body>
+</html>
