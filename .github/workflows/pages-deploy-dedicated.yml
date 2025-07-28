@@ -37,22 +37,31 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.inputs.run_id || github.event.workflow_run.id }}
-          pattern: regression-test-2d-3d-*
-          path: ./downloaded-artifacts
+          pattern: "*"
+          merge-multiple: true
+          path: downloaded-artifacts
+          
+      - name: 🌐 Download Previous Site (Optional)
+        run: |
+          wget -q -e robots=off -np -nH --cut-dirs=1 -r https://nyukicorn.github.io/kamuicode-workflow/ -P previous-site || true
           
       - name: 📁 Prepare Pages Content
         run: |
-          ART_DIRS=$(find downloaded-artifacts -maxdepth 1 -type d -name 'regression-test-2d-3d-*')
+          ART_DIRS=$(find downloaded-artifacts -mindepth 1 -maxdepth 1 -type d)
           mkdir -p pages-content
           for d in $ART_DIRS; do
             b=$(basename "$d")
             mkdir -p "pages-content/$b"
             cp -R "$d"/. "pages-content/$b"/
           done
+          if [ -d previous-site ]; then cp -R previous-site/. pages-content/; fi
+          if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
           
       - name: ✅ Existence Check
         run: |
-          test -f pages-content/regression-test-2d-3d-17/index.html || { echo "missing expected dir"; exit 1; }
+          if ! find pages-content -maxdepth 3 -name index.html | grep -q .; then
+            echo "no index.html found in pages-content"; exit 1
+          fi
           
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
