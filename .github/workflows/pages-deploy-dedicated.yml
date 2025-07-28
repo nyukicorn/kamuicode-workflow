@@ -49,10 +49,41 @@ jobs:
           echo "=== DEBUG: Directory structure ==="
           find downloaded-artifacts -type d | head -10
           
+          # Create workflow-based folder name
+          WORKFLOW_NAME="${{ github.event.workflow_run.name || 'manual-deploy' }}"
+          RUN_ID="${{ github.event.inputs.run_id || github.event.workflow_run.id }}"
+          DATE=$(date +%Y%m%d)
+          
+          # Convert workflow name to URL-safe format
+          FOLDER_NAME=$(echo "$WORKFLOW_NAME" | sed 's/🧪 //g; s/🚀 //g; s/📁 //g; s/[^a-zA-Z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | tr '[:upper:]' '[:lower:]')
+          VERSIONED_FOLDER="${FOLDER_NAME}-${DATE}-${RUN_ID}"
+          
+          echo "Source workflow: $WORKFLOW_NAME"
+          echo "Versioned folder: $VERSIONED_FOLDER"
+          
           mkdir -p pages-content
-          # Copy all files from downloaded-artifacts root
-          cp -R downloaded-artifacts/. pages-content/ 2>/dev/null || true
+          
+          # Create versioned folder for this deployment
+          mkdir -p "pages-content/$VERSIONED_FOLDER"
+          cp -R downloaded-artifacts/. "pages-content/$VERSIONED_FOLDER/" 2>/dev/null || true
+          
+          # Copy existing docs for long-term preservation
           if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
+          
+          # Create/update root index.html pointing to latest
+          cat > pages-content/index.html << EOF
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Latest Deployment - $WORKFLOW_NAME</title>
+    <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
+</head>
+<body>
+    <p>Redirecting to latest deployment: <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
+</body>
+</html>
+EOF
           
           echo "=== DEBUG: Final pages-content structure ==="
           find pages-content -name "*.html" | head -10
