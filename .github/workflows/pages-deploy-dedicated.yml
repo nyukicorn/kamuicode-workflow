@@ -45,8 +45,10 @@ jobs:
           # Debug: Show full structure
           echo "Full structure of downloaded-artifacts:"
           find downloaded-artifacts -type d | head -20
+          echo "Files in artifact:"
+          find downloaded-artifacts -name "*.html" | head -5
           
-          # Find the regression test artifact folder
+          # Find the regression test artifact folder and check contents
           ARTIFACT_FOLDER=$(find downloaded-artifacts -name "regression-test-2d-3d-*" -type d | head -1)
           echo "Artifact folder: $ARTIFACT_FOLDER"
           
@@ -55,9 +57,18 @@ jobs:
             exit 1
           fi
           
-          # Copy entire artifact contents to pages directory
+          echo "Contents of artifact folder:"
+          ls -la "$ARTIFACT_FOLDER"
+          
+          # Copy entire artifact contents to pages directory  
           mkdir -p pages-content
-          cp -r "$ARTIFACT_FOLDER"/* pages-content/
+          if [[ -n "$(ls -A "$ARTIFACT_FOLDER" 2>/dev/null)" ]]; then
+            cp -r "$ARTIFACT_FOLDER"/* pages-content/
+            echo "✅ Successfully copied contents"
+          else
+            echo "❌ Artifact folder is empty!"
+            exit 1
+          fi
           
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
