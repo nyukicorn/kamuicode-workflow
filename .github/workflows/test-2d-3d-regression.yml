@@ -59,12 +59,15 @@ jobs:
         id: create_viewer
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
-          ply_file: ${{ steps.generate_pointcloud.outputs.ply-file-path }}
-          output_filename: 'test-output-2d-3d/viewer.html'
-          particle_size: '2.0'
-          particle_density: ${{ github.event.inputs.particle_density }}
-          enable_audio_reactive: ${{ github.event.inputs.enable_audio }}
-          background_color: '#1a1a2e'
+          ply-file-path: ${{ steps.generate_pointcloud.outputs.ply-file-path }}
+          output-folder: 'test-output-2d-3d'
+          viewer-title: '2D→3D Regression Test Viewer'
+          camera-position: '0,0,100'
+          auto-rotate: 'false'
+          background-color: '#1a1a2e'
+          point-size: '2.0'
+          animation-speed: '1.0'
+          branch-name: 'main'
           
       - name: 📊 Test Results Summary
         run: |
