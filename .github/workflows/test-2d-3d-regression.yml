@@ -81,7 +81,7 @@ jobs:
           echo "## Generated Files" >> test-output-2d-3d/test-report.md
           echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply-file-path }}\`" >> test-output-2d-3d/test-report.md
           echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth-map-path }}\`" >> test-output-2d-3d/test-report.md
-          echo "- **Viewer**: \`test-output-2d-3d/viewer.html\`" >> test-output-2d-3d/test-report.md
+          echo "- **Viewer**: \`test-output-2d-3d/index.html\`" >> test-output-2d-3d/test-report.md
           echo "" >> test-output-2d-3d/test-report.md
           echo "## Processing Details" >> test-output-2d-3d/test-report.md
           echo "- **Generation Status**: ${{ steps.generate_pointcloud.outputs.pointcloud-completed }}" >> test-output-2d-3d/test-report.md
@@ -105,6 +105,10 @@ jobs:
         run: |
           echo "🔍 Validating generated files..."
           
+          # Debug: List all files in output directory
+          echo "📁 Files in test-output-2d-3d directory:"
+          ls -la test-output-2d-3d/ || echo "Directory not found"
+          
           # Check PLY file
           if [[ -f "${{ steps.generate_pointcloud.outputs.ply-file-path }}" ]]; then
             echo "✅ PLY file generated successfully"
@@ -114,16 +118,23 @@ jobs:
             exit 1
           fi
           
-          # Check viewer HTML
-          if [[ -f "test-output-2d-3d/viewer.html" ]]; then
-            echo "✅ Viewer HTML generated successfully"
+          # Check viewer HTML (try both possible filenames)
+          if [[ -f "test-output-2d-3d/index.html" ]]; then
+            echo "✅ Viewer HTML generated successfully (index.html)"
             # Check for key components
+            grep -q "three.min.js" test-output-2d-3d/index.html && echo "  ✓ Three.js included"
+            grep -q "OrbitControls" test-output-2d-3d/index.html && echo "  ✓ OrbitControls included"
+            grep -q "PLYLoader" test-output-2d-3d/index.html && echo "  ✓ PLYLoader included"
+            grep -q "shared-components" test-output-2d-3d/index.html && echo "  ✓ Shared components included"
+          elif [[ -f "test-output-2d-3d/viewer.html" ]]; then
+            echo "✅ Viewer HTML generated successfully (viewer.html)"
+            # Check for key components  
             grep -q "three.min.js" test-output-2d-3d/viewer.html && echo "  ✓ Three.js included"
             grep -q "OrbitControls" test-output-2d-3d/viewer.html && echo "  ✓ OrbitControls included"
             grep -q "PLYLoader" test-output-2d-3d/viewer.html && echo "  ✓ PLYLoader included"
             grep -q "shared-components" test-output-2d-3d/viewer.html && echo "  ✓ Shared components included"
           else
-            echo "❌ Viewer HTML generation failed"
+            echo "❌ Viewer HTML generation failed (neither index.html nor viewer.html found)"
             exit 1
           fi
           
