@@ -160,6 +160,30 @@ jobs:
           echo "✅ All validations passed!"
           echo "🌐 GitHub Pages URL: https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
           
+      - name: 🚀 Deploy to main branch for GitHub Pages
+        run: |
+          echo "🚀 Deploying test results to main branch docs/ folder..."
+          
+          # Switch to main branch
+          git checkout main
+          git pull origin main
+          
+          # Copy the test results from branch to main
+          mkdir -p docs/${{ steps.setup.outputs.folder-name }}
+          git checkout ${{ steps.setup.outputs.branch-name }} -- docs/${{ steps.setup.outputs.folder-name }}
+          
+          # Commit to main
+          git add docs/${{ steps.setup.outputs.folder-name }}
+          if ! git diff --cached --quiet; then
+            git commit -m "📊 Deploy 2D→3D test results: ${{ steps.setup.outputs.folder-name }}"
+            git push origin main
+            echo "✅ Test results deployed to main branch"
+          else
+            echo "ℹ️ No changes to deploy"
+          fi
+          
+          echo "🌐 GitHub Pages URL: https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
+          
   test-shared-components:
     name: Test Shared Components Integration
     runs-on: ubuntu-latest
