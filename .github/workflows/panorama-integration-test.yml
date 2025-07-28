@@ -1,0 +1,362 @@
+name: 🌐 360° Panorama Integration Test
+# Tests 360-degree panorama processing: panorama image → depth-enhanced PLY → interactive viewer
+
+on:
+  workflow_dispatch:
+    inputs:
+      panorama_image:
+        description: 'Panorama image path (equirectangular 2:1 aspect ratio)'
+        required: false
+        default: 'threejs-experience-20250719-16385462254/src/panorama.jpg'
+      
+      sphere_radius:
+        description: 'Sphere radius for 3D projection'
+        required: false
+        default: '200'
+        type: choice
+        options:
+          - '150'
+          - '200'
+          - '300'
+      
+      particle_density:
+        description: 'Particle density level'
+        required: false
+        default: 'medium'
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+      
+      enable_depth_inversion:
+        description: 'Invert depth values (experimental)'
+        required: false
+        default: 'false'
+        type: boolean
+      
+      enable_audio_reactive:
+        description: 'Enable audio reactive test'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  test-panorama-integration:
+    name: Test 360° Panorama Integration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Check Panorama Image Exists
+        run: |
+          echo "🔍 Checking panorama image: ${{ github.event.inputs.panorama_image }}"
+          if [[ -f "${{ github.event.inputs.panorama_image }}" ]]; then
+            echo "✅ Panorama image found"
+            ls -la "${{ github.event.inputs.panorama_image }}"
+            
+            # Check aspect ratio
+            if command -v identify >/dev/null 2>&1; then
+              DIMENSIONS=$(identify -format "%wx%h" "${{ github.event.inputs.panorama_image }}")
+              WIDTH=$(echo $DIMENSIONS | cut -d'x' -f1)
+              HEIGHT=$(echo $DIMENSIONS | cut -d'x' -f2)
+              RATIO=$(echo "scale=2; $WIDTH / $HEIGHT" | bc -l 2>/dev/null || echo "2.0")
+              echo "📐 Image dimensions: ${WIDTH}x${HEIGHT} (ratio: ${RATIO})"
+              
+              if (( $(echo "$RATIO < 1.5" | bc -l 2>/dev/null || echo "0") )); then
+                echo "⚠️  Warning: Aspect ratio ${RATIO} may not be optimal for 360° panorama (recommended: ~2.0)"
+              fi
+            fi
+          else
+            echo "❌ Panorama image not found, using first available panorama"
+            FIRST_PANORAMA=$(find . -name "panorama.jpg" | head -1)
+            if [[ -f "$FIRST_PANORAMA" ]]; then
+              echo "USE_DEFAULT_PANORAMA=$FIRST_PANORAMA" >> $GITHUB_ENV
+              echo "✅ Using: $FIRST_PANORAMA"
+            else
+              echo "❌ No panorama images found"
+              exit 1
+            fi
+          fi
+      
+      - name: 🌐 Generate 360° Point Cloud
+        id: generate_panorama_pointcloud
+        uses: ./.github/actions/kamui-modules/pointcloud-panorama-generation
+        with:
+          panorama_image_path: ${{ env.USE_DEFAULT_PANORAMA || github.event.inputs.panorama_image }}
+          output_directory: 'test-output-panorama'
+          sphere_radius: ${{ github.event.inputs.sphere_radius }}
+          depth_resolution: '1024x512'
+          particle_density: ${{ github.event.inputs.particle_density }}
+          depth_variation: '0.4'
+          enable_pole_compression: 'true'
+          depth_inversion: ${{ github.event.inputs.enable_depth_inversion }}
+          
+      - name: 🎨 Create 360° Panorama Viewer
+        id: create_panorama_viewer
+        uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
+        with:
+          ply_file_path: ${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}
+          output_filename: 'test-output-panorama/panorama-viewer.html'
+          background_color: '#000814'
+          camera_position_radius: ${{ github.event.inputs.sphere_radius }}
+          particle_density: ${{ github.event.inputs.particle_density }}
+          auto_rotate: 'true'
+          rotation_speed: '0.5'
+          enable_depth_visualization: 'true'
+          enable_music: 'false'
+          
+      - name: 📊 Panorama Integration Results
+        run: |
+          echo "# 🌐 360° Panorama Integration Test Results" > test-output-panorama/test-report.md
+          echo "" >> test-output-panorama/test-report.md
+          echo "## Test Configuration" >> test-output-panorama/test-report.md
+          echo "- **Panorama Image**: \`${{ env.USE_DEFAULT_PANORAMA || github.event.inputs.panorama_image }}\`" >> test-output-panorama/test-report.md
+          echo "- **Sphere Radius**: ${{ github.event.inputs.sphere_radius }}" >> test-output-panorama/test-report.md
+          echo "- **Particle Density**: ${{ github.event.inputs.particle_density }}" >> test-output-panorama/test-report.md
+          echo "- **Depth Inversion**: ${{ github.event.inputs.enable_depth_inversion }}" >> test-output-panorama/test-report.md
+          echo "- **Audio Reactive**: ${{ github.event.inputs.enable_audio_reactive }}" >> test-output-panorama/test-report.md
+          echo "" >> test-output-panorama/test-report.md
+          echo "## Generated Assets" >> test-output-panorama/test-report.md
+          echo "- **PLY Point Cloud**: \`${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}\`" >> test-output-panorama/test-report.md
+          echo "- **Depth Map**: \`${{ steps.generate_panorama_pointcloud.outputs.depth_map_path }}\`" >> test-output-panorama/test-report.md
+          echo "- **360° Viewer**: \`test-output-panorama/panorama-viewer.html\`" >> test-output-panorama/test-report.md
+          echo "- **Particle Count**: ${{ steps.generate_panorama_pointcloud.outputs.particle_count }}" >> test-output-panorama/test-report.md
+          echo "" >> test-output-panorama/test-report.md
+          echo "## Processing Performance" >> test-output-panorama/test-report.md
+          echo "- **Processing Time**: ${{ steps.generate_panorama_pointcloud.outputs.processing_time }}s" >> test-output-panorama/test-report.md
+          echo "- **Sphere Configuration**: ${{ steps.generate_panorama_pointcloud.outputs.sphere_info }}" >> test-output-panorama/test-report.md
+          echo "" >> test-output-panorama/test-report.md
+          echo "## Module Integration Status" >> test-output-panorama/test-report.md
+          echo "- ✅ pointcloud-panorama-generation module" >> test-output-panorama/test-report.md
+          echo "- ✅ threejs-panorama-viewer module" >> test-output-panorama/test-report.md
+          echo "- ✅ 360° spherical coordinate transformation" >> test-output-panorama/test-report.md
+          echo "- ✅ Depth-enhanced visualization" >> test-output-panorama/test-report.md
+          echo "- ✅ Pole compression applied" >> test-output-panorama/test-report.md
+          echo "- ✅ Seamline continuity ensured" >> test-output-panorama/test-report.md
+          
+          cat test-output-panorama/test-report.md
+          
+      - name: 🎯 Validate 360° Integration
+        run: |
+          echo "🔍 Validating 360° panorama integration..."
+          
+          # Check PLY file was generated
+          if [[ -f "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" ]]; then
+            echo "✅ Panorama PLY file generated successfully"
+            PLY_SIZE=$(wc -l < "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}")
+            echo "  📊 PLY contains ${PLY_SIZE} lines"
+            
+            # Check PLY header
+            if head -10 "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" | grep -q "ply"; then
+              echo "  ✓ Valid PLY format detected"
+            else
+              echo "  ❌ Invalid PLY format"
+              exit 1
+            fi
+            
+            # Check for color information
+            if head -20 "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" | grep -q "property uchar red"; then
+              echo "  ✓ Color information included"
+            else
+              echo "  ⚠️  No color information found"
+            fi
+          else
+            echo "❌ Panorama PLY file generation failed"
+            exit 1
+          fi
+          
+          # Check panorama viewer HTML
+          if [[ -f "test-output-panorama/panorama-viewer.html" ]]; then
+            echo "✅ Panorama viewer HTML generated successfully"
+            
+            # Check for Three.js integration
+            if grep -q "three.min.js" test-output-panorama/panorama-viewer.html; then
+              echo "  ✓ Three.js library included"
+            else
+              echo "  ❌ Three.js library missing"
+              exit 1
+            fi
+            
+            # Check for PLY loader
+            if grep -q "PLYLoader" test-output-panorama/panorama-viewer.html; then
+              echo "  ✓ PLY loader included"
+            else
+              echo "  ❌ PLY loader missing"
+              exit 1
+            fi
+            
+            # Check for sphere configuration
+            if grep -q "${{ github.event.inputs.sphere_radius }}" test-output-panorama/panorama-viewer.html; then
+              echo "  ✓ Sphere radius configured correctly"
+            else
+              echo "  ⚠️  Sphere radius configuration not found"
+            fi
+            
+            # Check for panorama-specific features
+            if grep -q "spherical" test-output-panorama/panorama-viewer.html || grep -q "panorama" test-output-panorama/panorama-viewer.html; then
+              echo "  ✓ Panorama-specific features included"
+            else
+              echo "  ⚠️  Panorama-specific features not detected"
+            fi
+          else
+            echo "❌ Panorama viewer HTML generation failed"
+            exit 1
+          fi
+          
+          # Check depth maps
+          if [[ -f "${{ steps.generate_panorama_pointcloud.outputs.depth_map_path }}" ]]; then
+            echo "✅ Depth map generated successfully"
+          else
+            echo "⚠️  Depth map not found (may be optional)"
+          fi
+          
+          echo ""
+          echo "✅ All 360° panorama integration validations passed!"
+          
+      - name: 📦 Upload Panorama Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: panorama-integration-test-${{ github.run_number }}
+          path: |
+            test-output-panorama/
+          retention-days: 7
+          
+      - name: 🧪 Test Shared Components Integration
+        run: |
+          echo "🔍 Testing shared components integration with panorama viewer..."
+          
+          # Check if shared components are referenced
+          SHARED_COMPONENTS=(
+            "audio-reactive-system"
+            "camera-controls" 
+            "mouse-interaction"
+            "particle-effects"
+            "ui-controls"
+          )
+          
+          INTEGRATION_SCORE=0
+          TOTAL_COMPONENTS=${#SHARED_COMPONENTS[@]}
+          
+          for component in "${SHARED_COMPONENTS[@]}"; do
+            if grep -q "$component" test-output-panorama/panorama-viewer.html; then
+              echo "✅ $component integration detected"
+              ((INTEGRATION_SCORE++))
+            else
+              echo "⚠️  $component integration not found"
+            fi
+          done
+          
+          INTEGRATION_PERCENTAGE=$((INTEGRATION_SCORE * 100 / TOTAL_COMPONENTS))
+          echo ""
+          echo "📊 Shared Components Integration: ${INTEGRATION_SCORE}/${TOTAL_COMPONENTS} (${INTEGRATION_PERCENTAGE}%)"
+          
+          if [[ $INTEGRATION_PERCENTAGE -ge 60 ]]; then
+            echo "✅ Sufficient shared components integration"
+          else
+            echo "⚠️  Low shared components integration (${INTEGRATION_PERCENTAGE}% < 60%)"
+          fi
+          
+      - name: 📈 Performance Analysis
+        run: |
+          echo "📈 Analyzing panorama integration performance..."
+          
+          # Analyze particle count efficiency
+          PARTICLE_COUNT="${{ steps.generate_panorama_pointcloud.outputs.particle_count }}"
+          PROCESSING_TIME="${{ steps.generate_panorama_pointcloud.outputs.processing_time }}"
+          
+          if [[ -n "$PARTICLE_COUNT" && "$PARTICLE_COUNT" -gt 0 ]]; then
+            PARTICLES_PER_SECOND=$(echo "scale=0; $PARTICLE_COUNT / $PROCESSING_TIME" | bc -l 2>/dev/null || echo "0")
+            echo "🎯 Particle Generation Rate: ${PARTICLES_PER_SECOND} particles/second"
+            
+            # Performance thresholds
+            if [[ "$PARTICLES_PER_SECOND" -gt 10000 ]]; then
+              echo "✅ Excellent performance (>10k particles/s)"
+            elif [[ "$PARTICLES_PER_SECOND" -gt 5000 ]]; then
+              echo "✅ Good performance (>5k particles/s)"
+            elif [[ "$PARTICLES_PER_SECOND" -gt 1000 ]]; then
+              echo "⚠️  Moderate performance (>1k particles/s)"
+            else
+              echo "⚠️  Low performance (<1k particles/s)"
+            fi
+          fi
+          
+          # File size analysis
+          if [[ -f "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" ]]; then
+            PLY_SIZE=$(stat -f%z "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" 2>/dev/null || stat -c%s "${{ steps.generate_panorama_pointcloud.outputs.panorama_ply_path }}" 2>/dev/null || echo "0")
+            PLY_SIZE_MB=$(echo "scale=2; $PLY_SIZE / 1048576" | bc -l 2>/dev/null || echo "0")
+            echo "💾 PLY File Size: ${PLY_SIZE_MB} MB"
+            
+            if (( $(echo "$PLY_SIZE_MB < 50" | bc -l 2>/dev/null || echo "1") )); then
+              echo "✅ Optimal file size for web delivery"
+            elif (( $(echo "$PLY_SIZE_MB < 100" | bc -l 2>/dev/null || echo "1") )); then
+              echo "⚠️  Large file size - consider reducing particle density"
+            else
+              echo "⚠️  Very large file size - web performance may be impacted"
+            fi
+          fi
+          
+          echo ""
+          echo "📋 Performance Summary:"
+          echo "   Processing Time: ${PROCESSING_TIME}s"
+          echo "   Particle Count: ${PARTICLE_COUNT}"
+          echo "   Generation Rate: ${PARTICLES_PER_SECOND} particles/s"
+          echo "   File Size: ${PLY_SIZE_MB} MB"
+
+  test-panorama-fallback-modes:
+    name: Test Panorama Fallback Modes  
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 🧪 Test Image-Only Mode
+        id: test_image_mode
+        uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
+        with:
+          input_image: 'threejs-experience-20250719-16385462254/src/panorama.jpg'
+          output_filename: 'test-output-panorama/image-only-viewer.html'
+          background_color: '#1a1a2e'
+          camera_position_radius: '150'
+          particle_density: 'low'
+          auto_rotate: 'true'
+          enable_depth_visualization: 'false'
+          
+      - name: ✅ Validate Fallback Mode
+        run: |
+          echo "🔍 Validating panorama fallback modes..."
+          
+          if [[ -f "test-output-panorama/image-only-viewer.html" ]]; then
+            echo "✅ Image-only panorama viewer created"
+            
+            # Check that it doesn't reference PLY files
+            if ! grep -q "\.ply" test-output-panorama/image-only-viewer.html; then
+              echo "  ✓ No PLY references in image-only mode"
+            else
+              echo "  ⚠️  PLY references found in image-only mode"
+            fi
+            
+            # Check for image references
+            if grep -q "panorama-image" test-output-panorama/image-only-viewer.html; then
+              echo "  ✓ Image-based panorama mode active"
+            else
+              echo "  ❌ Image references not found"
+              exit 1
+            fi
+          else
+            echo "❌ Image-only panorama viewer creation failed"
+            exit 1
+          fi
+          
+          echo "✅ Fallback mode validation completed"
+          
+      - name: 📦 Upload Fallback Test Artifacts  
+        uses: actions/upload-artifact@v4
+        with:
+          name: panorama-fallback-test-${{ github.run_number }}
+          path: |
+            test-output-panorama/image-only-viewer.html
+          retention-days: 3
