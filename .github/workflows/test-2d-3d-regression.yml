@@ -49,17 +49,18 @@ jobs:
         id: generate_pointcloud
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
-          input_image: ${{ github.event.inputs.test_image }}
-          output_directory: 'test-output-2d-3d'
-          depth_scale: '100'
-          particle_spacing: '2'
+          input-image-path: ${{ github.event.inputs.test_image }}
+          output-folder: 'test-output-2d-3d'
+          branch-name: 'main'
+          depth-model: 'midas_v21_small'
+          color-mode: 'color'
           
       - name: 🌐 Create Three.js Viewer
         id: create_viewer
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
-          ply_file: ${{ steps.generate_pointcloud.outputs.ply_path }}
-          output_path: 'test-output-2d-3d/viewer.html'
+          ply_file: ${{ steps.generate_pointcloud.outputs.ply-file-path }}
+          output_filename: 'test-output-2d-3d/viewer.html'
           particle_size: '2.0'
           particle_density: ${{ github.event.inputs.particle_density }}
           enable_audio_reactive: ${{ github.event.inputs.enable_audio }}
@@ -75,13 +76,12 @@ jobs:
           echo "- **Audio Reactive**: ${{ github.event.inputs.enable_audio }}" >> test-output-2d-3d/test-report.md
           echo "" >> test-output-2d-3d/test-report.md
           echo "## Generated Files" >> test-output-2d-3d/test-report.md
-          echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply_path }}\`" >> test-output-2d-3d/test-report.md
-          echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth_map_path }}\`" >> test-output-2d-3d/test-report.md
+          echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply-file-path }}\`" >> test-output-2d-3d/test-report.md
+          echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth-map-path }}\`" >> test-output-2d-3d/test-report.md
           echo "- **Viewer**: \`test-output-2d-3d/viewer.html\`" >> test-output-2d-3d/test-report.md
           echo "" >> test-output-2d-3d/test-report.md
           echo "## Processing Details" >> test-output-2d-3d/test-report.md
-          echo "- **Particle Count**: ${{ steps.generate_pointcloud.outputs.particle_count }}" >> test-output-2d-3d/test-report.md
-          echo "- **Processing Time**: ${{ steps.generate_pointcloud.outputs.processing_time }}s" >> test-output-2d-3d/test-report.md
+          echo "- **Generation Status**: ${{ steps.generate_pointcloud.outputs.pointcloud-completed }}" >> test-output-2d-3d/test-report.md
           echo "" >> test-output-2d-3d/test-report.md
           echo "## Module Integration Status" >> test-output-2d-3d/test-report.md
           echo "- ✅ pointcloud-generation module" >> test-output-2d-3d/test-report.md
@@ -103,9 +103,9 @@ jobs:
           echo "🔍 Validating generated files..."
           
           # Check PLY file
-          if [[ -f "${{ steps.generate_pointcloud.outputs.ply_path }}" ]]; then
+          if [[ -f "${{ steps.generate_pointcloud.outputs.ply-file-path }}" ]]; then
             echo "✅ PLY file generated successfully"
-            head -20 "${{ steps.generate_pointcloud.outputs.ply_path }}"
+            head -20 "${{ steps.generate_pointcloud.outputs.ply-file-path }}"
           else
             echo "❌ PLY file generation failed"
             exit 1
