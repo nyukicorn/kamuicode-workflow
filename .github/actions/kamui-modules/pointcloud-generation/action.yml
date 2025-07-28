@@ -143,17 +143,24 @@ runs:
         
         echo "::endgroup::"
     
-    - name: Commit generated files
+    # DISABLED: Auto-commit functionality disabled to prevent conflicts
+    # - name: Commit generated files
+    #   shell: bash
+    #   env:
+    #     GH_TOKEN: ${{ github.token }}
+    #   run: |
+    #     git config user.name "github-actions[bot]"
+    #     git config user.email "github-actions[bot]@users.noreply.github.com"
+    #     git add ${{ inputs.output-folder }}/
+    #     if git diff --cached --quiet; then
+    #       echo "No pointcloud files to commit"
+    #     else
+    #       git commit -m "Add generated pointcloud from ${{ inputs.input-image-path }}"
+    #       git push origin ${{ inputs.branch-name }}
+    #     fi
+    
+    - name: Auto-commit disabled notice
       shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add ${{ inputs.output-folder }}/
-        if git diff --cached --quiet; then
-          echo "No pointcloud files to commit"
-        else
-          git commit -m "Add generated pointcloud from ${{ inputs.input-image-path }}"
-          git push origin ${{ inputs.branch-name }}
-        fi
+        echo "ℹ️ Auto-commit functionality disabled to prevent Git conflicts"
+        echo "Generated files are available in workflow artifacts only"
