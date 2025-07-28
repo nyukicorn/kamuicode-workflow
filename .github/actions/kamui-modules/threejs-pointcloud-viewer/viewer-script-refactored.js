@@ -4,7 +4,7 @@
 // Global variables (point cloud specific)
 let pointCloud = null;
 let viewerAutoRotate = AUTO_ROTATE_PLACEHOLDER;
-let rotationSpeed = ANIMATION_SPEED_PLACEHOLDER;
+// rotationSpeed is managed by shared-components/camera-controls.js
 let lights = null;
 
 // Initialize the viewer with shared components
@@ -23,7 +23,7 @@ function init() {
     
     // Set initial camera position and auto-rotate settings
     setCameraPosition(CAM_X_PLACEHOLDER, CAM_Y_PLACEHOLDER, CAM_Z_PLACEHOLDER);
-    setAutoRotateSettings(viewerAutoRotate, rotationSpeed);
+    setAutoRotateSettings(viewerAutoRotate, ANIMATION_SPEED_PLACEHOLDER);
     
     // Initialize UI system with lighting
     lights = initializeCompleteUISystem(scene, 'BACKGROUND_COLOR_PLACEHOLDER');
