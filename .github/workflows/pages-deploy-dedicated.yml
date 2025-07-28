@@ -57,6 +57,18 @@ jobs:
           echo "=== DEBUG: Final pages-content structure ==="
           find pages-content -name "*.html" | head -10
           
+          echo "=== 📊 SIZE REPORT ==="
+          TOTAL_SIZE=$(du -sh pages-content | cut -f1)
+          TOTAL_FILES=$(find pages-content -type f | wc -l)
+          echo "📁 Total size: $TOTAL_SIZE"
+          echo "📄 Total files: $TOTAL_FILES"
+          
+          # Check if size exceeds 500MB (GitHub Pages 1GB limit)
+          SIZE_BYTES=$(du -sb pages-content | cut -f1)
+          if [ "$SIZE_BYTES" -gt 524288000 ]; then
+            echo "⚠️  WARNING: Site size ($TOTAL_SIZE) is approaching GitHub Pages limit (1GB)"
+          fi
+          
       - name: ✅ Existence Check
         run: |
           if ! find pages-content -maxdepth 3 -name index.html | grep -q .; then

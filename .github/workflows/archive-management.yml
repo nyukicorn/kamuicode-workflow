@@ -1,0 +1,126 @@
+name: 📁 Archive Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Archive action to perform'
+        required: true
+        type: choice
+        options:
+          - copy-to-archive
+          - delete-archive
+          - size-report
+      source_path:
+        description: 'Source path to archive (for copy action)'
+        required: false
+        default: 'docs/test-2d-3d-20250728-16574570885'
+      archive_name:
+        description: 'Archive folder name (for copy/delete)'
+        required: false
+        default: 'archived-test-2025-01'
+
+permissions:
+  contents: write
+
+jobs:
+  manage-archive:
+    name: Archive Management
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 📊 Size Report
+        if: ${{ github.event.inputs.action == 'size-report' }}
+        run: |
+          echo "=== 📊 REPOSITORY SIZE REPORT ==="
+          
+          # Current docs/ size
+          if [ -d docs ]; then
+            DOCS_SIZE=$(du -sh docs | cut -f1)
+            DOCS_FILES=$(find docs -type f | wc -l)
+            echo "📁 docs/ total: $DOCS_SIZE ($DOCS_FILES files)"
+            
+            # Archive folders
+            echo ""
+            echo "📦 Archive folders:"
+            find docs -maxdepth 1 -type d -name "*archive*" | while read dir; do
+              if [ -d "$dir" ]; then
+                SIZE=$(du -sh "$dir" | cut -f1)
+                echo "  - $(basename "$dir"): $SIZE"
+              fi
+            done
+          else
+            echo "📁 docs/ directory not found"
+          fi
+          
+          # Repository total size (approximation)
+          REPO_SIZE=$(du -sh . --exclude=.git | cut -f1)
+          echo ""
+          echo "📁 Repository total (excluding .git): $REPO_SIZE"
+          
+      - name: 📦 Copy to Archive
+        if: ${{ github.event.inputs.action == 'copy-to-archive' }}
+        run: |
+          SOURCE="${{ github.event.inputs.source_path }}"
+          ARCHIVE_NAME="${{ github.event.inputs.archive_name }}"
+          
+          if [ ! -d "$SOURCE" ]; then
+            echo "❌ Source path '$SOURCE' not found"
+            exit 1
+          fi
+          
+          # Create archive directory
+          mkdir -p "docs/archive-long-term"
+          ARCHIVE_PATH="docs/archive-long-term/$ARCHIVE_NAME"
+          
+          if [ -d "$ARCHIVE_PATH" ]; then
+            echo "⚠️  Archive '$ARCHIVE_NAME' already exists, backing up..."
+            mv "$ARCHIVE_PATH" "${ARCHIVE_PATH}-backup-$(date +%Y%m%d-%H%M%S)"
+          fi
+          
+          # Copy to archive
+          cp -R "$SOURCE" "$ARCHIVE_PATH"
+          
+          # Add creation date metadata
+          echo "Created: $(date)" > "$ARCHIVE_PATH/.archive-info"
+          echo "Source: $SOURCE" >> "$ARCHIVE_PATH/.archive-info"
+          
+          SIZE=$(du -sh "$ARCHIVE_PATH" | cut -f1)
+          echo "✅ Archived '$SOURCE' to '$ARCHIVE_PATH' ($SIZE)"
+          
+      - name: 🗑️ Delete Archive
+        if: ${{ github.event.inputs.action == 'delete-archive' }}
+        run: |
+          ARCHIVE_NAME="${{ github.event.inputs.archive_name }}"
+          ARCHIVE_PATH="docs/archive-long-term/$ARCHIVE_NAME"
+          
+          if [ ! -d "$ARCHIVE_PATH" ]; then
+            echo "❌ Archive '$ARCHIVE_NAME' not found"
+            exit 1
+          fi
+          
+          SIZE=$(du -sh "$ARCHIVE_PATH" | cut -f1)
+          rm -rf "$ARCHIVE_PATH"
+          echo "✅ Deleted archive '$ARCHIVE_NAME' ($SIZE freed)"
+          
+      - name: 💾 Commit Changes
+        if: ${{ github.event.inputs.action != 'size-report' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git add docs/
+            git commit -m "Archive management: ${{ github.event.inputs.action }} - ${{ github.event.inputs.archive_name }}
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+            echo "✅ Changes committed and pushed"
+          fi
