@@ -71,7 +71,8 @@ jobs:
           if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
           
           # Create/update root index.html pointing to latest
-          cat > pages-content/index.html << EOF
+          # 注意: このヒアドキュメントは**絶対にインデントしない**
+          cat > pages-content/index.html <<EOF
 <!DOCTYPE html>
 <html>
 <head>
