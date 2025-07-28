@@ -29,10 +29,18 @@ jobs:
   test-2d-to-3d-conversion:
     name: Test 2D→3D Point Cloud Generation
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        
+      - name: 🏗️ Setup Test Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        env:
+          BRANCH_PREFIX: "test-2d-3d"
         
       - name: 🔍 Check Test Image Exists
         run: |
@@ -50,8 +58,8 @@ jobs:
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
           input-image-path: ${{ github.event.inputs.test_image }}
-          output-folder: 'test-output-2d-3d'
-          branch-name: 'main'
+          output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
+          branch-name: ${{ steps.setup.outputs.branch-name }}
           depth-model: 'midas_v21_small'
           color-mode: 'color'
           
@@ -60,45 +68,58 @@ jobs:
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
           ply-file-path: ${{ steps.generate_pointcloud.outputs.ply-file-path }}
-          output-folder: 'test-output-2d-3d'
+          output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
           viewer-title: '2D→3D Regression Test Viewer'
           camera-position: '0,0,100'
           auto-rotate: 'false'
           background-color: '#1a1a2e'
           point-size: '2.0'
           animation-speed: '1.0'
-          branch-name: 'main'
+          branch-name: ${{ steps.setup.outputs.branch-name }}
           
-      - name: 📊 Test Results Summary
+      - name: 📊 Test Results Summary  
         run: |
-          echo "# 🧪 2D→3D Regression Test Results" > test-output-2d-3d/test-report.md
-          echo "" >> test-output-2d-3d/test-report.md
-          echo "## Test Configuration" >> test-output-2d-3d/test-report.md
-          echo "- **Input Image**: \`${{ github.event.inputs.test_image }}\`" >> test-output-2d-3d/test-report.md
-          echo "- **Particle Density**: ${{ github.event.inputs.particle_density }}" >> test-output-2d-3d/test-report.md
-          echo "- **Audio Reactive**: ${{ github.event.inputs.enable_audio }}" >> test-output-2d-3d/test-report.md
-          echo "" >> test-output-2d-3d/test-report.md
-          echo "## Generated Files" >> test-output-2d-3d/test-report.md
-          echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply-file-path }}\`" >> test-output-2d-3d/test-report.md
-          echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth-map-path }}\`" >> test-output-2d-3d/test-report.md
-          echo "- **Viewer**: \`test-output-2d-3d/index.html\`" >> test-output-2d-3d/test-report.md
-          echo "" >> test-output-2d-3d/test-report.md
-          echo "## Processing Details" >> test-output-2d-3d/test-report.md
-          echo "- **Generation Status**: ${{ steps.generate_pointcloud.outputs.pointcloud-completed }}" >> test-output-2d-3d/test-report.md
-          echo "" >> test-output-2d-3d/test-report.md
-          echo "## Module Integration Status" >> test-output-2d-3d/test-report.md
-          echo "- ✅ pointcloud-generation module" >> test-output-2d-3d/test-report.md
-          echo "- ✅ threejs-pointcloud-viewer module" >> test-output-2d-3d/test-report.md
-          echo "- ✅ Shared components integration" >> test-output-2d-3d/test-report.md
+          LIVE_URL="https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
           
-          cat test-output-2d-3d/test-report.md
+          echo "# 🧪 2D→3D Regression Test Results" > docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "## 🌐 Live Preview" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "**🎯 [View Interactive 3D Test Result](${LIVE_URL})**" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "## Test Configuration" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Input Image**: \`${{ github.event.inputs.test_image }}\`" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Particle Density**: ${{ github.event.inputs.particle_density }}" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Audio Reactive**: ${{ github.event.inputs.enable_audio }}" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Branch**: ${{ steps.setup.outputs.branch-name }}" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "## Generated Files" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply-file-path }}\`" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth-map-path }}\`" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Interactive Viewer**: \`docs/${{ steps.setup.outputs.folder-name }}/index.html\`" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "## Processing Details" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- **Generation Status**: ${{ steps.generate_pointcloud.outputs.pointcloud-completed }}" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "## Module Integration Status" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- ✅ pointcloud-generation module" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- ✅ threejs-pointcloud-viewer module" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- ✅ Shared components integration" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          echo "- ✅ GitHub Pages auto-deployment" >> docs/${{ steps.setup.outputs.folder-name }}/test-report.md
+          
+          echo ""
+          echo "🎯 **Live Preview URL**: ${LIVE_URL}"
+          echo "📁 **Test Folder**: ${{ steps.setup.outputs.folder-name }}"
+          echo "🌿 **Test Branch**: ${{ steps.setup.outputs.branch-name }}"
+          echo ""
+          
+          cat docs/${{ steps.setup.outputs.folder-name }}/test-report.md
           
       - name: 📦 Upload Test Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: regression-test-2d-3d-${{ github.run_number }}
           path: |
-            test-output-2d-3d/
+            docs/${{ steps.setup.outputs.folder-name }}/
           retention-days: 7
           
       - name: 🎯 Validate Generated Files
@@ -106,8 +127,9 @@ jobs:
           echo "🔍 Validating generated files..."
           
           # Debug: List all files in output directory
-          echo "📁 Files in test-output-2d-3d directory:"
-          ls -la test-output-2d-3d/ || echo "Directory not found"
+          OUTPUT_DIR="docs/${{ steps.setup.outputs.folder-name }}"
+          echo "📁 Files in ${OUTPUT_DIR} directory:"
+          ls -la "${OUTPUT_DIR}/" || echo "Directory not found"
           
           # Check PLY file
           if [[ -f "${{ steps.generate_pointcloud.outputs.ply-file-path }}" ]]; then
@@ -118,28 +140,22 @@ jobs:
             exit 1
           fi
           
-          # Check viewer HTML (try both possible filenames)
-          if [[ -f "test-output-2d-3d/index.html" ]]; then
+          # Check viewer HTML
+          if [[ -f "${OUTPUT_DIR}/index.html" ]]; then
             echo "✅ Viewer HTML generated successfully (index.html)"
             # Check for key components
-            grep -q "three.min.js" test-output-2d-3d/index.html && echo "  ✓ Three.js included"
-            grep -q "OrbitControls" test-output-2d-3d/index.html && echo "  ✓ OrbitControls included"
-            grep -q "PLYLoader" test-output-2d-3d/index.html && echo "  ✓ PLYLoader included"
-            grep -q "shared-components" test-output-2d-3d/index.html && echo "  ✓ Shared components included"
-          elif [[ -f "test-output-2d-3d/viewer.html" ]]; then
-            echo "✅ Viewer HTML generated successfully (viewer.html)"
-            # Check for key components  
-            grep -q "three.min.js" test-output-2d-3d/viewer.html && echo "  ✓ Three.js included"
-            grep -q "OrbitControls" test-output-2d-3d/viewer.html && echo "  ✓ OrbitControls included"
-            grep -q "PLYLoader" test-output-2d-3d/viewer.html && echo "  ✓ PLYLoader included"
-            grep -q "shared-components" test-output-2d-3d/viewer.html && echo "  ✓ Shared components included"
+            grep -q "three.min.js" "${OUTPUT_DIR}/index.html" && echo "  ✓ Three.js included"
+            grep -q "OrbitControls" "${OUTPUT_DIR}/index.html" && echo "  ✓ OrbitControls included"
+            grep -q "PLYLoader" "${OUTPUT_DIR}/index.html" && echo "  ✓ PLYLoader included"
+            grep -q "shared-components" "${OUTPUT_DIR}/index.html" && echo "  ✓ Shared components included"
           else
-            echo "❌ Viewer HTML generation failed (neither index.html nor viewer.html found)"
+            echo "❌ Viewer HTML generation failed (index.html not found)"
             exit 1
           fi
           
           echo ""
           echo "✅ All validations passed!"
+          echo "🌐 GitHub Pages URL: https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
           
   test-shared-components:
     name: Test Shared Components Integration

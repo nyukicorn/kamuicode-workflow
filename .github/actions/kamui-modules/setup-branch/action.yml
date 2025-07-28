@@ -1,5 +1,5 @@
-name: 'Setup Branch for Music Video'
-description: 'Create a new branch and folder structure for music video generation'
+name: 'Setup Branch for Workflow'
+description: 'Create a new branch and folder structure for workflow execution'
 author: 'KamuiCode Workflow'
 
 outputs:
@@ -16,17 +16,21 @@ runs:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Create branch for music video generation
+    - name: Create branch for workflow execution
       id: create-branch
       shell: bash
       run: |
-        BRANCH_NAME="music-video/$(date +%Y%m%d)-${{ github.run_id }}"
-        FOLDER_NAME="music-video-$(date +%Y%m%d)-${{ github.run_id }}"
+        # Use environment variable for branch prefix, default to music-video
+        BRANCH_PREFIX="${BRANCH_PREFIX:-music-video}"
+        BRANCH_NAME="${BRANCH_PREFIX}/$(date +%Y%m%d)-${{ github.run_id }}"
+        FOLDER_NAME="${BRANCH_PREFIX}-$(date +%Y%m%d)-${{ github.run_id }}"
+        
         git checkout -b $BRANCH_NAME
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         git push origin $BRANCH_NAME
+        
         echo "branch-name=$BRANCH_NAME" >> $GITHUB_OUTPUT
         echo "folder-name=$FOLDER_NAME" >> $GITHUB_OUTPUT
-        echo "Created branch: $BRANCH_NAME"
-        echo "Folder name: $FOLDER_NAME"
+        echo "✅ Created branch: $BRANCH_NAME"
+        echo "📁 Folder name: $FOLDER_NAME"

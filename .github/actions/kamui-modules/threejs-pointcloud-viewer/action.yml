@@ -260,18 +260,17 @@ runs:
         echo "✅ Three.js Pointcloud Viewer generated successfully"
         echo "::endgroup::"
     
-    # DISABLED: Auto-commit functionality disabled to prevent conflicts
-    # - name: Commit generated viewer
-    #   shell: bash
-    #   env:
-    #     GH_TOKEN: ${{ github.token }}
-    #   run: |
-    #     git config user.name "github-actions[bot]"
-    #     git config user.email "github-actions[bot]@users.noreply.github.com"
-    #     git add ${{ inputs.output-folder }}/
-    #     if git diff --cached --quiet; then
-    #       echo "No viewer files to commit"
-    #     else
-    #       git commit -m "Add Three.js pointcloud viewer: ${{ inputs.viewer-title }}"
-    #       git push origin ${{ inputs.branch-name }}
-    #     fi
+    - name: Commit generated viewer
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add ${{ inputs.output-folder }}/
+        if git diff --cached --quiet; then
+          echo "No viewer files to commit"
+        else
+          git commit -m "Add Three.js pointcloud viewer: ${{ inputs.viewer-title }}"
+          git push origin ${{ inputs.branch-name }}
+        fi
