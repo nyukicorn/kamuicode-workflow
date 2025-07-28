@@ -41,12 +41,9 @@ jobs:
           merge-multiple: true
           path: downloaded-artifacts
           
-      - name: 🌐 Download Previous Site (Optional)
-        run: |
-          wget -q -e robots=off -np -nH --cut-dirs=1 -r https://nyukicorn.github.io/kamuicode-workflow/ -P previous-site || true
-          
       - name: 📁 Prepare Pages Content
         run: |
+          set -euo pipefail
           ART_DIRS=$(find downloaded-artifacts -mindepth 1 -maxdepth 1 -type d)
           mkdir -p pages-content
           for d in $ART_DIRS; do
@@ -54,7 +51,6 @@ jobs:
             mkdir -p "pages-content/$b"
             cp -R "$d"/. "pages-content/$b"/
           done
-          if [ -d previous-site ]; then cp -R previous-site/. pages-content/; fi
           if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
           
       - name: ✅ Existence Check

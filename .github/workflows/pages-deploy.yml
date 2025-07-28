@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages (Conditional)
 on:
   push:
     branches: [main]
+
+# DISABLED: This workflow is superseded by pages-deploy-dedicated.yml
     paths: ['docs/**']  # docsフォルダ変更時のみ
   workflow_dispatch:     # 手動実行も可能
 
@@ -16,6 +18,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: false  # DISABLED - Use pages-deploy-dedicated.yml instead
     runs-on: ubuntu-latest
     environment:
       name: github-pages
