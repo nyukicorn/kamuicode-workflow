@@ -42,9 +42,18 @@ jobs:
           
       - name: 📁 Prepare Pages Content
         run: |
+          # Debug: List downloaded files
+          echo "Contents of downloaded-artifacts:"
+          find downloaded-artifacts -type f -name "*.html" | head -10
+          
           # Find the latest regression test folder
-          LATEST_FOLDER=$(ls -1 downloaded-artifacts/regression-test-2d-3d-*/test-2d-3d-* | head -1)
+          LATEST_FOLDER=$(find downloaded-artifacts -name "test-2d-3d-*" -type d | head -1)
           echo "Latest folder: $LATEST_FOLDER"
+          
+          if [[ -z "$LATEST_FOLDER" ]]; then
+            echo "❌ No test folder found!"
+            exit 1
+          fi
           
           # Copy to pages directory
           mkdir -p pages-content
