@@ -125,7 +125,7 @@ runs:
         
         # Create temporary Python script for panorama depth estimation
         cat > panorama_depth_estimation.py << 'EOF'
-import cv2
+        import cv2
 import numpy as np
 import sys
 import os

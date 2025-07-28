@@ -75,7 +75,8 @@ runs:
           # Copy PLY file to assets
           cp "${{ inputs.ply_file_path }}" assets/panorama.ply
           # Try to find corresponding image
-          IMAGE_PATH="${{{ inputs.ply_file_path }}%.ply}.jpg"
+          PLY_PATH="${{ inputs.ply_file_path }}"
+          IMAGE_PATH="${PLY_PATH%.ply}.jpg"
           if [ -f "$IMAGE_PATH" ]; then
             cp "$IMAGE_PATH" assets/panorama-image.jpg
             echo "✅ Found corresponding image: $IMAGE_PATH"
