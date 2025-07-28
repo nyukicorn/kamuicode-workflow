@@ -27,13 +27,24 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   test-2d-to-3d-conversion:
     name: Test 2D→3D Point Cloud Generation
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
     permissions:
       contents: write
+      pages: write
+      id-token: write
     
     steps:
       - name: 📥 Checkout Repository
@@ -158,15 +169,16 @@ jobs:
           
           echo ""
           echo "✅ All validations passed!"
-          echo "🌐 GitHub Pages URL: https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
+          echo "🌐 GitHub Pages URL: ${{ steps.pages.outputs.page_url }}${{ steps.setup.outputs.folder-name }}/"
           
-      - name: 📤 Commit and Push Changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add docs/${{ steps.setup.outputs.folder-name }}/
-          git commit -m "📊 Deploy 2D→3D test results: ${{ steps.setup.outputs.folder-name }}" || exit 0
-          git push
+      - name: 📦 Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+      
+      - name: 🚀 Deploy to GitHub Pages
+        id: pages
+        uses: actions/deploy-pages@v4
           
   test-shared-components:
     name: Test Shared Components Integration
