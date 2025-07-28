@@ -160,6 +160,14 @@ jobs:
           echo "✅ All validations passed!"
           echo "🌐 GitHub Pages URL: https://nyukicorn.github.io/kamuicode-workflow/${{ steps.setup.outputs.folder-name }}/"
           
+      - name: 📤 Commit and Push Changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/${{ steps.setup.outputs.folder-name }}/
+          git commit -m "📊 Deploy 2D→3D test results: ${{ steps.setup.outputs.folder-name }}" || exit 0
+          git push
+          
   test-shared-components:
     name: Test Shared Components Integration
     runs-on: ubuntu-latest
