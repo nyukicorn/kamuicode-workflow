@@ -49,14 +49,9 @@ jobs:
           echo "=== DEBUG: Directory structure ==="
           find downloaded-artifacts -type d | head -10
           
-          ART_DIRS=$(find downloaded-artifacts -mindepth 1 -maxdepth 1 -type d)
           mkdir -p pages-content
-          for d in $ART_DIRS; do
-            b=$(basename "$d")
-            echo "Processing directory: $d -> $b"
-            mkdir -p "pages-content/$b"
-            cp -R "$d"/. "pages-content/$b"/
-          done
+          # Copy all files from downloaded-artifacts root
+          cp -R downloaded-artifacts/. pages-content/ 2>/dev/null || true
           if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
           
           echo "=== DEBUG: Final pages-content structure ==="
