@@ -71,20 +71,19 @@ jobs:
           if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
           
           # Create/update root index.html pointing to latest
-          # 注意: このヒアドキュメントは**絶対にインデントしない**
-          cat > pages-content/index.html <<EOF
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Latest Deployment - $WORKFLOW_NAME</title>
-    <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
-</head>
-<body>
-    <p>Redirecting to latest deployment: <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
-</body>
-</html>
-EOF
+          cat > pages-content/index.html << ENDHTML
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="UTF-8">
+              <title>Latest Deployment - $WORKFLOW_NAME</title>
+              <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
+          </head>
+          <body>
+              <p>Redirecting to latest deployment: <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
+          </body>
+          </html>
+          ENDHTML
           
           echo "=== DEBUG: Final pages-content structure ==="
           find pages-content -name "*.html" | head -10
