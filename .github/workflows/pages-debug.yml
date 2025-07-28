@@ -1,0 +1,32 @@
+name: Pages Minimal Debug Deploy
+on: workflow_dispatch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create minimal site
+        run: |
+          mkdir public
+          cat <<'HTML' > public/index.html
+          <h1>Pages Debug - $(date)</h1>
+          <p>If you see this, deploy-pages works.</p>
+          HTML
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
