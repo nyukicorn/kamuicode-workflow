@@ -323,16 +323,25 @@ function toggleMouseGravity() {
     const button = document.getElementById('gravityToggle');
     
     if (mouseGravityEnabled) {
-        button.innerHTML = '🧲 Gravity ON';
-        button.title = 'Gravity is ON (click to disable)';
+        if (button) {
+            button.innerHTML = '🧲 Gravity ON';
+            button.title = 'Gravity is ON (click to disable)';
+        }
         console.log('🧲 Mouse gravity enabled');
     } else {
-        button.innerHTML = '🚫 Gravity OFF';
-        button.title = 'Gravity is OFF (click to enable)';
+        if (button) {
+            button.innerHTML = '🚫 Gravity OFF';
+            button.title = 'Gravity is OFF (click to enable)';
+        }
         console.log('❌ Mouse gravity disabled');
         
         // Reset particles to original positions when disabled
-        resetParticlePositions();
+        // Try multiple fallback strategies to ensure reset works
+        if (typeof window !== 'undefined' && window.pointCloud) {
+            resetParticlePositions(window.pointCloud);
+        } else {
+            resetParticlePositions();
+        }
     }
 }
 
@@ -348,33 +357,47 @@ function toggleGravityMode() {
     
     const button = document.getElementById('gravityModeToggle');
     
-    if (gravityMode === 'circle') {
-        button.innerHTML = '🎯 Circle';
-        button.title = 'Circle mode - particles attracted to current mouse position';
-        mouseTrail = []; // Clear trail
-        console.log('🎯 Switched to Circle gravity mode');
-    } else if (gravityMode === 'flow') {
-        button.innerHTML = '🌊 Flow';
-        button.title = 'Flow mode - particles follow mouse movement path creating flowing effects';
-        console.log('🌊 Switched to Flow gravity mode');
-    } else if (gravityMode === 'magnet') {
-        button.innerHTML = '🧲 Magnet';
-        button.title = 'Magnet mode - particles gather toward mouse like iron filings to a magnet';
-        mouseTrail = []; // Clear trail
-        console.log('🧲 Switched to Magnet gravity mode');
+    if (button) {
+        if (gravityMode === 'circle') {
+            button.innerHTML = '🎯 Circle';
+            button.title = 'Circle mode - particles attracted to current mouse position';
+            mouseTrail = []; // Clear trail
+            console.log('🎯 Switched to Circle gravity mode');
+        } else if (gravityMode === 'flow') {
+            button.innerHTML = '🌊 Flow';
+            button.title = 'Flow mode - particles follow mouse movement path creating flowing effects';
+            console.log('🌊 Switched to Flow gravity mode');
+        } else if (gravityMode === 'magnet') {
+            button.innerHTML = '🧲 Magnet';
+            button.title = 'Magnet mode - particles gather toward mouse like iron filings to a magnet';
+            mouseTrail = []; // Clear trail
+            console.log('🧲 Switched to Magnet gravity mode');
+        }
     }
 }
 
 function resetParticlePositions(pointCloudObject) {
-    if (!pointCloudObject || !originalPositions) return;
+    // Use provided pointCloudObject or try to find it globally
+    let targetPointCloud = pointCloudObject;
+    if (!targetPointCloud && typeof window !== 'undefined' && window.pointCloud) {
+        targetPointCloud = window.pointCloud;
+    }
     
-    const positions = pointCloudObject.geometry.attributes.position;
+    if (!targetPointCloud || !originalPositions) {
+        console.warn('⚠️ Cannot reset particles: pointCloud object or original positions not available');
+        return;
+    }
+    
+    const positions = targetPointCloud.geometry.attributes.position;
     positions.array.set(originalPositions);
     
     // Reset velocities
     if (particleVelocities) {
         particleVelocities.fill(0);
     }
+    
+    // Clear mouse trail to prevent residual effects
+    mouseTrail = [];
     
     positions.needsUpdate = true;
     
