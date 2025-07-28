@@ -2,7 +2,7 @@ name: 🚀 Deploy to GitHub Pages
 
 on:
   workflow_run:
-    workflows: ["🧪 2D→3D Regression Test"]
+    workflows: ["🧪 2D→3D Regression Test", "Create Immersive Pointcloud Experience"]
     types:
       - completed
     branches: [main]
