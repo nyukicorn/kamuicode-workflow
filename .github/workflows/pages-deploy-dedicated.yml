@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   deploy-pages:
@@ -42,33 +42,17 @@ jobs:
           
       - name: 📁 Prepare Pages Content
         run: |
-          # Debug: Show full structure
-          echo "Full structure of downloaded-artifacts:"
-          find downloaded-artifacts -type d | head -20
-          echo "Files in artifact:"
-          find downloaded-artifacts -name "*.html" | head -5
-          
-          # Find the regression test artifact folder and check contents
-          ARTIFACT_FOLDER=$(find downloaded-artifacts -name "regression-test-2d-3d-*" -type d | head -1)
-          echo "Artifact folder: $ARTIFACT_FOLDER"
-          
-          if [[ -z "$ARTIFACT_FOLDER" ]]; then
-            echo "❌ No artifact folder found!"
-            exit 1
-          fi
-          
-          echo "Contents of artifact folder:"
-          ls -la "$ARTIFACT_FOLDER"
-          
-          # Copy entire artifact contents to pages directory  
+          ART_DIRS=$(find downloaded-artifacts -maxdepth 1 -type d -name 'regression-test-2d-3d-*')
           mkdir -p pages-content
-          if [[ -n "$(ls -A "$ARTIFACT_FOLDER" 2>/dev/null)" ]]; then
-            cp -r "$ARTIFACT_FOLDER"/* pages-content/
-            echo "✅ Successfully copied contents"
-          else
-            echo "❌ Artifact folder is empty!"
-            exit 1
-          fi
+          for d in $ART_DIRS; do
+            b=$(basename "$d")
+            mkdir -p "pages-content/$b"
+            cp -R "$d"/. "pages-content/$b"/
+          done
+          
+      - name: ✅ Existence Check
+        run: |
+          test -f pages-content/regression-test-2d-3d-17/index.html || { echo "missing expected dir"; exit 1; }
           
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
