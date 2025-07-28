@@ -100,6 +100,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
       - name: 🏗️ Setup Branch
         id: setup
         uses: ./.github/actions/kamui-modules/setup-branch
