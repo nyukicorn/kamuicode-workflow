@@ -1,6 +1,6 @@
-// 360° Panorama Viewer - Depth-Enhanced Spherical Particle Distribution
+// 360° Panorama Viewer - Spherical Particle Distribution
 // Uses shared components for camera, UI, audio, and mouse interaction
-// Implements PLY loading with depth information from pointcloud-panorama-generation
+// Implements plane segmentation → spherical particle placement approach
 
 // Global variables (panorama specific)
 let panoramaParticles = null;
@@ -13,12 +13,10 @@ let particleSize = 2.0;
 let autoRotate = AUTO_ROTATE_PLACEHOLDER;
 let rotationSpeed = ROTATION_SPEED_PLACEHOLDER;
 let particleDensity = 'PARTICLE_DENSITY_PLACEHOLDER'; // low/medium/high
-let enableDepthVisualization = ENABLE_DEPTH_PLACEHOLDER;
-let plyFilePath = 'PLY_FILE_PATH_PLACEHOLDER';
 
 // Initialize the panorama viewer with shared components
 function init() {
-    console.log('🌐 Initializing Depth-Enhanced 360° Panorama Viewer');
+    console.log('🌐 Initializing 360° Panorama Viewer with shared components');
     
     // Initialize camera system
     const containerElement = document.getElementById('container');
@@ -48,8 +46,8 @@ function init() {
     // Initialize audio if available
     MUSIC_INIT_PLACEHOLDER
     
-    // Load panorama PLY file with depth information
-    loadPanoramaPLY();
+    // Load panorama image and create spherical particle distribution
+    loadPanoramaImage();
     
     console.log('OrbitControls configured for panoramic viewing');
     console.log('Camera positioned at center, looking outward');
@@ -57,153 +55,21 @@ function init() {
     // Start animation loop
     animate();
     
-    console.log('✅ Depth-Enhanced 360° Panorama Viewer initialization complete');
+    console.log('✅ 360° Panorama Viewer initialization complete');
 }
 
-function loadPanoramaPLY() {
-    showLoadingIndicator('🖼️ Loading depth-enhanced panorama PLY...');
-    
-    const loader = new THREE.PLYLoader();
-    
-    // Load PLY file from pointcloud-panorama-generation output
-    loader.load(plyFilePath,
-        function(geometry) {
-            console.log('✅ Panorama PLY loaded successfully');
-            console.log(`   Vertices: ${geometry.attributes.position.count.toLocaleString()}`);
-            
-            // Create particle system from PLY data
-            createDepthEnhancedParticleSystem(geometry);
-        },
-        function(progress) {
-            if (progress.total > 0) {
-                const percent = Math.round((progress.loaded / progress.total) * 100);
-                updateLoadingProgress(`Loading PLY: ${percent}%`);
-            } else {
-                updateLoadingProgress(`Loading PLY: ${(progress.loaded / 1024 / 1024).toFixed(1)} MB`);
-            }
-        },
-        function(error) {
-            console.error('❌ Error loading panorama PLY:', error);
-            showLoadingIndicator('❌ Failed to load panorama PLY');
-            
-            // Fallback to image-based loading if PLY fails
-            console.log('🔄 Falling back to image-based panorama loading...');
-            loadPanoramaImageFallback();
-        }
-    );
-}
-
-function createDepthEnhancedParticleSystem(geometry) {
-    console.log('🌐 Creating depth-enhanced spherical particle system...');
-    
-    // Verify geometry has required attributes
-    if (!geometry.attributes.position) {
-        console.error('❌ PLY file missing position data');
-        return;
-    }
-    
-    // Extract position and color data
-    const positions = geometry.attributes.position;
-    const colors = geometry.attributes.color;
-    
-    // Calculate sphere bounds for camera adjustment
-    geometry.computeBoundingSphere();
-    if (geometry.boundingSphere) {
-        sphereRadius = geometry.boundingSphere.radius;
-        console.log(`📏 Detected sphere radius: ${sphereRadius.toFixed(2)}`);
-        
-        // Adjust camera constraints based on actual sphere size
-        controls.maxDistance = sphereRadius - 20;
-    }
-    
-    // Add depth visualization if enabled
-    if (enableDepthVisualization && colors) {
-        enhanceDepthVisualization(positions, colors);
-    }
-    
-    // Create particle system using shared component
-    panoramaParticles = createParticleSystem(geometry, {
-        size: particleSize,
-        sizeAttenuation: true,
-        transparent: true,
-        opacity: 0.9,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending
-    });
-    
-    scene.add(panoramaParticles);
-    
-    // Initialize mouse interaction with the panorama
-    initializeMouseInteraction(panoramaParticles, camera);
-    
-    // Update UI with statistics
-    updateStatsDisplay(panoramaParticles);
-    hideLoadingIndicator();
-    
-    console.log(`✅ Depth-enhanced panorama created: ${positions.count.toLocaleString()} particles`);
-    console.log(`Sphere radius: ${sphereRadius}, Camera at center`);
-}
-
-function enhanceDepthVisualization(positions, colors) {
-    console.log('🎨 Enhancing depth visualization...');
-    
-    const posArray = positions.array;
-    const colorArray = colors.array;
-    const particleCount = positions.count;
-    
-    // Calculate depth range
-    let minRadius = Infinity;
-    let maxRadius = -Infinity;
-    
-    for (let i = 0; i < particleCount; i++) {
-        const x = posArray[i * 3];
-        const y = posArray[i * 3 + 1];
-        const z = posArray[i * 3 + 2];
-        const radius = Math.sqrt(x * x + y * y + z * z);
-        
-        minRadius = Math.min(minRadius, radius);
-        maxRadius = Math.max(maxRadius, radius);
-    }
-    
-    const depthRange = maxRadius - minRadius;
-    console.log(`📊 Depth range: ${minRadius.toFixed(2)} to ${maxRadius.toFixed(2)} (range: ${depthRange.toFixed(2)})`);
-    
-    // Apply depth-based color enhancement
-    for (let i = 0; i < particleCount; i++) {
-        const x = posArray[i * 3];
-        const y = posArray[i * 3 + 1];
-        const z = posArray[i * 3 + 2];
-        const radius = Math.sqrt(x * x + y * y + z * z);
-        
-        // Calculate normalized depth (0 = closest, 1 = farthest)
-        const normalizedDepth = (radius - minRadius) / depthRange;
-        
-        // Enhance colors based on depth
-        const depthFactor = 1.0 + normalizedDepth * 0.5; // Brighten distant particles
-        
-        colorArray[i * 3] = Math.min(1.0, colorArray[i * 3] * depthFactor);
-        colorArray[i * 3 + 1] = Math.min(1.0, colorArray[i * 3 + 1] * depthFactor);
-        colorArray[i * 3 + 2] = Math.min(1.0, colorArray[i * 3 + 2] * depthFactor);
-    }
-    
-    colors.needsUpdate = true;
-}
-
-function loadPanoramaImageFallback() {
-    console.log('🖼️ Loading panorama image as fallback...');
+function loadPanoramaImage() {
+    showLoadingIndicator('🖼️ Loading panorama image...');
     
     const loader = new THREE.TextureLoader();
     
-    // Try to load panorama image from assets
-    const imagePath = plyFilePath.replace(/\.ply$/i, '.jpg') || 'assets/panorama-image.jpg';
-    
-    loader.load(imagePath, 
+    loader.load('assets/panorama-image.jpg', 
         function(texture) {
             console.log('✅ Panorama texture loaded');
             panoramaTexture = texture;
             
             // Create spherical particle distribution from image
-            createSphericalParticleSystemFromImage();
+            createSphericalParticleSystem();
         },
         function(progress) {
             const percent = Math.round((progress.loaded / progress.total) * 100);
@@ -213,14 +79,14 @@ function loadPanoramaImageFallback() {
             console.error('❌ Error loading panorama image:', error);
             showLoadingIndicator('❌ Failed to load panorama image');
             
-            // Create test spherical pattern as final fallback
+            // Create test spherical pattern as fallback
             createTestSphericalPattern();
         }
     );
 }
 
-function createSphericalParticleSystemFromImage() {
-    console.log('🌐 Creating spherical particle system from image (fallback mode)...');
+function createSphericalParticleSystem() {
+    console.log('🌐 Creating spherical particle system from image...');
     
     // Determine particle count based on density setting
     let particleCount;
@@ -238,8 +104,8 @@ function createSphericalParticleSystemFromImage() {
     const img = panoramaTexture.image;
     
     // Set canvas size for analysis (balance between detail and performance)
-    const analysisWidth = 512;
-    const analysisHeight = 256;
+    const analysisWidth = 400;
+    const analysisHeight = 200;
     canvas.width = analysisWidth;
     canvas.height = analysisHeight;
     
@@ -254,15 +120,20 @@ function createSphericalParticleSystemFromImage() {
     
     let particleIndex = 0;
     
-    // Generate particles using spherical coordinates with simulated depth
+    // Generate particles using spherical coordinates
     for (let i = 0; i < particleCount && particleIndex < particleCount; i++) {
-        // Generate uniform distribution on sphere
+        // Generate uniform distribution on sphere using rejection sampling
         const u = Math.random();
         const v = Math.random();
         
         // Convert to spherical coordinates (phi: 0 to 2π, theta: 0 to π)
         const phi = u * 2 * Math.PI;          // Longitude (0 to 2π)
         const theta = Math.acos(2 * v - 1);   // Latitude (0 to π) - uniform distribution
+        
+        // Convert spherical to Cartesian coordinates
+        const x = sphereRadius * Math.sin(theta) * Math.cos(phi);
+        const y = sphereRadius * Math.cos(theta);
+        const z = sphereRadius * Math.sin(theta) * Math.sin(phi);
         
         // Map spherical coordinates to image coordinates
         const imageX = Math.floor((phi / (2 * Math.PI)) * analysisWidth);
@@ -275,27 +146,19 @@ function createSphericalParticleSystemFromImage() {
         const b = pixels[pixelIndex + 2] / 255;
         const alpha = pixels[pixelIndex + 3] / 255;
         
-        // Skip nearly transparent pixels
+        // Skip nearly transparent pixels to create interesting patterns
         if (alpha < 0.1) continue;
         
-        // Simulate depth based on brightness
+        // Add some brightness enhancement for better visibility
         const brightness = (r + g + b) / 3;
-        const depthVariation = 0.2; // 20% depth variation
-        const radiusMultiplier = 1.0 + (brightness - 0.5) * depthVariation;
-        const adjustedRadius = sphereRadius * radiusMultiplier;
-        
-        // Convert spherical to Cartesian coordinates with simulated depth
-        const x = adjustedRadius * Math.sin(theta) * Math.cos(phi);
-        const y = adjustedRadius * Math.cos(theta);
-        const z = adjustedRadius * Math.sin(theta) * Math.sin(phi);
+        const enhancementFactor = 1.2 + brightness * 0.5;
         
         // Store position
         positions[particleIndex * 3] = x;
         positions[particleIndex * 3 + 1] = y;
         positions[particleIndex * 3 + 2] = z;
         
-        // Store color with brightness enhancement
-        const enhancementFactor = 1.2 + brightness * 0.5;
+        // Store enhanced color
         colors[particleIndex * 3] = Math.min(1.0, r * enhancementFactor);
         colors[particleIndex * 3 + 1] = Math.min(1.0, g * enhancementFactor);
         colors[particleIndex * 3 + 2] = Math.min(1.0, b * enhancementFactor);
@@ -347,7 +210,7 @@ function createTestSphericalPattern() {
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
     
-    // Create test pattern with depth variation
+    // Create test pattern with multiple colored bands
     for (let i = 0; i < particleCount; i++) {
         // Uniform distribution on sphere
         const u = Math.random();
@@ -356,52 +219,34 @@ function createTestSphericalPattern() {
         const phi = u * 2 * Math.PI;
         const theta = Math.acos(2 * v - 1);
         
-        // Add depth variation based on latitude bands
-        const latitudeBand = Math.floor((theta / Math.PI) * 6);
-        const depthVariation = 0.3;
-        const radiusMultiplier = 1.0 + (Math.sin(latitudeBand * Math.PI / 6) - 0.5) * depthVariation;
-        const adjustedRadius = sphereRadius * radiusMultiplier;
-        
-        const x = adjustedRadius * Math.sin(theta) * Math.cos(phi);
-        const y = adjustedRadius * Math.cos(theta);
-        const z = adjustedRadius * Math.sin(theta) * Math.sin(phi);
+        const x = sphereRadius * Math.sin(theta) * Math.cos(phi);
+        const y = sphereRadius * Math.cos(theta);
+        const z = sphereRadius * Math.sin(theta) * Math.sin(phi);
         
         positions[i * 3] = x;
         positions[i * 3 + 1] = y;
         positions[i * 3 + 2] = z;
         
-        // Create colored bands based on latitude with depth enhancement
-        const depthColor = radiusMultiplier;
+        // Create colored bands based on latitude
+        const latitudeBand = Math.floor((theta / Math.PI) * 6);
         switch(latitudeBand) {
             case 0: // Top
-                colors[i * 3] = 1.0 * depthColor; 
-                colors[i * 3 + 1] = 0.3 * depthColor; 
-                colors[i * 3 + 2] = 0.3 * depthColor;
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.3; colors[i * 3 + 2] = 0.3;
                 break;
             case 1:
-                colors[i * 3] = 1.0 * depthColor; 
-                colors[i * 3 + 1] = 0.7 * depthColor; 
-                colors[i * 3 + 2] = 0.3 * depthColor;
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.7; colors[i * 3 + 2] = 0.3;
                 break;
             case 2:
-                colors[i * 3] = 0.3 * depthColor; 
-                colors[i * 3 + 1] = 1.0 * depthColor; 
-                colors[i * 3 + 2] = 0.3 * depthColor;
+                colors[i * 3] = 0.3; colors[i * 3 + 1] = 1.0; colors[i * 3 + 2] = 0.3;
                 break;
             case 3:
-                colors[i * 3] = 0.3 * depthColor; 
-                colors[i * 3 + 1] = 0.7 * depthColor; 
-                colors[i * 3 + 2] = 1.0 * depthColor;
+                colors[i * 3] = 0.3; colors[i * 3 + 1] = 0.7; colors[i * 3 + 2] = 1.0;
                 break;
             case 4:
-                colors[i * 3] = 0.7 * depthColor; 
-                colors[i * 3 + 1] = 0.3 * depthColor; 
-                colors[i * 3 + 2] = 1.0 * depthColor;
+                colors[i * 3] = 0.7; colors[i * 3 + 1] = 0.3; colors[i * 3 + 2] = 1.0;
                 break;
             default: // Bottom
-                colors[i * 3] = 1.0 * depthColor; 
-                colors[i * 3 + 1] = 0.3 * depthColor; 
-                colors[i * 3 + 2] = 0.7 * depthColor;
+                colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.3; colors[i * 3 + 2] = 0.7;
                 break;
         }
     }
@@ -424,7 +269,7 @@ function createTestSphericalPattern() {
     updateStatsDisplay(panoramaParticles);
     hideLoadingIndicator();
     
-    console.log('✅ Test spherical pattern with depth variation created');
+    console.log('✅ Test spherical pattern created');
 }
 
 function animate() {

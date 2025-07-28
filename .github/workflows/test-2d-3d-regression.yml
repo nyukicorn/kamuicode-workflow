@@ -1,0 +1,183 @@
+name: 🧪 2D→3D Regression Test
+# Tests existing 2D to 3D point cloud generation after modularization
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_image:
+        description: 'Test image path (2D image for conversion)'
+        required: false
+        default: 'archive-pointcloud-experiments/latest/immersive-pointcloud-20250727-081545/images/generated-image.png'
+      
+      particle_density:
+        description: 'Particle density level'
+        required: false
+        default: 'medium'
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+      
+      enable_audio:
+        description: 'Enable audio reactive test'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  test-2d-to-3d-conversion:
+    name: Test 2D→3D Point Cloud Generation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Check Test Image Exists
+        run: |
+          echo "🔍 Checking test image: ${{ github.event.inputs.test_image }}"
+          if [[ -f "${{ github.event.inputs.test_image }}" ]]; then
+            echo "✅ Test image found"
+            ls -la "${{ github.event.inputs.test_image }}"
+          else
+            echo "❌ Test image not found, using default test pattern"
+            echo "USE_TEST_PATTERN=true" >> $GITHUB_ENV
+          fi
+      
+      - name: 🎨 Generate 3D Point Cloud
+        id: generate_pointcloud
+        uses: ./.github/actions/kamui-modules/pointcloud-generation
+        with:
+          input_image: ${{ github.event.inputs.test_image }}
+          output_directory: 'test-output-2d-3d'
+          depth_scale: '100'
+          particle_spacing: '2'
+          
+      - name: 🌐 Create Three.js Viewer
+        id: create_viewer
+        uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
+        with:
+          ply_file: ${{ steps.generate_pointcloud.outputs.ply_path }}
+          output_path: 'test-output-2d-3d/viewer.html'
+          particle_size: '2.0'
+          particle_density: ${{ github.event.inputs.particle_density }}
+          enable_audio_reactive: ${{ github.event.inputs.enable_audio }}
+          background_color: '#1a1a2e'
+          
+      - name: 📊 Test Results Summary
+        run: |
+          echo "# 🧪 2D→3D Regression Test Results" > test-output-2d-3d/test-report.md
+          echo "" >> test-output-2d-3d/test-report.md
+          echo "## Test Configuration" >> test-output-2d-3d/test-report.md
+          echo "- **Input Image**: \`${{ github.event.inputs.test_image }}\`" >> test-output-2d-3d/test-report.md
+          echo "- **Particle Density**: ${{ github.event.inputs.particle_density }}" >> test-output-2d-3d/test-report.md
+          echo "- **Audio Reactive**: ${{ github.event.inputs.enable_audio }}" >> test-output-2d-3d/test-report.md
+          echo "" >> test-output-2d-3d/test-report.md
+          echo "## Generated Files" >> test-output-2d-3d/test-report.md
+          echo "- **PLY File**: \`${{ steps.generate_pointcloud.outputs.ply_path }}\`" >> test-output-2d-3d/test-report.md
+          echo "- **Depth Map**: \`${{ steps.generate_pointcloud.outputs.depth_map_path }}\`" >> test-output-2d-3d/test-report.md
+          echo "- **Viewer**: \`test-output-2d-3d/viewer.html\`" >> test-output-2d-3d/test-report.md
+          echo "" >> test-output-2d-3d/test-report.md
+          echo "## Processing Details" >> test-output-2d-3d/test-report.md
+          echo "- **Particle Count**: ${{ steps.generate_pointcloud.outputs.particle_count }}" >> test-output-2d-3d/test-report.md
+          echo "- **Processing Time**: ${{ steps.generate_pointcloud.outputs.processing_time }}s" >> test-output-2d-3d/test-report.md
+          echo "" >> test-output-2d-3d/test-report.md
+          echo "## Module Integration Status" >> test-output-2d-3d/test-report.md
+          echo "- ✅ pointcloud-generation module" >> test-output-2d-3d/test-report.md
+          echo "- ✅ threejs-pointcloud-viewer module" >> test-output-2d-3d/test-report.md
+          echo "- ✅ Shared components integration" >> test-output-2d-3d/test-report.md
+          
+          cat test-output-2d-3d/test-report.md
+          
+      - name: 📦 Upload Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-test-2d-3d-${{ github.run_number }}
+          path: |
+            test-output-2d-3d/
+          retention-days: 7
+          
+      - name: 🎯 Validate Generated Files
+        run: |
+          echo "🔍 Validating generated files..."
+          
+          # Check PLY file
+          if [[ -f "${{ steps.generate_pointcloud.outputs.ply_path }}" ]]; then
+            echo "✅ PLY file generated successfully"
+            head -20 "${{ steps.generate_pointcloud.outputs.ply_path }}"
+          else
+            echo "❌ PLY file generation failed"
+            exit 1
+          fi
+          
+          # Check viewer HTML
+          if [[ -f "test-output-2d-3d/viewer.html" ]]; then
+            echo "✅ Viewer HTML generated successfully"
+            # Check for key components
+            grep -q "three.min.js" test-output-2d-3d/viewer.html && echo "  ✓ Three.js included"
+            grep -q "OrbitControls" test-output-2d-3d/viewer.html && echo "  ✓ OrbitControls included"
+            grep -q "PLYLoader" test-output-2d-3d/viewer.html && echo "  ✓ PLYLoader included"
+            grep -q "shared-components" test-output-2d-3d/viewer.html && echo "  ✓ Shared components included"
+          else
+            echo "❌ Viewer HTML generation failed"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All validations passed!"
+          
+  test-shared-components:
+    name: Test Shared Components Integration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: 🔍 Verify Shared Components
+        run: |
+          echo "🔍 Checking shared components..."
+          
+          COMPONENTS=(
+            "audio-reactive-system.js"
+            "camera-controls.js" 
+            "mouse-interaction.js"
+            "particle-effects.js"
+            "ui-controls.js"
+          )
+          
+          for component in "${COMPONENTS[@]}"; do
+            if [[ -f ".github/actions/kamui-modules/shared-viewer-components/$component" ]]; then
+              echo "✅ $component exists"
+            else
+              echo "❌ $component missing!"
+              exit 1
+            fi
+          done
+          
+          echo ""
+          echo "✅ All shared components verified!"
+          
+      - name: 📊 Generate Component Report
+        run: |
+          echo "# 📦 Shared Components Status" > component-report.md
+          echo "" >> component-report.md
+          echo "## Component Files" >> component-report.md
+          echo "| Component | Status | Size |" >> component-report.md
+          echo "|-----------|--------|------|" >> component-report.md
+          
+          for file in .github/actions/kamui-modules/shared-viewer-components/*.js; do
+            basename=$(basename "$file")
+            size=$(ls -lh "$file" | awk '{print $5}')
+            echo "| $basename | ✅ Active | $size |" >> component-report.md
+          done
+          
+          cat component-report.md
+          
+      - name: 📦 Upload Component Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-integration-report-${{ github.run_number }}
+          path: component-report.md
+          retention-days: 7

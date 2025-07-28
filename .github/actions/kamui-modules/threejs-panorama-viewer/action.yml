@@ -1,9 +1,20 @@
 name: '360° Panorama Viewer'
-description: 'Creates a 360-degree panoramic particle viewer using Three.js with shared components'
+description: 'Creates a 360-degree panoramic particle viewer using Three.js with shared components and depth information'
 inputs:
   input_image:
-    description: 'Input image file for panoramic display'
-    required: true
+    description: 'Input image file for panoramic display (deprecated - use ply_file_path for depth-enhanced panoramas)'
+    required: false
+    default: ''
+  
+  ply_file_path:
+    description: 'PLY file path from pointcloud-panorama-generation module (recommended)'
+    required: false
+    default: ''
+  
+  enable_depth_visualization:
+    description: 'Enable depth-based color enhancement'
+    required: false
+    default: 'true'
   output_filename:
     description: 'Output filename for the panorama viewer'
     required: false
@@ -44,23 +55,38 @@ runs:
       run: |
         echo "🌐 Setting up 360° Panorama Viewer environment..."
         echo "Input image: ${{ inputs.input_image }}"
+        echo "PLY file: ${{ inputs.ply_file_path }}"
         echo "Output filename: ${{ inputs.output_filename }}"
         echo "Background color: ${{ inputs.background_color }}"
         echo "Particle density: ${{ inputs.particle_density }}"
+        echo "Depth visualization: ${{ inputs.enable_depth_visualization }}"
         
-    - name: Process input image for panoramic display
+    - name: Process input for panoramic display
       shell: bash
       run: |
-        echo "🖼️ Processing image for panoramic display..."
+        echo "🖼️ Processing input for panoramic display..."
         # Create assets directory
         mkdir -p assets
         
-        # Copy input image to assets
-        if [ -f "${{ inputs.input_image }}" ]; then
+        # Check which input type is provided
+        if [ -n "${{ inputs.ply_file_path }}" ] && [ -f "${{ inputs.ply_file_path }}" ]; then
+          echo "✅ Using PLY file with depth information: ${{ inputs.ply_file_path }}"
+          echo "PLY_MODE=true" >> $GITHUB_ENV
+          # Copy PLY file to assets
+          cp "${{ inputs.ply_file_path }}" assets/panorama.ply
+          # Try to find corresponding image
+          IMAGE_PATH="${{{ inputs.ply_file_path }}%.ply}.jpg"
+          if [ -f "$IMAGE_PATH" ]; then
+            cp "$IMAGE_PATH" assets/panorama-image.jpg
+            echo "✅ Found corresponding image: $IMAGE_PATH"
+          fi
+        elif [ -n "${{ inputs.input_image }}" ] && [ -f "${{ inputs.input_image }}" ]; then
+          echo "⚠️  Using image-only mode (no depth information)"
+          echo "PLY_MODE=false" >> $GITHUB_ENV
           cp "${{ inputs.input_image }}" assets/panorama-image.jpg
           echo "✅ Image copied to assets/panorama-image.jpg"
         else
-          echo "❌ Input image not found: ${{ inputs.input_image }}"
+          echo "❌ No valid input provided. Please specify either ply_file_path or input_image"
           exit 1
         fi
         
@@ -78,6 +104,14 @@ runs:
         sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
         sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
         sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
+        sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
+        
+        # Set PLY file path if available
+        if [ "$PLY_MODE" = "true" ]; then
+          sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+        else
+          sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+        fi
         
         # Handle music integration
         if [ "${{ inputs.enable_music }}" = "true" ] && [ -n "${{ inputs.music_file }}" ]; then
@@ -116,12 +150,21 @@ runs:
           exit 1
         fi
         
-        if [ ! -f "assets/panorama-image.jpg" ]; then
-          echo "❌ Panorama image not found"
-          exit 1
+        if [ "$PLY_MODE" = "true" ]; then
+          if [ ! -f "assets/panorama.ply" ]; then
+            echo "❌ Panorama PLY not found"
+            exit 1
+          fi
+          echo "✅ PLY file: assets/panorama.ply"
+        else
+          if [ ! -f "assets/panorama-image.jpg" ]; then
+            echo "❌ Panorama image not found"
+            exit 1
+          fi
+          echo "✅ Image file: assets/panorama-image.jpg"
         fi
         
         echo "🌟 360° Panorama Viewer created successfully!"
         echo "📄 Output file: ${{ inputs.output_filename }}"
-        echo "🖼️ Panorama image: assets/panorama-image.jpg"
         echo "📜 Script file: panorama-script.js"
+        echo "🎯 Mode: $([ "$PLY_MODE" = "true" ] && echo "Depth-enhanced PLY" || echo "Image-only")"
