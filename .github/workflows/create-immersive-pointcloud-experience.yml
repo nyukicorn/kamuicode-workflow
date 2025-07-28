@@ -93,30 +93,18 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
   create-immersive-experience:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Generate timestamp
-        id: timestamp
-        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+      - name: 🏗️ Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        env:
+          BRANCH_PREFIX: "immersive-pointcloud"
       
       - name: Translate Image Prompt to English
         id: image-translation
@@ -133,8 +121,8 @@ jobs:
         with:
           image-prompt: ${{ steps.image-translation.outputs.english-prompt }}
           image-model: ${{ inputs.image-model }}
-          folder-name: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
-          branch-name: 'main'
+          folder-name: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
@@ -144,14 +132,14 @@ jobs:
         uses: ./.github/actions/kamui-modules/image-upload
         with:
           image-url: ${{ inputs.uploaded-image-url }}
-          output-folder: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
-          branch-name: 'main'
+          output-folder: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
       
       - name: Set image path for downstream steps
         id: image-path
         run: |
           if [ "${{ inputs.image-source }}" = "ai-generated" ]; then
-            echo "path=archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}/images/generated-image.png" >> $GITHUB_OUTPUT
+            echo "path=${{ steps.setup.outputs.folder-name }}/images/generated-image.png" >> $GITHUB_OUTPUT
           else
             echo "path=${{ steps.image-upload.outputs.image-path }}" >> $GITHUB_OUTPUT
           fi
@@ -171,8 +159,8 @@ jobs:
         with:
           music-concept: ${{ steps.music-translation.outputs.english-prompt }}
           music-prompt: ${{ steps.music-translation.outputs.english-prompt }}
-          folder-name: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
-          branch-name: 'main'
+          folder-name: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
           oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
           mcp-config: ${{ secrets.MCP_CONFIG }}
       
@@ -181,10 +169,10 @@ jobs:
         if: inputs.enable-music == true
         run: |
           # Find the generated music (avoiding duplicated paths)
-          MUSIC_FILE=$(find archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }} -name "*.wav" -o -name "*.mp3" | head -1)
+          MUSIC_FILE=$(find ${{ steps.setup.outputs.folder-name }} -name "*.wav" -o -name "*.mp3" | head -1)
           if [ -n "$MUSIC_FILE" ]; then
             # Clean up duplicated path segments
-            CLEAN_MUSIC_FILE=$(echo "$MUSIC_FILE" | sed 's|immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/|immersive-pointcloud-${{ steps.timestamp.outputs.value }}/music/|g')
+            CLEAN_MUSIC_FILE=$(echo "$MUSIC_FILE" | sed 's|immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/immersive-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/|${{ steps.setup.outputs.folder-name }}/music/|g')
             
             # If the cleaned path is different, move the file to correct location
             if [ "$MUSIC_FILE" != "$CLEAN_MUSIC_FILE" ]; then
@@ -209,8 +197,8 @@ jobs:
         uses: ./.github/actions/kamui-modules/pointcloud-generation
         with:
           input-image-path: ${{ steps.image-path.outputs.path }}
-          output-folder: 'archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
-          branch-name: 'main'
+          output-folder: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
           depth-model: ${{ inputs.depth-model }}
           color-mode: ${{ inputs.color-mode }}
       
@@ -243,26 +231,22 @@ jobs:
         uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
           ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
-          output-folder: 'docs/archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}'
+          output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
           viewer-title: 'Immersive 3D Point Cloud Experience'
           camera-position: '0,0,150'
           background-color: ${{ steps.bg-color.outputs.color }}
           point-size: '1.5'
           animation-speed: '1.0'
           music-file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
-          branch-name: 'main'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
       
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: 📦 Upload Production Artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: './docs'
-      
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          name: immersive-pointcloud-experience-${{ github.run_number }}
+          path: |
+            docs/${{ steps.setup.outputs.folder-name }}/
+          retention-days: 7
       
       - name: Experience Summary
         run: |
@@ -295,10 +279,7 @@ jobs:
           echo "- **Pointcloud Generated**: ${{ steps.pointcloud.outputs.pointcloud-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Viewer Created**: ${{ steps.viewer.outputs.viewer-completed }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ steps.deployment.conclusion }}" = "success" ]; then
-            echo "### 🚀 Live Experience" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **Status**: Successfully deployed to GitHub Pages" >> $GITHUB_STEP_SUMMARY
-            echo "🌐 **Experience URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/archive-pointcloud-experiments/latest/immersive-pointcloud-${{ steps.timestamp.outputs.value }}/" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **Status**: Deployment failed or was skipped" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### 📦 Artifact" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status**: Successfully uploaded as artifact for Pages deployment" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 **Expected URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/immersive-pointcloud-experience-$(date +%Y%m%d)-${{ github.run_id }}/" >> $GITHUB_STEP_SUMMARY
+          echo "📁 **Artifact**: immersive-pointcloud-experience-${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
