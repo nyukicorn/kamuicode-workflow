@@ -3,7 +3,7 @@
 
 // Global variables (point cloud specific)
 let pointCloud = null;
-let autoRotate = AUTO_ROTATE_PLACEHOLDER;
+let viewerAutoRotate = AUTO_ROTATE_PLACEHOLDER;
 let rotationSpeed = ANIMATION_SPEED_PLACEHOLDER;
 let lights = null;
 
@@ -23,7 +23,7 @@ function init() {
     
     // Set initial camera position and auto-rotate settings
     setCameraPosition(CAM_X_PLACEHOLDER, CAM_Y_PLACEHOLDER, CAM_Z_PLACEHOLDER);
-    setAutoRotateSettings(autoRotate, rotationSpeed);
+    setAutoRotateSettings(viewerAutoRotate, rotationSpeed);
     
     // Initialize UI system with lighting
     lights = initializeCompleteUISystem(scene, 'BACKGROUND_COLOR_PLACEHOLDER');
@@ -35,7 +35,7 @@ function init() {
     loadPointCloud();
     
     // Debug info for rotation center
-    console.log('OrbitControls initialized with autoRotate:', autoRotate);
+    console.log('OrbitControls initialized with autoRotate:', viewerAutoRotate);
     console.log('Rotation will be around Y-axis through controls.target');
     
     // Start animation loop
