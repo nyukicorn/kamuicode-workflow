@@ -133,153 +133,153 @@ runs:
         import time
 
         def load_panorama_image(image_path):
-    """Load and validate panorama image"""
-    try:
-        img = cv2.imread(image_path)
-        if img is None:
-            raise ValueError(f"Could not load image: {image_path}")
-        
-        height, width = img.shape[:2]
-        aspect_ratio = width / height
-        
-        print(f"📐 Image dimensions: {width}x{height} (aspect ratio: {aspect_ratio:.2f})")
-        
-        # Check if it's approximately 2:1 (equirectangular)
-        if abs(aspect_ratio - 2.0) > 0.5:
-            print(f"⚠️  Warning: Image aspect ratio {aspect_ratio:.2f} is not close to 2:1")
-            print("    Equirectangular panoramas should have 2:1 aspect ratio")
-        
-        return img
-        
-    except Exception as e:
-        print(f"❌ Error loading panorama: {e}")
-        sys.exit(1)
+            """Load and validate panorama image"""
+            try:
+                img = cv2.imread(image_path)
+                if img is None:
+                    raise ValueError(f"Could not load image: {image_path}")
+                
+                height, width = img.shape[:2]
+                aspect_ratio = width / height
+                
+                print(f"📐 Image dimensions: {width}x{height} (aspect ratio: {aspect_ratio:.2f})")
+                
+                # Check if it's approximately 2:1 (equirectangular)
+                if abs(aspect_ratio - 2.0) > 0.5:
+                    print(f"⚠️  Warning: Image aspect ratio {aspect_ratio:.2f} is not close to 2:1")
+                    print("    Equirectangular panoramas should have 2:1 aspect ratio")
+                
+                return img
+                
+            except Exception as e:
+                print(f"❌ Error loading panorama: {e}")
+                sys.exit(1)
 
-def simulate_midas_depth_estimation(image, target_resolution):
-    """Simulate MiDaS depth estimation for panorama images"""
-    print(f"🎯 Target depth resolution: {target_resolution}")
-    
-    # Parse resolution
-    width_str, height_str = target_resolution.split('x')
-    target_width, target_height = int(width_str), int(height_str)
-    
-    # Resize image for processing
-    resized = cv2.resize(image, (target_width, target_height))
-    
-    # Convert to grayscale for depth simulation
-    gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-    
-    # Simulate depth estimation using edge-based heuristics
-    # Real MiDaS would use deep learning model here
-    
-    # Apply Gaussian blur to simulate depth
-    blurred = cv2.GaussianBlur(gray, (15, 15), 0)
-    
-    # Create depth map using gradient magnitude and brightness
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-    gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
-    
-    # Normalize gradient
-    gradient_magnitude = cv2.normalize(gradient_magnitude, None, 0, 255, cv2.NORM_MINMAX)
-    
-    # Combine brightness and edge information for depth
-    # Brighter areas tend to be closer, edges tend to be closer
-    brightness_weight = 0.4
-    edge_weight = 0.6
-    
-    # Invert brightness (darker = farther in typical scenarios)
-    inverted_brightness = 255 - blurred
-    
-    # Combine for final depth map
-    depth_map = (inverted_brightness * brightness_weight + 
-                gradient_magnitude * edge_weight).astype(np.uint8)
-    
-    # Apply panorama-specific corrections
-    height, width = depth_map.shape
-    
-    # Pole area compression - reduce depth variation near poles
-    for y in range(height):
-        pole_factor = abs(y - height/2) / (height/2)  # 0 at equator, 1 at poles
-        compression = 1.0 - pole_factor * 0.3  # Reduce variation by up to 30% at poles
-        depth_map[y, :] = depth_map[y, :] * compression
-    
-    # Seamline continuity - ensure left and right edges match
-    edge_width = max(1, width // 100)  # 1% of width
-    left_edge = depth_map[:, :edge_width].mean(axis=1)
-    right_edge = depth_map[:, -edge_width:].mean(axis=1)
-    average_edge = (left_edge + right_edge) / 2
-    
-    for i, avg_val in enumerate(average_edge):
-        depth_map[i, :edge_width] = avg_val
-        depth_map[i, -edge_width:] = avg_val
-    
-    return depth_map
+        def simulate_midas_depth_estimation(image, target_resolution):
+            """Simulate MiDaS depth estimation for panorama images"""
+            print(f"🎯 Target depth resolution: {target_resolution}")
+            
+            # Parse resolution
+            width_str, height_str = target_resolution.split('x')
+            target_width, target_height = int(width_str), int(height_str)
+            
+            # Resize image for processing
+            resized = cv2.resize(image, (target_width, target_height))
+            
+            # Convert to grayscale for depth simulation
+            gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+            
+            # Simulate depth estimation using edge-based heuristics
+            # Real MiDaS would use deep learning model here
+            
+            # Apply Gaussian blur to simulate depth
+            blurred = cv2.GaussianBlur(gray, (15, 15), 0)
+            
+            # Create depth map using gradient magnitude and brightness
+            sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+            sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+            gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
+            
+            # Normalize gradient
+            gradient_magnitude = cv2.normalize(gradient_magnitude, None, 0, 255, cv2.NORM_MINMAX)
+            
+            # Combine brightness and edge information for depth
+            # Brighter areas tend to be closer, edges tend to be closer
+            brightness_weight = 0.4
+            edge_weight = 0.6
+            
+            # Invert brightness (darker = farther in typical scenarios)
+            inverted_brightness = 255 - blurred
+            
+            # Combine for final depth map
+            depth_map = (inverted_brightness * brightness_weight + 
+                        gradient_magnitude * edge_weight).astype(np.uint8)
+            
+            # Apply panorama-specific corrections
+            height, width = depth_map.shape
+            
+            # Pole area compression - reduce depth variation near poles
+            for y in range(height):
+                pole_factor = abs(y - height/2) / (height/2)  # 0 at equator, 1 at poles
+                compression = 1.0 - pole_factor * 0.3  # Reduce variation by up to 30% at poles
+                depth_map[y, :] = depth_map[y, :] * compression
+            
+            # Seamline continuity - ensure left and right edges match
+            edge_width = max(1, width // 100)  # 1% of width
+            left_edge = depth_map[:, :edge_width].mean(axis=1)
+            right_edge = depth_map[:, -edge_width:].mean(axis=1)
+            average_edge = (left_edge + right_edge) / 2
+            
+            for i, avg_val in enumerate(average_edge):
+                depth_map[i, :edge_width] = avg_val
+                depth_map[i, -edge_width:] = avg_val
+            
+            return depth_map
 
-def save_depth_maps(depth_map, output_dir, base_name):
-    """Save depth maps in multiple formats"""
-    # Save grayscale depth map
-    depth_gray_path = os.path.join(output_dir, f"{base_name}_depth_gray.png")
-    cv2.imwrite(depth_gray_path, depth_map)
-    
-    # Save colorized depth map for visualization
-    depth_color = cv2.applyColorMap(depth_map, cv2.COLORMAP_PLASMA)
-    depth_color_path = os.path.join(output_dir, f"{base_name}_depth.png")
-    cv2.imwrite(depth_color_path, depth_color)
-    
-    # Calculate statistics
-    mean_depth = np.mean(depth_map)
-    std_depth = np.std(depth_map)
-    min_depth = np.min(depth_map)
-    max_depth = np.max(depth_map)
-    
-    print(f"📊 Depth Statistics:")
-    print(f"   Mean: {mean_depth:.2f}")
-    print(f"   Std:  {std_depth:.2f}")  
-    print(f"   Range: {min_depth} - {max_depth}")
-    
-    return depth_gray_path, depth_color_path
+        def save_depth_maps(depth_map, output_dir, base_name):
+            """Save depth maps in multiple formats"""
+            # Save grayscale depth map
+            depth_gray_path = os.path.join(output_dir, f"{base_name}_depth_gray.png")
+            cv2.imwrite(depth_gray_path, depth_map)
+            
+            # Save colorized depth map for visualization
+            depth_color = cv2.applyColorMap(depth_map, cv2.COLORMAP_PLASMA)
+            depth_color_path = os.path.join(output_dir, f"{base_name}_depth.png")
+            cv2.imwrite(depth_color_path, depth_color)
+            
+            # Calculate statistics
+            mean_depth = np.mean(depth_map)
+            std_depth = np.std(depth_map)
+            min_depth = np.min(depth_map)
+            max_depth = np.max(depth_map)
+            
+            print(f"📊 Depth Statistics:")
+            print(f"   Mean: {mean_depth:.2f}")
+            print(f"   Std:  {std_depth:.2f}")  
+            print(f"   Range: {min_depth} - {max_depth}")
+            
+            return depth_gray_path, depth_color_path
 
-def main():
-    if len(sys.argv) != 4:
-        print("Usage: python panorama_depth_estimation.py <input_image> <output_dir> <resolution>")
-        sys.exit(1)
-    
-    input_image = sys.argv[1]
-    output_dir = sys.argv[2]
-    target_resolution = sys.argv[3]
-    
-    print(f"🌐 Starting panorama depth estimation...")
-    print(f"   Input: {input_image}")
-    print(f"   Output: {output_dir}")
-    print(f"   Resolution: {target_resolution}")
-    
-    start_time = time.time()
-    
-    # Load panorama image
-    panorama = load_panorama_image(input_image)
-    
-    # Generate depth estimation
-    depth_map = simulate_midas_depth_estimation(panorama, target_resolution)
-    
-    # Save results
-    base_name = os.path.splitext(os.path.basename(input_image))[0]
-    depth_gray_path, depth_color_path = save_depth_maps(depth_map, output_dir, base_name)
-    
-    processing_time = time.time() - start_time
-    
-    print(f"✅ Depth estimation completed in {processing_time:.2f} seconds")
-    print(f"   Grayscale depth: {depth_gray_path}")
-    print(f"   Color depth: {depth_color_path}")
-    
-    # Output paths for GitHub Actions
-    print(f"::set-output name=depth_gray_path::{depth_gray_path}")
-    print(f"::set-output name=depth_color_path::{depth_color_path}")
-    print(f"::set-output name=processing_time::{processing_time:.2f}")
+        def main():
+            if len(sys.argv) != 4:
+                print("Usage: python panorama_depth_estimation.py <input_image> <output_dir> <resolution>")
+                sys.exit(1)
+            
+            input_image = sys.argv[1]
+            output_dir = sys.argv[2]
+            target_resolution = sys.argv[3]
+            
+            print(f"🌐 Starting panorama depth estimation...")
+            print(f"   Input: {input_image}")
+            print(f"   Output: {output_dir}")
+            print(f"   Resolution: {target_resolution}")
+            
+            start_time = time.time()
+            
+            # Load panorama image
+            panorama = load_panorama_image(input_image)
+            
+            # Generate depth estimation
+            depth_map = simulate_midas_depth_estimation(panorama, target_resolution)
+            
+            # Save results
+            base_name = os.path.splitext(os.path.basename(input_image))[0]
+            depth_gray_path, depth_color_path = save_depth_maps(depth_map, output_dir, base_name)
+            
+            processing_time = time.time() - start_time
+            
+            print(f"✅ Depth estimation completed in {processing_time:.2f} seconds")
+            print(f"   Grayscale depth: {depth_gray_path}")
+            print(f"   Color depth: {depth_color_path}")
+            
+            # Output paths for GitHub Actions
+            print(f"::set-output name=depth_gray_path::{depth_gray_path}")
+            print(f"::set-output name=depth_color_path::{depth_color_path}")
+            print(f"::set-output name=processing_time::{processing_time:.2f}")
 
-if __name__ == "__main__":
-    main()
-EOF
+        if __name__ == "__main__":
+            main()
+        EOF
         
         # Run depth estimation
         python3 panorama_depth_estimation.py \
@@ -298,268 +298,268 @@ EOF
         
         # Create Node.js script for panorama PLY generation
         cat > panorama_ply_generator.js << 'EOF'
-const fs = require('fs');
-const { PNG } = require('pngjs');
+        const fs = require('fs');
+        const { PNG } = require('pngjs');
 
-class PanoramaPLYGenerator {
-    constructor(options = {}) {
-        this.options = {
-            sphereRadius: parseFloat(options.sphereRadius) || 200,
-            depthVariation: parseFloat(options.depthVariation) || 0.4,
-            enablePoleCompression: options.enablePoleCompression === 'true',
-            depthInversion: options.depthInversion === 'true',
-            particleDensity: options.particleDensity || 'medium',
-            ...options
-        };
-        
-        console.log('🎯 PLY Generator Configuration:');
-        console.log(`   Sphere radius: ${this.options.sphereRadius}`);
-        console.log(`   Depth variation: ${this.options.depthVariation}`);
-        console.log(`   Pole compression: ${this.options.enablePoleCompression}`);
-        console.log(`   Depth inversion: ${this.options.depthInversion}`);
-        console.log(`   Particle density: ${this.options.particleDensity}`);
-    }
-    
-    async loadPNG(filePath) {
-        return new Promise((resolve, reject) => {
-            fs.createReadStream(filePath)
-                .pipe(new PNG())
-                .on('parsed', function() {
-                    resolve({
-                        width: this.width,
-                        height: this.height,
-                        data: this.data
-                    });
-                })
-                .on('error', reject);
-        });
-    }
-    
-    getParticleCount(density) {
-        const counts = {
-            'low': 15000,
-            'medium': 35000,
-            'high': 65000
-        };
-        return counts[density] || counts['medium'];
-    }
-    
-    equirectangularToSphere(u, v, depthValue, baseRadius) {
-        // Convert normalized coordinates to spherical
-        const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
-        const theta = v * Math.PI;             // Latitude: 0 to π
-        
-        // Process depth value
-        let processedDepth = depthValue / 255.0; // Normalize to 0-1
-        if (this.options.depthInversion) {
-            processedDepth = 1.0 - processedDepth;
-        }
-        
-        // Depth-based radius adjustment
-        const depthFactor = processedDepth;
-        const radiusVariation = baseRadius * this.options.depthVariation;
-        let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
-        
-        // Pole compression to reduce distortion
-        if (this.options.enablePoleCompression) {
-            const poleWeight = Math.sin(theta); // 0 at poles, 1 at equator
-            const compressionFactor = 0.9 + poleWeight * 0.1;
-            adjustedRadius *= compressionFactor;
-        }
-        
-        // Convert to Cartesian coordinates
-        return {
-            x: adjustedRadius * Math.sin(theta) * Math.cos(phi),
-            y: adjustedRadius * Math.cos(theta),
-            z: adjustedRadius * Math.sin(theta) * Math.sin(phi)
-        };
-    }
-    
-    async convertPanoramaToSphere(depthPath, imagePath) {
-        console.log('📖 Loading panorama data...');
-        
-        // Load depth and image data
-        const depthData = await this.loadPNG(depthPath);
-        const imageData = await this.loadPNG(imagePath);
-        
-        console.log(`📐 Image dimensions: ${imageData.width}x${imageData.height}`);
-        console.log(`📐 Depth dimensions: ${depthData.width}x${depthData.height}`);
-        
-        const points = [];
-        const { width, height } = depthData;
-        
-        // Determine sampling strategy based on particle density
-        const targetParticleCount = this.getParticleCount(this.options.particleDensity);
-        const totalPixels = width * height;
-        const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
-        
-        console.log(`🎯 Target particles: ${targetParticleCount.toLocaleString()}`);
-        console.log(`📊 Sampling rate: ${(samplingRate * 100).toFixed(1)}%`);
-        
-        let processedPixels = 0;
-        const startTime = Date.now();
-        
-        // Sample pixels based on density requirements
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                // Skip pixels based on sampling rate
-                if (Math.random() > samplingRate) continue;
+        class PanoramaPLYGenerator {
+            constructor(options = {}) {
+                this.options = {
+                    sphereRadius: parseFloat(options.sphereRadius) || 200,
+                    depthVariation: parseFloat(options.depthVariation) || 0.4,
+                    enablePoleCompression: options.enablePoleCompression === 'true',
+                    depthInversion: options.depthInversion === 'true',
+                    particleDensity: options.particleDensity || 'medium',
+                    ...options
+                };
                 
-                // Get normalized coordinates (0-1)
-                const u = x / width;
-                const v = y / height;
-                
-                // Get depth value (use red channel for grayscale)
-                const depthIdx = (y * width + x) * 4;
-                const depthValue = depthData.data[depthIdx];
-                
-                // Skip very dark/transparent areas
-                if (depthValue < 5) continue;
-                
-                // Convert to spherical coordinates with depth
-                const spherePos = this.equirectangularToSphere(
-                    u, v, depthValue, this.options.sphereRadius
-                );
-                
-                // Get color from original image (handle different resolutions)
-                const imageX = Math.floor(u * imageData.width);
-                const imageY = Math.floor(v * imageData.height);
-                const colorIdx = (imageY * imageData.width + imageX) * 4;
-                
-                const r = imageData.data[colorIdx] || 128;
-                const g = imageData.data[colorIdx + 1] || 128;
-                const b = imageData.data[colorIdx + 2] || 128;
-                const a = imageData.data[colorIdx + 3] || 255;
-                
-                // Skip transparent pixels
-                if (a < 128) continue;
-                
-                points.push({
-                    x: spherePos.x,
-                    y: spherePos.y,
-                    z: spherePos.z,
-                    r: r,
-                    g: g,
-                    b: b
-                });
-                
-                processedPixels++;
+                console.log('🎯 PLY Generator Configuration:');
+                console.log(`   Sphere radius: ${this.options.sphereRadius}`);
+                console.log(`   Depth variation: ${this.options.depthVariation}`);
+                console.log(`   Pole compression: ${this.options.enablePoleCompression}`);
+                console.log(`   Depth inversion: ${this.options.depthInversion}`);
+                console.log(`   Particle density: ${this.options.particleDensity}`);
             }
             
-            // Progress update every 10%
-            if (y % Math.floor(height / 10) === 0) {
-                const progress = (y / height * 100).toFixed(0);
-                console.log(`📊 Processing: ${progress}% (${points.length.toLocaleString()} particles)`);
+            async loadPNG(filePath) {
+                return new Promise((resolve, reject) => {
+                    fs.createReadStream(filePath)
+                        .pipe(new PNG())
+                        .on('parsed', function() {
+                            resolve({
+                                width: this.width,
+                                height: this.height,
+                                data: this.data
+                            });
+                        })
+                        .on('error', reject);
+                });
+            }
+            
+            getParticleCount(density) {
+                const counts = {
+                    'low': 15000,
+                    'medium': 35000,
+                    'high': 65000
+                };
+                return counts[density] || counts['medium'];
+            }
+            
+            equirectangularToSphere(u, v, depthValue, baseRadius) {
+                // Convert normalized coordinates to spherical
+                const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
+                const theta = v * Math.PI;             // Latitude: 0 to π
+                
+                // Process depth value
+                let processedDepth = depthValue / 255.0; // Normalize to 0-1
+                if (this.options.depthInversion) {
+                    processedDepth = 1.0 - processedDepth;
+                }
+                
+                // Depth-based radius adjustment
+                const depthFactor = processedDepth;
+                const radiusVariation = baseRadius * this.options.depthVariation;
+                let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
+                
+                // Pole compression to reduce distortion
+                if (this.options.enablePoleCompression) {
+                    const poleWeight = Math.sin(theta); // 0 at poles, 1 at equator
+                    const compressionFactor = 0.9 + poleWeight * 0.1;
+                    adjustedRadius *= compressionFactor;
+                }
+                
+                // Convert to Cartesian coordinates
+                return {
+                    x: adjustedRadius * Math.sin(theta) * Math.cos(phi),
+                    y: adjustedRadius * Math.cos(theta),
+                    z: adjustedRadius * Math.sin(theta) * Math.sin(phi)
+                };
+            }
+            
+            async convertPanoramaToSphere(depthPath, imagePath) {
+                console.log('📖 Loading panorama data...');
+                
+                // Load depth and image data
+                const depthData = await this.loadPNG(depthPath);
+                const imageData = await this.loadPNG(imagePath);
+                
+                console.log(`📐 Image dimensions: ${imageData.width}x${imageData.height}`);
+                console.log(`📐 Depth dimensions: ${depthData.width}x${depthData.height}`);
+                
+                const points = [];
+                const { width, height } = depthData;
+                
+                // Determine sampling strategy based on particle density
+                const targetParticleCount = this.getParticleCount(this.options.particleDensity);
+                const totalPixels = width * height;
+                const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
+                
+                console.log(`🎯 Target particles: ${targetParticleCount.toLocaleString()}`);
+                console.log(`📊 Sampling rate: ${(samplingRate * 100).toFixed(1)}%`);
+                
+                let processedPixels = 0;
+                const startTime = Date.now();
+                
+                // Sample pixels based on density requirements
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        // Skip pixels based on sampling rate
+                        if (Math.random() > samplingRate) continue;
+                        
+                        // Get normalized coordinates (0-1)
+                        const u = x / width;
+                        const v = y / height;
+                        
+                        // Get depth value (use red channel for grayscale)
+                        const depthIdx = (y * width + x) * 4;
+                        const depthValue = depthData.data[depthIdx];
+                        
+                        // Skip very dark/transparent areas
+                        if (depthValue < 5) continue;
+                        
+                        // Convert to spherical coordinates with depth
+                        const spherePos = this.equirectangularToSphere(
+                            u, v, depthValue, this.options.sphereRadius
+                        );
+                        
+                        // Get color from original image (handle different resolutions)
+                        const imageX = Math.floor(u * imageData.width);
+                        const imageY = Math.floor(v * imageData.height);
+                        const colorIdx = (imageY * imageData.width + imageX) * 4;
+                        
+                        const r = imageData.data[colorIdx] || 128;
+                        const g = imageData.data[colorIdx + 1] || 128;
+                        const b = imageData.data[colorIdx + 2] || 128;
+                        const a = imageData.data[colorIdx + 3] || 255;
+                        
+                        // Skip transparent pixels
+                        if (a < 128) continue;
+                        
+                        points.push({
+                            x: spherePos.x,
+                            y: spherePos.y,
+                            z: spherePos.z,
+                            r: r,
+                            g: g,
+                            b: b
+                        });
+                        
+                        processedPixels++;
+                    }
+                    
+                    // Progress update every 10%
+                    if (y % Math.floor(height / 10) === 0) {
+                        const progress = (y / height * 100).toFixed(0);
+                        console.log(`📊 Processing: ${progress}% (${points.length.toLocaleString()} particles)`);
+                    }
+                }
+                
+                const processingTime = (Date.now() - startTime) / 1000;
+                console.log(`✅ Sphere conversion completed in ${processingTime.toFixed(2)}s`);
+                console.log(`🎯 Generated ${points.length.toLocaleString()} particles`);
+                
+                return points;
+            }
+            
+            generatePLYContent(points) {
+                console.log('📝 Generating PLY file content...');
+                
+                let plyContent = '';
+                
+                // PLY header
+                plyContent += 'ply\n';
+                plyContent += 'format ascii 1.0\n';
+                plyContent += `element vertex ${points.length}\n`;
+                plyContent += 'property float x\n';
+                plyContent += 'property float y\n';
+                plyContent += 'property float z\n';
+                plyContent += 'property uchar red\n';
+                plyContent += 'property uchar green\n';
+                plyContent += 'property uchar blue\n';
+                plyContent += 'end_header\n';
+                
+                // Vertex data
+                for (const point of points) {
+                    plyContent += `${point.x.toFixed(6)} ${point.y.toFixed(6)} ${point.z.toFixed(6)} ${point.r} ${point.g} ${point.b}\n`;
+                }
+                
+                return plyContent;
+            }
+            
+            async savePLY(points, outputPath) {
+                const plyContent = this.generatePLYContent(points);
+                
+                return new Promise((resolve, reject) => {
+                    fs.writeFile(outputPath, plyContent, (err) => {
+                        if (err) reject(err);
+                        else {
+                            console.log(`💾 PLY file saved: ${outputPath}`);
+                            console.log(`📊 File size: ${(plyContent.length / 1024 / 1024).toFixed(2)} MB`);
+                            resolve(outputPath);
+                        }
+                    });
+                });
             }
         }
-        
-        const processingTime = (Date.now() - startTime) / 1000;
-        console.log(`✅ Sphere conversion completed in ${processingTime.toFixed(2)}s`);
-        console.log(`🎯 Generated ${points.length.toLocaleString()} particles`);
-        
-        return points;
-    }
-    
-    generatePLYContent(points) {
-        console.log('📝 Generating PLY file content...');
-        
-        let plyContent = '';
-        
-        // PLY header
-        plyContent += 'ply\n';
-        plyContent += 'format ascii 1.0\n';
-        plyContent += `element vertex ${points.length}\n`;
-        plyContent += 'property float x\n';
-        plyContent += 'property float y\n';
-        plyContent += 'property float z\n';
-        plyContent += 'property uchar red\n';
-        plyContent += 'property uchar green\n';
-        plyContent += 'property uchar blue\n';
-        plyContent += 'end_header\n';
-        
-        // Vertex data
-        for (const point of points) {
-            plyContent += `${point.x.toFixed(6)} ${point.y.toFixed(6)} ${point.z.toFixed(6)} ${point.r} ${point.g} ${point.b}\n`;
+
+        async function main() {
+            const args = process.argv.slice(2);
+            if (args.length < 2) {
+                console.error('Usage: node panorama_ply_generator.js <depth_image> <panorama_image> [options...]');
+                process.exit(1);
+            }
+            
+            const [depthPath, imagePath, ...optionArgs] = args;
+            
+            // Parse options
+            const options = {};
+            for (let i = 0; i < optionArgs.length; i += 2) {
+                const key = optionArgs[i].replace('--', '');
+                const value = optionArgs[i + 1];
+                options[key] = value;
+            }
+            
+            console.log('🌐 Starting Panorama PLY Generation...');
+            console.log(`   Depth image: ${depthPath}`);
+            console.log(`   Panorama image: ${imagePath}`);
+            
+            try {
+                const generator = new PanoramaPLYGenerator(options);
+                
+                // Convert panorama to sphere
+                const points = await generator.convertPanoramaToSphere(depthPath, imagePath);
+                
+                // Generate output path
+                const baseName = require('path').basename(imagePath, require('path').extname(imagePath));
+                const outputPath = require('path').join(options.outputDir || '.', `${baseName}_panorama_sphere.ply`);
+                
+                // Save PLY file
+                await generator.savePLY(points, outputPath);
+                
+                // Output results for GitHub Actions
+                console.log(`::set-output name=ply_path::${outputPath}`);
+                console.log(`::set-output name=particle_count::${points.length}`);
+                console.log(`::set-output name=sphere_radius::${generator.options.sphereRadius}`);
+                
+                const sphereInfo = {
+                    radius: generator.options.sphereRadius,
+                    depthVariation: generator.options.depthVariation,
+                    particleCount: points.length,
+                    poleCompression: generator.options.enablePoleCompression,
+                    depthInversion: generator.options.depthInversion
+                };
+                
+                console.log(`::set-output name=sphere_info::${JSON.stringify(sphereInfo)}`);
+                
+                console.log('✅ Panorama PLY generation completed successfully!');
+                
+            } catch (error) {
+                console.error('❌ Error during PLY generation:', error);
+                process.exit(1);
+            }
         }
-        
-        return plyContent;
-    }
-    
-    async savePLY(points, outputPath) {
-        const plyContent = this.generatePLYContent(points);
-        
-        return new Promise((resolve, reject) => {
-            fs.writeFile(outputPath, plyContent, (err) => {
-                if (err) reject(err);
-                else {
-                    console.log(`💾 PLY file saved: ${outputPath}`);
-                    console.log(`📊 File size: ${(plyContent.length / 1024 / 1024).toFixed(2)} MB`);
-                    resolve(outputPath);
-                }
-            });
-        });
-    }
-}
 
-async function main() {
-    const args = process.argv.slice(2);
-    if (args.length < 2) {
-        console.error('Usage: node panorama_ply_generator.js <depth_image> <panorama_image> [options...]');
-        process.exit(1);
-    }
-    
-    const [depthPath, imagePath, ...optionArgs] = args;
-    
-    // Parse options
-    const options = {};
-    for (let i = 0; i < optionArgs.length; i += 2) {
-        const key = optionArgs[i].replace('--', '');
-        const value = optionArgs[i + 1];
-        options[key] = value;
-    }
-    
-    console.log('🌐 Starting Panorama PLY Generation...');
-    console.log(`   Depth image: ${depthPath}`);
-    console.log(`   Panorama image: ${imagePath}`);
-    
-    try {
-        const generator = new PanoramaPLYGenerator(options);
-        
-        // Convert panorama to sphere
-        const points = await generator.convertPanoramaToSphere(depthPath, imagePath);
-        
-        // Generate output path
-        const baseName = require('path').basename(imagePath, require('path').extname(imagePath));
-        const outputPath = require('path').join(options.outputDir || '.', `${baseName}_panorama_sphere.ply`);
-        
-        // Save PLY file
-        await generator.savePLY(points, outputPath);
-        
-        // Output results for GitHub Actions
-        console.log(`::set-output name=ply_path::${outputPath}`);
-        console.log(`::set-output name=particle_count::${points.length}`);
-        console.log(`::set-output name=sphere_radius::${generator.options.sphereRadius}`);
-        
-        const sphereInfo = {
-            radius: generator.options.sphereRadius,
-            depthVariation: generator.options.depthVariation,
-            particleCount: points.length,
-            poleCompression: generator.options.enablePoleCompression,
-            depthInversion: generator.options.depthInversion
-        };
-        
-        console.log(`::set-output name=sphere_info::${JSON.stringify(sphereInfo)}`);
-        
-        console.log('✅ Panorama PLY generation completed successfully!');
-        
-    } catch (error) {
-        console.error('❌ Error during PLY generation:', error);
-        process.exit(1);
-    }
-}
-
-main();
-EOF
+        main();
+        EOF
         
         # Find the generated depth files
         PANORAMA_BASE=$(basename "${{ inputs.panorama_image_path }}" | sed 's/\.[^.]*$//')
@@ -589,33 +589,33 @@ EOF
         
         # Create summary report
         cat > "${{ inputs.output_directory }}/panorama_generation_report.md" << EOF
-# 🌐 Panorama Point Cloud Generation Report
+        # 🌐 Panorama Point Cloud Generation Report
+        
+        ## Input Parameters
+        - **Panorama Image**: \`${{ inputs.panorama_image_path }}\`
+        - **Output Directory**: \`${{ inputs.output_directory }}\`
+        - **Sphere Radius**: ${{ inputs.sphere_radius }}
+        - **Depth Resolution**: ${{ inputs.depth_resolution }}
+        - **Particle Density**: ${{ inputs.particle_density }}
+        - **Depth Variation**: ${{ inputs.depth_variation }}
+        - **Pole Compression**: ${{ inputs.enable_pole_compression }}
+        - **Depth Inversion**: ${{ inputs.depth_inversion }}
 
-## Input Parameters
-- **Panorama Image**: \`${{ inputs.panorama_image_path }}\`
-- **Output Directory**: \`${{ inputs.output_directory }}\`
-- **Sphere Radius**: ${{ inputs.sphere_radius }}
-- **Depth Resolution**: ${{ inputs.depth_resolution }}
-- **Particle Density**: ${{ inputs.particle_density }}
-- **Depth Variation**: ${{ inputs.depth_variation }}
-- **Pole Compression**: ${{ inputs.enable_pole_compression }}
-- **Depth Inversion**: ${{ inputs.depth_inversion }}
-
-## Processing Results
-- **Total Processing Time**: ${TOTAL_TIME}s
-- **Generated Files**:
-  - Depth Map (Gray): \`${PANORAMA_BASE}_depth_gray.png\`
-  - Depth Map (Color): \`${PANORAMA_BASE}_depth.png\`
-  - PLY Point Cloud: \`${PANORAMA_BASE}_panorama_sphere.ply\`
-
-## Technical Details
-- **Coordinate System**: Spherical (radius-based depth variation)
-- **Depth Estimation**: MiDaS-style simulation with panorama corrections
-- **Pole Compression**: Applied to reduce equirectangular distortion
-- **Seamline Continuity**: Ensured for 360° experience
-
-Generated on: $(date)
-EOF
+        ## Processing Results
+        - **Total Processing Time**: ${TOTAL_TIME}s
+        - **Generated Files**:
+          - Depth Map (Gray): \`${PANORAMA_BASE}_depth_gray.png\`
+          - Depth Map (Color): \`${PANORAMA_BASE}_depth.png\`
+          - PLY Point Cloud: \`${PANORAMA_BASE}_panorama_sphere.ply\`
+        
+        ## Technical Details
+        - **Coordinate System**: Spherical (radius-based depth variation)
+        - **Depth Estimation**: MiDaS-style simulation with panorama corrections
+        - **Pole Compression**: Applied to reduce equirectangular distortion
+        - **Seamline Continuity**: Ensured for 360° experience
+        
+        Generated on: $(date)
+        EOF
         
         echo "📊 Processing Summary:"
         echo "   Total time: ${TOTAL_TIME}s"
