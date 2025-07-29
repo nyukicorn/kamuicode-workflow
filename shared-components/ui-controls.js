@@ -126,7 +126,7 @@ function updateGlowIntensity(value, pointCloudObject) {
             }
             
             // Apply glow brightness
-            const glowBrightness = 1.0 + glowIntensity * 1.5; // Up to 2.5x brightness
+            const glowBrightness = 1.0 + glowIntensity * 3.0; // Up to 4.0x brightness
             for (let i = 0; i < colors.length; i++) {
                 colors[i] = Math.min(1.0, pointCloudObject.userData.originalColors[i] * glowBrightness);
             }
@@ -135,7 +135,7 @@ function updateGlowIntensity(value, pointCloudObject) {
         }
         
         // Also slightly increase size for extra glow effect
-        const sizeMultiplier = 1.0 + glowIntensity * 0.3; // Up to 30% size increase
+        const sizeMultiplier = 1.0 + glowIntensity * 0.8; // Up to 80% size increase
         pointCloudObject.material.size = pointSize * sizeMultiplier;
         pointCloudObject.material.needsUpdate = true;
     }
