@@ -228,17 +228,21 @@ runs:
         if [[ "$OSTYPE" == "darwin"* ]]; then
           if [ "$POINTCLOUD_READY" = "true" ]; then
             sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$HTML_FILE"
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$JS_FILE"
             echo "✅ Pointcloud mode enabled with PLY file"
           else
             sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" "$HTML_FILE"
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" "$JS_FILE"
             echo "📋 Image-only mode (no pointcloud)"
           fi
         else
           if [ "$POINTCLOUD_READY" = "true" ]; then
             sed -i "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$HTML_FILE"
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$JS_FILE"
             echo "✅ Pointcloud mode enabled with PLY file"
           else
             sed -i "s|PLY_FILE_PATH_PLACEHOLDER||g" "$HTML_FILE"
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER||g" "$JS_FILE"
             echo "📋 Image-only mode (no pointcloud)"
           fi
         fi
