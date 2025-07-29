@@ -246,7 +246,7 @@ jobs:
       - name: 📦 Upload Production Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: immersive-pointcloud-experience-${{ github.run_number }}
+          name: github-pages
           path: |
             docs/${{ steps.setup.outputs.folder-name }}/
           retention-days: 7
