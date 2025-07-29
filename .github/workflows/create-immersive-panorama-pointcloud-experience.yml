@@ -197,7 +197,7 @@ jobs:
           ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
           output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
           viewer-title: 'Immersive 360° Panorama Pointcloud Experience'
-          camera-position: '0,0,50'
+          camera-position: '0,0,150'
           background-color: ${{ steps.bg-color.outputs.color }}
           point-size: '2.0'
           animation-speed: '0.8'
