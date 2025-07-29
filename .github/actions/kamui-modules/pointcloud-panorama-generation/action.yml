@@ -73,12 +73,29 @@ runs:
         python3 -m pip install numpy opencv-python Pillow torch torchvision
         echo "✅ Python dependencies installed"
 
-    - name: Setup Node.js Environment  
+    - name: Setup Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: '${{ github.action_path }}/package.json'
+
+    - name: Install Node.js Dependencies
       shell: bash
+      working-directory: ${{ github.action_path }}
       run: |
-        echo "📦 Setting up Node.js environment for PLY generation..."
-        npm install -g pngjs
-        echo "✅ Node.js dependencies installed"
+        echo "📦 Installing Node.js dependencies..."
+        echo "📁 Working directory: $(pwd)"
+        echo "📋 Files in directory:"
+        ls -la
+        if [ -f "package-lock.json" ]; then
+          echo "🔒 Using package-lock.json (npm ci)"
+          npm ci
+        else
+          echo "📦 Using package.json (npm install)"
+          npm install
+        fi
+        echo "✅ Node.js dependencies installed successfully"
 
     - name: Validate Input Parameters
       shell: bash
@@ -137,20 +154,46 @@ runs:
 
     - name: Generate Spherical PLY File
       shell: bash
+      working-directory: ${{ github.action_path }}
       run: |
         echo "🌐 Generating spherical PLY point cloud..."
         START_TIME=$(date +%s)
         
-        # Use external Node.js script for panorama PLY generation
-        cp "${{ github.action_path }}/scripts/panorama_ply_generator.js" .
+        # Debug: Check working directory and files
+        echo "📁 Current working directory: $(pwd)"
+        echo "📋 Action path files:"
+        ls -la "${{ github.action_path }}"
+        echo "📋 Scripts directory:"
+        ls -la "${{ github.action_path }}/scripts/" || echo "❌ Scripts directory not found"
         
         # Find the generated depth files
         PANORAMA_BASE=$(basename "${{ inputs.panorama_image_path }}" | sed 's/\.[^.]*$//')
         DEPTH_GRAY_PATH="${{ inputs.output_directory }}/${PANORAMA_BASE}_depth_gray.png"
         
-        # Run PLY generation
-        node panorama_ply_generator.js \
-          "$DEPTH_GRAY_PATH" \
+        echo "🔍 Debug information:"
+        echo "   Panorama base: ${PANORAMA_BASE}"
+        echo "   Depth path: ${DEPTH_GRAY_PATH}"
+        echo "   Panorama image: ${{ inputs.panorama_image_path }}"
+        echo "   Output directory: ${{ inputs.output_directory }}"
+        
+        # Check if depth file exists
+        if [[ ! -f "${DEPTH_GRAY_PATH}" ]]; then
+          echo "❌ Depth file not found: ${DEPTH_GRAY_PATH}"
+          echo "📁 Available files in output directory:"
+          ls -la "${{ inputs.output_directory }}" || echo "Output directory doesn't exist"
+          exit 1
+        fi
+        
+        # Check if panorama image exists
+        if [[ ! -f "${{ inputs.panorama_image_path }}" ]]; then
+          echo "❌ Panorama image not found: ${{ inputs.panorama_image_path }}"
+          exit 1
+        fi
+        
+        # Run PLY generation with full path
+        echo "🚀 Starting Node.js PLY generation..."
+        node "${{ github.action_path }}/scripts/panorama_ply_generator.js" \
+          "${DEPTH_GRAY_PATH}" \
           "${{ inputs.panorama_image_path }}" \
           --sphereRadius "${{ inputs.sphere_radius }}" \
           --depthVariation "${{ inputs.depth_variation }}" \
@@ -159,8 +202,16 @@ runs:
           --particleDensity "${{ inputs.particle_density }}" \
           --outputDir "${{ inputs.output_directory }}"
         
+        NODE_EXIT_CODE=$?
+        echo "📊 Node.js exit code: ${NODE_EXIT_CODE}"
+        
+        if [ ${NODE_EXIT_CODE} -ne 0 ]; then
+          echo "❌ PLY generation failed with exit code: ${NODE_EXIT_CODE}"
+          exit ${NODE_EXIT_CODE}
+        fi
+        
         PLY_TIME=$(($(date +%s) - START_TIME))
-        echo "⏱️ PLY generation completed in ${PLY_TIME}s"
+        echo "⏱️ PLY generation completed successfully in ${PLY_TIME}s"
 
     - name: Generate Processing Summary
       shell: bash

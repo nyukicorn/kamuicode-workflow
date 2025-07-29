@@ -1,0 +1,24 @@
+{
+  "name": "pointcloud-panorama-generation",
+  "version": "1.0.0",
+  "description": "360-degree panorama point cloud generation with MiDaS depth estimation",
+  "main": "scripts/panorama_ply_generator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "panorama",
+    "pointcloud",
+    "depth-estimation",
+    "ply",
+    "360-degree"
+  ],
+  "author": "kamuicode Creative Workshop",
+  "license": "MIT"
+}
