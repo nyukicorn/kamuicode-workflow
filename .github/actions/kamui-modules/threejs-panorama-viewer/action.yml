@@ -99,35 +99,69 @@ runs:
         # Copy template and replace placeholders
         cp ${{ github.action_path }}/panorama-template.html ${{ inputs.output_filename }}
         
-        # Replace placeholders in the HTML file
-        sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" ${{ inputs.output_filename }}
-        sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" ${{ inputs.output_filename }}
-        sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
-        sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
-        sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
-        sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
+        # Replace placeholders in the HTML file (cross-platform sed)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          # macOS sed syntax
+          sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" ${{ inputs.output_filename }}
+          sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" ${{ inputs.output_filename }}
+          sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
+          sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
+          sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
+          sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
+        else
+          # Linux sed syntax
+          sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" ${{ inputs.output_filename }}
+          sed -i "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" ${{ inputs.output_filename }}
+          sed -i "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
+          sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
+          sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
+          sed -i "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
+        fi
         
         # Set PLY file path if available
-        if [ "$PLY_MODE" = "true" ]; then
-          sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          if [ "$PLY_MODE" = "true" ]; then
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+          else
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+          fi
         else
-          sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+          if [ "$PLY_MODE" = "true" ]; then
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+          else
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+          fi
         fi
         
         # Handle music integration
         if [ "${{ inputs.enable_music }}" = "true" ] && [ -n "${{ inputs.music_file }}" ]; then
           echo "🎵 Enabling music integration..."
-          sed -i '' "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" ${{ inputs.output_filename }}
-          sed -i '' "s/MUSIC_FILE_PLACEHOLDER/${{ inputs.music_file }}/g" ${{ inputs.output_filename }}
-          # Add music functions placeholder
-          MUSIC_FUNCTIONS='function setupMusic() { console.log("🎵 Music system initialized for panorama viewer"); }'
-          sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER/$MUSIC_FUNCTIONS/g" ${{ inputs.output_filename }}
-          sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER/window.setupMusic = setupMusic;/g" ${{ inputs.output_filename }}
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_FILE_PLACEHOLDER/${{ inputs.music_file }}/g" ${{ inputs.output_filename }}
+            # Add music functions placeholder
+            MUSIC_FUNCTIONS='function setupMusic() { console.log("🎵 Music system initialized for panorama viewer"); }'
+            sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER/$MUSIC_FUNCTIONS/g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER/window.setupMusic = setupMusic;/g" ${{ inputs.output_filename }}
+          else
+            sed -i "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_FILE_PLACEHOLDER/${{ inputs.music_file }}/g" ${{ inputs.output_filename }}
+            # Add music functions placeholder
+            MUSIC_FUNCTIONS='function setupMusic() { console.log("🎵 Music system initialized for panorama viewer"); }'
+            sed -i "s/MUSIC_FUNCTIONS_PLACEHOLDER/$MUSIC_FUNCTIONS/g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_WINDOW_PLACEHOLDER/window.setupMusic = setupMusic;/g" ${{ inputs.output_filename }}
+          fi
         else
           echo "🔇 Music integration disabled"
-          sed -i '' "s/MUSIC_INIT_PLACEHOLDER//g" ${{ inputs.output_filename }}
-          sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" ${{ inputs.output_filename }}
-          sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER//g" ${{ inputs.output_filename }}
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/MUSIC_INIT_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER//g" ${{ inputs.output_filename }}
+          else
+            sed -i "s/MUSIC_INIT_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_WINDOW_PLACEHOLDER//g" ${{ inputs.output_filename }}
+          fi
         fi
         
         # Copy panorama script
