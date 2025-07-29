@@ -491,8 +491,7 @@ function resetParticlePositions() {
     }
 }
 
-// Music setup integration (called by template)
-MUSIC_FUNCTIONS_PLACEHOLDER
+// Music setup integration is handled in the HTML template
 
 // Export functions to global scope for HTML events
 window.toggleAutoRotate = toggleAutoRotate;
