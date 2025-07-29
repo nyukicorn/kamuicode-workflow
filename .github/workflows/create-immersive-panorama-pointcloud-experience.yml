@@ -1,0 +1,248 @@
+name: 'Create Immersive Panorama Pointcloud Experience'
+
+on:
+  workflow_dispatch:
+    inputs:
+      panorama-prompt:
+        description: '360度パノラマ画像の詳細なプロンプト'
+        required: true
+        type: string
+        default: 'A breathtaking 360-degree panoramic view of a magical rose garden with various colored roses, winding stone paths, ornate fountains, and golden hour lighting creating a romantic and immersive atmosphere'
+      
+      image-model:
+        description: '画像生成モデル'
+        required: false
+        type: choice
+        options:
+          - 'auto'
+          - 'imagen4-ultra'
+          - 'imagen4-fast'
+          - 'imagen3'
+          - 'flux-schnell'
+          - 'photo-flux'
+        default: 'imagen4-ultra'
+      
+      music-prompt:
+        description: '背景音楽のプロンプト（オプション）'
+        required: false
+        type: string
+        default: 'Ethereal ambient music for panoramic rose garden, gentle piano melodies, soft strings, dreamy atmosphere'
+      
+      enable-music:
+        description: '背景音楽を生成する'
+        required: false
+        type: boolean
+        default: true
+      
+      color-mode:
+        description: 'ポイントクラウドカラーモード'
+        required: false
+        type: choice
+        options:
+          - 'color'
+          - 'monochrome'
+          - 'sepia'
+        default: 'color'
+      
+      particle-density:
+        description: 'パーティクル密度'
+        required: false
+        type: choice
+        options:
+          - 'low'
+          - 'medium'
+          - 'high'
+        default: 'medium'
+      
+      depth-model:
+        description: '深度推定モデル'
+        required: false
+        type: choice
+        options:
+          - 'midas_v21_small'
+          - 'midas_v21'
+        default: 'midas_v21_small'
+      
+      background-style:
+        description: '背景スタイル'
+        required: false
+        type: choice
+        options:
+          - 'solid-black'
+          - 'solid-dark-gray'
+          - 'dark-blue'
+          - 'gradient-dark'
+          - 'gradient-cosmic'
+        default: 'gradient-cosmic'
+
+permissions:
+  contents: write
+
+jobs:
+  create-immersive-panorama:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🏗️ Setup Branch
+        id: setup
+        uses: ./.github/actions/kamui-modules/setup-branch
+        env:
+          BRANCH_PREFIX: "immersive-panorama-pointcloud"
+      
+      - name: Translate Panorama Prompt to English
+        id: panorama-translation
+        uses: ./.github/actions/kamui-modules/prompt-translation
+        with:
+          japanese-prompt: ${{ inputs.panorama-prompt }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Generate 360° Panorama Image
+        id: panorama-generation
+        uses: ./.github/actions/kamui-modules/image-generation
+        with:
+          image-prompt: "360-degree panoramic view, equirectangular projection: ${{ steps.panorama-translation.outputs.english-prompt }}"
+          image-model: ${{ inputs.image-model }}
+          folder-name: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Translate Music Prompt to English
+        id: music-translation
+        if: inputs.enable-music == true
+        uses: ./.github/actions/kamui-modules/prompt-translation
+        with:
+          japanese-prompt: ${{ inputs.music-prompt }}
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+      
+      - name: Generate Background Music (Optional)
+        id: music
+        if: inputs.enable-music == true
+        uses: ./.github/actions/kamui-modules/music-generation
+        with:
+          music-concept: ${{ steps.music-translation.outputs.english-prompt }}
+          music-prompt: ${{ steps.music-translation.outputs.english-prompt }}
+          folder-name: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
+          oauth-token: ${{ secrets.CLAUDE_ACCESS_TOKEN }}
+          mcp-config: ${{ secrets.MCP_CONFIG }}
+      
+      - name: Save music path
+        id: save-music
+        if: inputs.enable-music == true
+        run: |
+          # Find the generated music
+          MUSIC_FILE=$(find ${{ steps.setup.outputs.folder-name }} -name "*.wav" -o -name "*.mp3" | head -1)
+          if [ -n "$MUSIC_FILE" ]; then
+            # Clean up duplicated path segments
+            CLEAN_MUSIC_FILE=$(echo "$MUSIC_FILE" | sed 's|immersive-panorama-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/immersive-panorama-pointcloud-[0-9]\{8\}-[0-9]\{6\}/music/|${{ steps.setup.outputs.folder-name }}/music/|g')
+            
+            if [ "$MUSIC_FILE" != "$CLEAN_MUSIC_FILE" ]; then
+              echo "🔧 Fixing duplicated music path..."
+              mkdir -p "$(dirname "$CLEAN_MUSIC_FILE")"
+              mv "$MUSIC_FILE" "$CLEAN_MUSIC_FILE"
+              MUSIC_FILE="$CLEAN_MUSIC_FILE"
+            fi
+            
+            echo "music-path=$MUSIC_FILE" >> $GITHUB_OUTPUT
+            echo "music-completed=true" >> $GITHUB_OUTPUT
+            echo "✅ Generated music: $MUSIC_FILE"
+          else
+            echo "music-completed=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Music generation skipped or failed"
+          fi
+      
+      - name: Set background color
+        id: bg-color
+        run: |
+          case "${{ inputs.background-style }}" in
+            "solid-black")
+              echo "color=#000000" >> $GITHUB_OUTPUT
+              ;;
+            "solid-dark-gray")
+              echo "color=#222222" >> $GITHUB_OUTPUT
+              ;;
+            "dark-blue")
+              echo "color=#0a0a2a" >> $GITHUB_OUTPUT
+              ;;
+            "gradient-dark")
+              echo "color=#1a1a1a" >> $GITHUB_OUTPUT
+              ;;
+            "gradient-cosmic")
+              echo "color=#0a0a2a" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "color=#000000" >> $GITHUB_OUTPUT
+              ;;
+          esac
+      
+      - name: Create Immersive 360° Panorama Pointcloud Viewer
+        id: immersive-viewer
+        uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
+        with:
+          input_image: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
+          enable_pointcloud_mode: 'true'
+          depth_model: ${{ inputs.depth-model }}
+          color_mode: ${{ inputs.color-mode }}
+          output_folder: 'docs/${{ steps.setup.outputs.folder-name }}'
+          output_filename: 'index.html'
+          background_color: ${{ steps.bg-color.outputs.color }}
+          camera_position_radius: '0.1'
+          particle_density: ${{ inputs.particle-density }}
+          auto_rotate: 'true'
+          rotation_speed: '0.5'
+          enable_music: ${{ inputs.enable-music }}
+          music_file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
+          branch_name: '${{ steps.setup.outputs.branch-name }}'
+      
+      - name: 📦 Upload Production Artifact
+        run: |
+          # Create temporary directory with folder name preserved
+          mkdir -p artifact-temp/${{ steps.setup.outputs.folder-name }}
+          cp -R docs/${{ steps.setup.outputs.folder-name }}/* artifact-temp/${{ steps.setup.outputs.folder-name }}/
+          
+      - name: 📤 Upload Artifact with Structure
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-pages
+          path: artifact-temp/
+          retention-days: 7
+      
+      - name: Experience Summary
+        run: |
+          echo "## 🌐 Immersive Panorama Pointcloud Experience Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Configuration" >> $GITHUB_STEP_SUMMARY
+          echo "- **Panorama Prompt (Original)**: ${{ inputs.panorama-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Panorama Prompt (English)**: ${{ steps.panorama-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Model**: ${{ inputs.image-model }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Music Enabled**: ${{ inputs.enable-music }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.enable-music }}" = "true" ]; then
+            echo "- **Music Prompt (Original)**: ${{ inputs.music-prompt }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Music Prompt (English)**: ${{ steps.music-translation.outputs.english-prompt }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Color Mode**: ${{ inputs.color-mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Particle Density**: ${{ inputs.particle-density }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Depth Model**: ${{ inputs.depth-model }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Background Style**: ${{ inputs.background-style }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🎯 Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **Panorama Generated**: ${{ steps.panorama-generation.outputs.image-completed }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Music Generated**: ${{ steps.save-music.outputs.music-completed || 'N/A' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Immersive Viewer Created**: ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🌟 Features" >> $GITHUB_STEP_SUMMARY
+          echo "- 🌐 **360° Panoramic View**: Immersive spherical experience" >> $GITHUB_STEP_SUMMARY
+          echo "- ✨ **Pointcloud Particles**: Depth-aware particle system" >> $GITHUB_STEP_SUMMARY
+          echo "- 🎵 **Audio Reactive**: Music-synchronized effects" >> $GITHUB_STEP_SUMMARY
+          echo "- 🖱️ **Interactive Controls**: Mouse and keyboard interaction" >> $GITHUB_STEP_SUMMARY
+          echo "- 📱 **Cross-Platform**: Works on all devices" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Status**: Successfully uploaded as artifact for Pages deployment" >> $GITHUB_STEP_SUMMARY
+          echo "🌐 **Expected URL**: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.setup.outputs.folder-name }}/" >> $GITHUB_STEP_SUMMARY
+          echo "📁 **Artifact**: ${{ steps.setup.outputs.folder-name }}" >> $GITHUB_STEP_SUMMARY

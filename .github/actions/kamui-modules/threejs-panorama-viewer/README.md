@@ -1,26 +1,33 @@
-# 🌐 Three.js 360° Panorama Viewer
+# 🌐 Immersive 360° Panorama Pointcloud Viewer
 
-360度パノラマ画像を球面パーティクルシステムで表示するThree.jsビューアーモジュールです。共通JSコンポーネントシステムを活用し、音楽反応、マウスインタラクション、オーディオリアクティブ効果を統合します。
+360度パノラマ画像をポイントクラウドパーティクルシステムで表示する没入型Three.jsビューアーモジュールです。深度推定技術とポイントクラウド変換を統合し、真の3D空間体験を提供します。
 
 ## 🎯 概要
 
-このモジュールは**平面分割→球面パーティクル配置**アプローチを使用し、入力画像を分析して球面上にパーティクルを配置することで360度パノラマ体験を提供します。
+このモジュールは**360度パノラマ→深度推定→ポイントクラウド→没入体験**のパイプラインを使用し、従来の平面パノラマ表示を超えた立体的なパーティクル空間体験を実現します。
 
 ### ✨ 主要機能
 
-- **🌐 360度パノラマ表示**: 球面座標系でのパーティクル配置
-- **🎨 画像ピクセル分析**: Canvas APIによる色情報抽出
+- **🌐 没入型360度体験**: 真の3D球面ポイントクラウド空間
+- **🧠 深度推定統合**: MiDaS技術による自動深度マッピング
+- **✨ ポイントクラウドパーティクル**: PLYファイル対応の立体パーティクル
+- **🎨 インテリジェント色彩**: 深度情報に基づく色彩表現
 - **🎵 オーディオリアクティブ**: 音楽・マイクロフォン対応
-- **🖱️ マウスインタラクション**: 重力効果、波動エフェクト
-- **🎮 現代的UI**: 自動隠しコントロールパネル
-- **📱 レスポンシブ**: 全デバイス対応
+- **🖱️ 3Dインタラクション**: 立体重力効果、空間マウス操作
+- **🎮 没入型UI**: VR風コントロールインターフェース
+- **📱 クロスプラットフォーム**: 全デバイス対応
 
 ## 🏗️ 技術仕様
 
 ### アーキテクチャ
 ```
-入力画像 → ピクセル分析 → 球面座標変換 → パーティクル生成 → 360度表示
+360度パノラマ画像 → 深度推定(MiDaS) → PLY変換 → 球面ポイントクラウド → 没入型表示
 ```
+
+### 新機能: ポイントクラウドモード
+- **自動深度推定**: 2Dパノラマから3D深度情報を生成
+- **PLY統合**: 標準3Dファイル形式対応
+- **フォールバック**: 深度生成失敗時は従来の画像モードに自動切り替え
 
 ### 共通コンポーネント統合
 - `audio-reactive-system.js`: Web Audio API、周波数分析
@@ -40,24 +47,45 @@
 ### GitHub Actions での使用
 
 ```yaml
-- name: Create 360° Panorama Viewer
+- name: Create Immersive 360° Panorama Pointcloud Viewer
   uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
   with:
     input_image: 'path/to/panorama.jpg'
-    output_filename: 'my-panorama.html'
+    enable_pointcloud_mode: 'true'
+    depth_model: 'midas_v21_small'
+    color_mode: 'color'
+    output_folder: 'docs/my-panorama'
+    output_filename: 'index.html'
     background_color: '#000814'
     particle_density: 'high'
     auto_rotate: 'true'
     rotation_speed: '1.5'
     enable_music: 'true'
     music_file: 'path/to/music.mp3'
+    branch_name: 'main'
+```
+
+### ワークフロー統合
+完全なワークフローは `create-immersive-panorama-pointcloud-experience.yml` を使用：
+```yaml
+# 自動でパノラマ画像生成→ポイントクラウド変換→没入ビューアー作成
+- 360度パノラマプロンプト入力
+- AI画像生成 (Imagen4等)
+- 自動深度推定・PLY変換
+- 音楽生成 (オプション)
+- 没入型ビューアー生成
 ```
 
 ### 入力パラメータ
 
 | パラメータ | 説明 | デフォルト | 必須 |
 |-----------|------|-----------|------|
-| `input_image` | パノラマ画像ファイル | - | ✅ |
+| `input_image` | 360度パノラマ画像ファイル | - | ❌ |
+| `ply_file_path` | 事前生成PLYファイル（オプション） | - | ❌ |
+| `enable_pointcloud_mode` | ポイントクラウドモード有効化 | `true` | ❌ |
+| `depth_model` | 深度推定モデル | `midas_v21_small` | ❌ |
+| `color_mode` | 色彩モード (color/monochrome/sepia) | `color` | ❌ |
+| `output_folder` | 出力フォルダ | - | ✅ |
 | `output_filename` | 出力HTMLファイル名 | `panorama-viewer.html` | ❌ |
 | `background_color` | 背景色（hex形式） | `#000814` | ❌ |
 | `camera_position_radius` | カメラ初期位置半径 | `100` | ❌ |
@@ -66,6 +94,7 @@
 | `rotation_speed` | 自動回転速度 | `1.0` | ❌ |
 | `enable_music` | 音楽統合有効化 | `false` | ❌ |
 | `music_file` | 音楽ファイル | - | ❌ |
+| `branch_name` | Gitブランチ名 | `main` | ❌ |
 
 ## 🧪 テスト方法
 

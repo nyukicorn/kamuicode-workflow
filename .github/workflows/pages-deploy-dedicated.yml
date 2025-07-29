@@ -5,6 +5,7 @@ on:
     workflows:
       - "🧪 2D→3D Regression Test"
       - "Create Immersive Pointcloud Experience"
+      - "Create Immersive Panorama Pointcloud Experience"
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -77,7 +78,7 @@ jobs:
           # 今回 artifact → versioned フォルダ（フォルダ構造を考慮）
           if [ -d "downloaded-artifacts" ]; then
             # downloaded-artifacts内のフォルダを検索
-            ARTIFACT_FOLDER=$(find downloaded-artifacts -maxdepth 1 -type d -name "*immersive-pointcloud*" -o -name "*2d-3d*" | head -1)
+            ARTIFACT_FOLDER=$(find downloaded-artifacts -maxdepth 1 -type d -name "*immersive-pointcloud*" -o -name "*immersive-panorama*" -o -name "*2d-3d*" | head -1)
             if [ -n "$ARTIFACT_FOLDER" ]; then
               echo "Found artifact folder: $ARTIFACT_FOLDER"
               cp -R "$ARTIFACT_FOLDER" "pages-content/$VERSIONED_FOLDER"

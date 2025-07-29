@@ -1,20 +1,30 @@
-name: '360° Panorama Viewer'
-description: 'Creates a 360-degree panoramic particle viewer using Three.js with shared components and depth information'
+name: 'Immersive 360° Panorama Pointcloud Viewer'
+description: 'Creates an immersive 360-degree panoramic pointcloud experience using Three.js with depth estimation and particle systems'
 inputs:
   input_image:
-    description: 'Input image file for panoramic display (deprecated - use ply_file_path for depth-enhanced panoramas)'
+    description: 'Input panorama image file for pointcloud conversion'
     required: false
     default: ''
   
   ply_file_path:
-    description: 'PLY file path from pointcloud-panorama-generation module (recommended)'
+    description: 'Pre-generated PLY file path (optional, will generate from input_image if not provided)'
     required: false
     default: ''
   
-  enable_depth_visualization:
-    description: 'Enable depth-based color enhancement'
+  enable_pointcloud_mode:
+    description: 'Enable pointcloud particle system (true/false)'
     required: false
     default: 'true'
+  
+  depth_model:
+    description: 'Depth estimation model (midas_v21/midas_v21_small)'
+    required: false
+    default: 'midas_v21_small'
+  
+  color_mode:
+    description: 'Pointcloud color mode (color/monochrome/sepia)'
+    required: false
+    default: 'color'
   output_filename:
     description: 'Output filename for the panorama viewer'
     required: false
@@ -46,160 +56,265 @@ inputs:
   music_file:
     description: 'Music file for audio-reactive effects'
     required: false
+  
+  output_folder:
+    description: 'Output folder for the viewer HTML and assets'
+    required: true
+  
+  branch_name:
+    description: 'Git branch name for commits'
+    required: false
+    default: 'main'
 
 runs:
   using: 'composite'
   steps:
-    - name: Setup panorama viewer environment
+    - name: Setup immersive panorama environment
       shell: bash
       run: |
-        echo "🌐 Setting up 360° Panorama Viewer environment..."
+        echo "🌐 Setting up Immersive 360° Panorama Pointcloud Viewer..."
         echo "Input image: ${{ inputs.input_image }}"
         echo "PLY file: ${{ inputs.ply_file_path }}"
-        echo "Output filename: ${{ inputs.output_filename }}"
-        echo "Background color: ${{ inputs.background_color }}"
+        echo "Pointcloud mode: ${{ inputs.enable_pointcloud_mode }}"
+        echo "Depth model: ${{ inputs.depth_model }}"
+        echo "Color mode: ${{ inputs.color_mode }}"
+        echo "Output folder: ${{ inputs.output_folder }}"
         echo "Particle density: ${{ inputs.particle_density }}"
-        echo "Depth visualization: ${{ inputs.enable_depth_visualization }}"
         
-    - name: Process input for panoramic display
+    - name: Setup Python environment for pointcloud generation
+      uses: actions/setup-python@v4
+      if: inputs.enable_pointcloud_mode == 'true'
+      with:
+        python-version: '3.10'
+    
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    - name: Install dependencies for pointcloud processing
+      shell: bash
+      if: inputs.enable_pointcloud_mode == 'true'
+      run: |
+        echo "📦 Installing pointcloud dependencies..."
+        # Install Python dependencies
+        if [ -f "tools/requirements.txt" ]; then
+          pip install -r tools/requirements.txt
+        else
+          pip install torch torchvision opencv-python pillow numpy
+        fi
+        # Install Node.js dependencies  
+        npm install
+    
+    - name: Process input and generate pointcloud
       shell: bash
       run: |
-        echo "🖼️ Processing input for panoramic display..."
-        # Create assets directory
-        mkdir -p assets
+        echo "🖼️ Processing input for immersive panoramic display..."
+        # Create output directory structure
+        mkdir -p "${{ inputs.output_folder }}"
+        mkdir -p "${{ inputs.output_folder }}/assets"
         
-        # Check which input type is provided
+        # Determine input source and generate pointcloud if needed
         if [ -n "${{ inputs.ply_file_path }}" ] && [ -f "${{ inputs.ply_file_path }}" ]; then
-          echo "✅ Using PLY file with depth information: ${{ inputs.ply_file_path }}"
-          echo "PLY_MODE=true" >> $GITHUB_ENV
-          # Copy PLY file to assets
-          cp "${{ inputs.ply_file_path }}" assets/panorama.ply
-          # Try to find corresponding image
+          echo "✅ Using pre-generated PLY file: ${{ inputs.ply_file_path }}"
+          cp "${{ inputs.ply_file_path }}" "${{ inputs.output_folder }}/assets/panorama.ply"
+          echo "POINTCLOUD_READY=true" >> $GITHUB_ENV
+          
+          # Find corresponding image
           PLY_PATH="${{ inputs.ply_file_path }}"
-          IMAGE_PATH="${PLY_PATH%.ply}.jpg"
+          IMAGE_PATH="${PLY_PATH%.ply}.png"
+          if [ ! -f "$IMAGE_PATH" ]; then
+            IMAGE_PATH="${PLY_PATH%.ply}.jpg"
+          fi
           if [ -f "$IMAGE_PATH" ]; then
-            cp "$IMAGE_PATH" assets/panorama-image.jpg
+            cp "$IMAGE_PATH" "${{ inputs.output_folder }}/assets/panorama-image.jpg"
             echo "✅ Found corresponding image: $IMAGE_PATH"
           fi
+          
         elif [ -n "${{ inputs.input_image }}" ] && [ -f "${{ inputs.input_image }}" ]; then
-          echo "⚠️  Using image-only mode (no depth information)"
-          echo "PLY_MODE=false" >> $GITHUB_ENV
-          cp "${{ inputs.input_image }}" assets/panorama-image.jpg
-          echo "✅ Image copied to assets/panorama-image.jpg"
+          echo "🎯 Generating pointcloud from panorama image: ${{ inputs.input_image }}"
+          
+          # Copy original image to assets
+          cp "${{ inputs.input_image }}" "${{ inputs.output_folder }}/assets/panorama-image.jpg"
+          
+          if [ "${{ inputs.enable_pointcloud_mode }}" = "true" ]; then
+            echo "🧠 Running depth estimation for panorama..."
+            DEPTH_MAP_PATH="${{ inputs.output_folder }}/assets/depth.png"
+            
+            # Generate depth map using simple_depth_test.py
+            if ! python tools/simple_depth_test.py \
+              --input "${{ inputs.input_image }}" \
+              --output "$DEPTH_MAP_PATH"; then
+              echo "⚠️ Depth estimation failed, falling back to image-only mode"
+              echo "POINTCLOUD_READY=false" >> $GITHUB_ENV
+            else
+              echo "🔄 Converting depth map to PLY pointcloud..."
+              PLY_FILE_PATH="${{ inputs.output_folder }}/assets/panorama.ply"
+              
+              # Convert depth to PLY
+              if ! node tools/depth2ply.js \
+                --input "$DEPTH_MAP_PATH" \
+                --output "$PLY_FILE_PATH" \
+                --original-image "${{ inputs.input_image }}" \
+                --color-mode "${{ inputs.color_mode }}"; then
+                echo "⚠️ PLY conversion failed, falling back to image-only mode"
+                echo "POINTCLOUD_READY=false" >> $GITHUB_ENV
+              else
+                echo "✅ Panorama pointcloud generated successfully"
+                echo "POINTCLOUD_READY=true" >> $GITHUB_ENV
+              fi
+            fi
+          else
+            echo "📋 Pointcloud mode disabled, using image-only panorama"
+            echo "POINTCLOUD_READY=false" >> $GITHUB_ENV
+          fi
         else
           echo "❌ No valid input provided. Please specify either ply_file_path or input_image"
           exit 1
         fi
         
-    - name: Create panorama viewer from template
+    - name: Create immersive panorama viewer
       shell: bash
       run: |
-        echo "🎨 Creating panorama viewer from template..."
+        echo "🎨 Creating immersive panorama viewer..."
         
-        # Copy template and replace placeholders
-        cp ${{ github.action_path }}/panorama-template.html ${{ inputs.output_filename }}
+        # Copy template and script files to output folder
+        cp ${{ github.action_path }}/panorama-template.html "${{ inputs.output_folder }}/${{ inputs.output_filename }}"
+        cp ${{ github.action_path }}/panorama-script.js "${{ inputs.output_folder }}/panorama-script.js"
         
-        # Replace placeholders in the HTML file (cross-platform sed)
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-          # macOS sed syntax
-          sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" ${{ inputs.output_filename }}
-          sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" ${{ inputs.output_filename }}
-          sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
-          sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
-          sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
-          sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
-        else
-          # Linux sed syntax
-          sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" ${{ inputs.output_filename }}
-          sed -i "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" ${{ inputs.output_filename }}
-          sed -i "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" ${{ inputs.output_filename }}
-          sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" ${{ inputs.output_filename }}
-          sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" ${{ inputs.output_filename }}
-          sed -i "s/ENABLE_DEPTH_PLACEHOLDER/${{ inputs.enable_depth_visualization }}/g" ${{ inputs.output_filename }}
+        # Copy shared viewer components
+        SHARED_DIR="../shared-viewer-components"
+        mkdir -p "${{ inputs.output_folder }}/shared-components"
+        if [ -d "$SHARED_DIR" ]; then
+          cp "$SHARED_DIR/audio-reactive-system.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ audio-reactive-system.js not found"
+          cp "$SHARED_DIR/camera-controls.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ camera-controls.js not found"
+          cp "$SHARED_DIR/mouse-interaction.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ mouse-interaction.js not found"
+          cp "$SHARED_DIR/ui-controls.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ ui-controls.js not found"
+          cp "$SHARED_DIR/particle-effects.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ particle-effects.js not found"
         fi
         
-        # Set PLY file path if available
+        # Replace placeholders in HTML file (cross-platform sed)
+        HTML_FILE="${{ inputs.output_folder }}/${{ inputs.output_filename }}"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-          if [ "$PLY_MODE" = "true" ]; then
-            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+          # macOS sed syntax
+          sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$HTML_FILE"
+          sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$HTML_FILE"
+          sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" "$HTML_FILE"
+          sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$HTML_FILE"
+          sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$HTML_FILE"
+          sed -i '' "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
+          sed -i '' "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
+        else
+          # Linux sed syntax
+          sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$HTML_FILE"
+          sed -i "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$HTML_FILE"
+          sed -i "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" "$HTML_FILE"
+          sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$HTML_FILE"
+          sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$HTML_FILE"
+          sed -i "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
+          sed -i "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
+        fi
+        
+        # Set PLY file path based on pointcloud readiness
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          if [ "$POINTCLOUD_READY" = "true" ]; then
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$HTML_FILE"
+            echo "✅ Pointcloud mode enabled with PLY file"
           else
-            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+            sed -i '' "s|PLY_FILE_PATH_PLACEHOLDER||g" "$HTML_FILE"
+            echo "📋 Image-only mode (no pointcloud)"
           fi
         else
-          if [ "$PLY_MODE" = "true" ]; then
-            sed -i "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" ${{ inputs.output_filename }}
+          if [ "$POINTCLOUD_READY" = "true" ]; then
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER|assets/panorama.ply|g" "$HTML_FILE"
+            echo "✅ Pointcloud mode enabled with PLY file"
           else
-            sed -i "s|PLY_FILE_PATH_PLACEHOLDER||g" ${{ inputs.output_filename }}
+            sed -i "s|PLY_FILE_PATH_PLACEHOLDER||g" "$HTML_FILE"
+            echo "📋 Image-only mode (no pointcloud)"
           fi
         fi
         
         # Handle music integration
         if [ "${{ inputs.enable_music }}" = "true" ] && [ -n "${{ inputs.music_file }}" ]; then
           echo "🎵 Enabling music integration..."
+          # Copy music file to assets
+          cp "${{ inputs.music_file }}" "${{ inputs.output_folder }}/assets/" 2>/dev/null || echo "⚠️ Music file copy failed"
+          MUSIC_FILENAME=$(basename "${{ inputs.music_file }}")
+          
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" ${{ inputs.output_filename }}
-            sed -i '' "s/MUSIC_FILE_PLACEHOLDER/${{ inputs.music_file }}/g" ${{ inputs.output_filename }}
-            # Add music functions placeholder
-            MUSIC_FUNCTIONS='function setupMusic() { console.log("🎵 Music system initialized for panorama viewer"); }'
-            sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER/$MUSIC_FUNCTIONS/g" ${{ inputs.output_filename }}
-            sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER/window.setupMusic = setupMusic;/g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" "$HTML_FILE"
+            sed -i '' "s/MUSIC_FILE_PLACEHOLDER/assets\/$MUSIC_FILENAME/g" "$HTML_FILE"
           else
-            sed -i "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" ${{ inputs.output_filename }}
-            sed -i "s/MUSIC_FILE_PLACEHOLDER/${{ inputs.music_file }}/g" ${{ inputs.output_filename }}
-            # Add music functions placeholder
-            MUSIC_FUNCTIONS='function setupMusic() { console.log("🎵 Music system initialized for panorama viewer"); }'
-            sed -i "s/MUSIC_FUNCTIONS_PLACEHOLDER/$MUSIC_FUNCTIONS/g" ${{ inputs.output_filename }}
-            sed -i "s/MUSIC_WINDOW_PLACEHOLDER/window.setupMusic = setupMusic;/g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_INIT_PLACEHOLDER/setupMusic();/g" "$HTML_FILE"
+            sed -i "s/MUSIC_FILE_PLACEHOLDER/assets\/$MUSIC_FILENAME/g" "$HTML_FILE"
           fi
         else
           echo "🔇 Music integration disabled"
           if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s/MUSIC_INIT_PLACEHOLDER//g" ${{ inputs.output_filename }}
-            sed -i '' "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" ${{ inputs.output_filename }}
-            sed -i '' "s/MUSIC_WINDOW_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i '' "s/MUSIC_INIT_PLACEHOLDER//g" "$HTML_FILE"
+            sed -i '' "s/MUSIC_FILE_PLACEHOLDER//g" "$HTML_FILE"
           else
-            sed -i "s/MUSIC_INIT_PLACEHOLDER//g" ${{ inputs.output_filename }}
-            sed -i "s/MUSIC_FUNCTIONS_PLACEHOLDER//g" ${{ inputs.output_filename }}
-            sed -i "s/MUSIC_WINDOW_PLACEHOLDER//g" ${{ inputs.output_filename }}
+            sed -i "s/MUSIC_INIT_PLACEHOLDER//g" "$HTML_FILE"
+            sed -i "s/MUSIC_FILE_PLACEHOLDER//g" "$HTML_FILE"
           fi
         fi
         
-        # Copy panorama script
-        cp ${{ github.action_path }}/panorama-script.js panorama-script.js
+        echo "✅ Immersive panorama viewer created: ${{ inputs.output_folder }}/${{ inputs.output_filename }}"
         
-        echo "✅ Panorama viewer created: ${{ inputs.output_filename }}"
-        
-    - name: Validate panorama viewer
+    - name: Validate immersive panorama viewer
       shell: bash
       run: |
-        echo "✅ Validating panorama viewer..."
+        echo "✅ Validating immersive panorama viewer..."
         
-        # Check if files exist
-        if [ ! -f "${{ inputs.output_filename }}" ]; then
-          echo "❌ Output file not found"
+        # Check core files exist
+        HTML_FILE="${{ inputs.output_folder }}/${{ inputs.output_filename }}"
+        SCRIPT_FILE="${{ inputs.output_folder }}/panorama-script.js"
+        
+        if [ ! -f "$HTML_FILE" ]; then
+          echo "❌ HTML viewer file not found: $HTML_FILE"
           exit 1
         fi
         
-        if [ ! -f "panorama-script.js" ]; then
-          echo "❌ Panorama script not found"
+        if [ ! -f "$SCRIPT_FILE" ]; then
+          echo "❌ Panorama script not found: $SCRIPT_FILE"
           exit 1
         fi
         
-        if [ "$PLY_MODE" = "true" ]; then
-          if [ ! -f "assets/panorama.ply" ]; then
-            echo "❌ Panorama PLY not found"
+        # Check assets
+        if [ "$POINTCLOUD_READY" = "true" ]; then
+          PLY_FILE="${{ inputs.output_folder }}/assets/panorama.ply"
+          if [ ! -f "$PLY_FILE" ]; then
+            echo "❌ Panorama PLY not found: $PLY_FILE"
             exit 1
           fi
-          echo "✅ PLY file: assets/panorama.ply"
-        else
-          if [ ! -f "assets/panorama-image.jpg" ]; then
-            echo "❌ Panorama image not found"
-            exit 1
-          fi
-          echo "✅ Image file: assets/panorama-image.jpg"
+          echo "✅ Pointcloud PLY file: $(basename "$PLY_FILE")"
         fi
         
-        echo "🌟 360° Panorama Viewer created successfully!"
-        echo "📄 Output file: ${{ inputs.output_filename }}"
-        echo "📜 Script file: panorama-script.js"
-        echo "🎯 Mode: $([ "$PLY_MODE" = "true" ] && echo "Depth-enhanced PLY" || echo "Image-only")"
+        IMAGE_FILE="${{ inputs.output_folder }}/assets/panorama-image.jpg"
+        if [ ! -f "$IMAGE_FILE" ]; then
+          echo "❌ Panorama image not found: $IMAGE_FILE"
+          exit 1
+        fi
+        echo "✅ Panorama image: $(basename "$IMAGE_FILE")"
+        
+        # Check shared components
+        SHARED_COUNT=$(find "${{ inputs.output_folder }}/shared-components" -name "*.js" 2>/dev/null | wc -l)
+        echo "✅ Shared components: $SHARED_COUNT files"
+        
+        # Music check
+        if [ "${{ inputs.enable_music }}" = "true" ] && [ -n "${{ inputs.music_file }}" ]; then
+          MUSIC_FILE="${{ inputs.output_folder }}/assets/$(basename "${{ inputs.music_file }}")"
+          if [ -f "$MUSIC_FILE" ]; then
+            echo "✅ Music file: $(basename "$MUSIC_FILE")"
+          else
+            echo "⚠️ Music file not found but music enabled"
+          fi
+        fi
+        
+        echo ""
+        echo "🌟 Immersive 360° Panorama Pointcloud Viewer created successfully!"
+        echo "📄 HTML viewer: ${{ inputs.output_folder }}/${{ inputs.output_filename }}"
+        echo "📜 Main script: panorama-script.js"
+        echo "🎯 Mode: $([ "$POINTCLOUD_READY" = "true" ] && echo "Immersive Pointcloud" || echo "Panorama Image Only")"
+        echo "🎨 Particle density: ${{ inputs.particle_density }}"
+        echo "🎵 Music: $([ "${{ inputs.enable_music }}" = "true" ] && echo "Enabled" || echo "Disabled")"
