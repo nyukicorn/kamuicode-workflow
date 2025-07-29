@@ -124,7 +124,7 @@ runs:
         START_TIME=$(date +%s)
         
         # Create temporary Python script for panorama depth estimation
-        cat > panorama_depth_estimation.py << 'EOF'
+        cat > panorama_depth_estimation.py <<- 'EOF'
         import cv2
         import numpy as np
         import sys
@@ -299,7 +299,7 @@ runs:
         START_TIME=$(date +%s)
         
         # Create Node.js script for panorama PLY generation
-        cat > panorama_ply_generator.js << 'EOF'
+        cat > panorama_ply_generator.js <<- 'EOF'
         const fs = require('fs');
         const { PNG } = require('pngjs');
 
@@ -591,7 +591,7 @@ runs:
         TOTAL_TIME=$(($(date +%s) - START_TIME))
         
         # Create summary report
-        cat > "${{ inputs.output_directory }}/panorama_generation_report.md" << EOF
+        cat > "${{ inputs.output_directory }}/panorama_generation_report.md" <<- EOF
         # 🌐 Panorama Point Cloud Generation Report
         
         ## Input Parameters
