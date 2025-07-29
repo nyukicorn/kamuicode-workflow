@@ -180,24 +180,29 @@ jobs:
               ;;
           esac
       
+      - name: Generate 3D Point Cloud from Panorama
+        id: pointcloud
+        uses: ./.github/actions/kamui-modules/pointcloud-generation
+        with:
+          input-image-path: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
+          output-folder: '${{ steps.setup.outputs.folder-name }}'
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
+          depth-model: ${{ inputs.depth-model }}
+          color-mode: ${{ inputs.color-mode }}
+
       - name: Create Immersive 360° Panorama Pointcloud Viewer
         id: immersive-viewer
-        uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
+        uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
         with:
-          input_image: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
-          enable_pointcloud_mode: 'true'
-          depth_model: ${{ inputs.depth-model }}
-          color_mode: ${{ inputs.color-mode }}
-          output_folder: 'docs/${{ steps.setup.outputs.folder-name }}'
-          output_filename: 'index.html'
-          background_color: ${{ steps.bg-color.outputs.color }}
-          camera_position_radius: '0.1'
-          particle_density: ${{ inputs.particle-density }}
-          auto_rotate: 'true'
-          rotation_speed: '0.5'
-          enable_music: ${{ inputs.enable-music }}
-          music_file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
-          branch_name: '${{ steps.setup.outputs.branch-name }}'
+          ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
+          output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
+          viewer-title: 'Immersive 360° Panorama Pointcloud Experience'
+          camera-position: '0,0,50'
+          background-color: ${{ steps.bg-color.outputs.color }}
+          point-size: '2.0'
+          animation-speed: '0.8'
+          music-file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
+          branch-name: '${{ steps.setup.outputs.branch-name }}'
       
       - name: 📦 Upload Production Artifact
         run: |
