@@ -244,11 +244,16 @@ jobs:
           branch-name: '${{ steps.setup.outputs.branch-name }}'
       
       - name: 📦 Upload Production Artifact
+        run: |
+          # Create temporary directory with folder name preserved
+          mkdir -p artifact-temp/${{ steps.setup.outputs.folder-name }}
+          cp -R docs/${{ steps.setup.outputs.folder-name }}/* artifact-temp/${{ steps.setup.outputs.folder-name }}/
+          
+      - name: 📤 Upload Artifact with Structure
         uses: actions/upload-artifact@v4
         with:
           name: github-pages
-          path: |
-            docs/${{ steps.setup.outputs.folder-name }}/
+          path: artifact-temp/
           retention-days: 7
       
       - name: Experience Summary
