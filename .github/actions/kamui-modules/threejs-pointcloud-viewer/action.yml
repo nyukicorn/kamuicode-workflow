@@ -131,7 +131,7 @@ runs:
         cp "$SCRIPT_DIR/viewer-script-refactored.js" "$OUTPUT_FOLDER/viewer-script.js"
         
         # 共通コンポーネントをコピー
-        SHARED_DIR="${SCRIPT_DIR}/shared-components"
+        SHARED_DIR="${SCRIPT_DIR}/../shared-viewer-components"
         mkdir -p "$OUTPUT_FOLDER/shared-components"
         cp "$SHARED_DIR/audio-reactive-system.js" "$OUTPUT_FOLDER/shared-components/"
         cp "$SHARED_DIR/camera-controls.js" "$OUTPUT_FOLDER/shared-components/"

@@ -307,47 +307,46 @@ function toggleAudioReactive() {
     const button = document.getElementById('audioReactiveToggle');
     
     if (audioReactiveEnabled) {
-        if (button) {
-            button.innerHTML = '🎵 Audio React ON';
-            button.title = 'Audio reactive is ON (click to disable)';
-        }
+        button.innerHTML = '🎵 Audio React ON';
+        button.title = 'Audio reactive is ON (click to disable)';
         console.log('🎵 Audio-reactive mode enabled');
         // Setup audio analysis for the music element if it exists
         if (audioElement && !musicAnalyser) {
             setupMusicAnalysis(audioElement);
         }
     } else {
-        if (button) {
-            button.innerHTML = '🔇 Audio React OFF';
-            button.title = 'Audio reactive is OFF (click to enable)';
-        }
+        button.innerHTML = '🔇 Audio React OFF';
+        button.title = 'Audio reactive is OFF (click to enable)';
         console.log('🔇 Audio-reactive mode disabled');
         
         // Reset to normal state when disabling audio reactive
-        resetToNormalState();
+        resetAudioToNormalState();
     }
 }
 
 function toggleMicrophone() {
     if (!microphoneEnabled) {
         setupMicrophoneAnalysis().then(success => {
-            const button = document.getElementById('microphoneToggle');
             if (success) {
                 // microphoneEnabled is already set to true in setupMicrophoneAnalysis
-                if (button) {
-                    button.innerHTML = '🎤 Mic ON';
-                    button.title = 'Microphone is ON (click to disable)';
-                }
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎤 Mic ON';
+                button.title = 'Microphone is ON (click to disable)';
                 console.log('🎤 Microphone enabled');
             } else {
                 // Failed to setup microphone, ensure flag remains false
                 microphoneEnabled = false;
-                if (button) {
-                    button.innerHTML = '🎙️ Mic Failed';
-                    button.title = 'Microphone access failed';
-                }
+                const button = document.getElementById('microphoneToggle');
+                button.innerHTML = '🎙️ Mic Failed';
+                button.title = 'Microphone access failed';
                 console.log('🎤 Microphone setup failed');
             }
+        }).catch(error => {
+            console.error('🎤 Microphone setup failed:', error);
+            microphoneEnabled = false;
+            const button = document.getElementById('microphoneToggle');
+            button.innerHTML = '🎙️ Mic Error';
+            button.title = 'Microphone error occurred';
         });
     } else {
         microphoneEnabled = false;
@@ -355,15 +354,13 @@ function toggleMicrophone() {
             microphoneSource.disconnect();
         }
         const button = document.getElementById('microphoneToggle');
-        if (button) {
-            button.innerHTML = '🎙️ Mic OFF';
-            button.title = 'Microphone is OFF (click to enable)';
-        }
+        button.innerHTML = '🎙️ Mic OFF';
+        button.title = 'Microphone is OFF (click to enable)';
         console.log('🎤 Microphone disabled');
         
         // Reset to normal state when disabling microphone (if audio reactive is also off)
         if (!audioReactiveEnabled) {
-            resetToNormalState();
+            resetAudioToNormalState();
         }
     }
 }
@@ -377,16 +374,14 @@ function toggleAudioMode() {
     frequencyBands.mid = 0;
     frequencyBands.treble = 0;
     
-    if (button) {
-        if (audioMode === 'music') {
-            button.innerHTML = '🎵 Music Mode ON';
-            button.title = 'Currently in music mode (bass/mid/treble separation)';
-            console.log('🎵 Switched to music mode');
-        } else {
-            button.innerHTML = '🎤 Voice Mode ON';
-            button.title = 'Currently in voice mode (speech frequency focus)';
-            console.log('🎤 Switched to voice mode');
-        }
+    if (audioMode === 'music') {
+        button.innerHTML = '🎵 Music Mode ON';
+        button.title = 'Currently in music mode (bass/mid/treble separation)';
+        console.log('🎵 Switched to music mode');
+    } else {
+        button.innerHTML = '🎤 Voice Mode ON';
+        button.title = 'Currently in voice mode (speech frequency focus)';
+        console.log('🎤 Switched to voice mode');
     }
 }
 
@@ -394,16 +389,14 @@ function toggleDynamicMode() {
     dynamicModeEnabled = !dynamicModeEnabled;
     const button = document.getElementById('dynamicModeToggle');
     
-    if (button) {
-        if (dynamicModeEnabled) {
-            button.innerHTML = '🚀 Dynamic ON';
-            button.title = 'Dynamic enhancement is ON (40% boost)';
-            console.log('🚀 Dynamic mode enabled');
-        } else {
-            button.innerHTML = '🚀 Dynamic OFF';
-            button.title = 'Dynamic enhancement is OFF';
-            console.log('🚀 Dynamic mode disabled');
-        }
+    if (dynamicModeEnabled) {
+        button.innerHTML = '🚀 Dynamic ON';
+        button.title = 'Dynamic enhancement is ON (40% boost)';
+        console.log('🚀 Dynamic mode enabled');
+    } else {
+        button.innerHTML = '🚀 Dynamic OFF';
+        button.title = 'Dynamic enhancement is OFF';
+        console.log('🚀 Dynamic mode disabled');
     }
 }
 
@@ -485,7 +478,7 @@ function applyAudioReactiveEffects() {
     }
 }
 
-function resetToNormalState() {
+function resetAudioToNormalState() {
     // Reset audio analysis values
     currentVolumeLevel = 0;
     frequencyBands.bass = 0;
