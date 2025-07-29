@@ -2,16 +2,18 @@ name: 🚀 Deploy to GitHub Pages
 
 on:
   workflow_run:
-    workflows: ["🧪 2D→3D Regression Test", "Create Immersive Pointcloud Experience"]
+    workflows:
+      - "🧪 2D→3D Regression Test"
+      - "Create Immersive Pointcloud Experience"
     types:
       - completed
     branches: [main]
   workflow_dispatch:
     inputs:
       run_id:
-        description: 'Source workflow run ID'
-        required: true
-        default: '16572054578'
+        description: "Source workflow run ID (manual only)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -19,20 +21,24 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: true
 
 jobs:
   deploy-pages:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: >
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        github.event.workflow_run.conclusion == 'success'
+      }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
     steps:
-      - name: 📥 Download Test Artifacts
+      - name: 📥 Download Pages Artifact (this run only)
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -40,77 +46,81 @@ jobs:
           pattern: "*"
           merge-multiple: true
           path: downloaded-artifacts
-          
-      - name: 📁 Prepare Pages Content
+
+      - name: 🛠 Prepare pages-content
         run: |
           set -euo pipefail
-          echo "=== DEBUG: Downloaded artifacts structure ==="
-          find downloaded-artifacts -type f -name "*.html" | head -10
-          echo "=== DEBUG: Directory structure ==="
-          find downloaded-artifacts -type d | head -10
-          
-          # Create workflow-based folder name
-          WORKFLOW_NAME="${{ github.event.workflow_run.name || 'manual-deploy' }}"
+
+          BASE_URL="https://nyukicorn.github.io/kamuicode-workflow"
+          TODAY=$(date +%Y%m%d)
           RUN_ID="${{ github.event.inputs.run_id || github.event.workflow_run.id }}"
-          DATE=$(date +%Y%m%d)
-          
-          # Convert workflow name to URL-safe format
-          FOLDER_NAME=$(echo "$WORKFLOW_NAME" | sed 's/🧪 //g; s/🚀 //g; s/📁 //g; s/[^a-zA-Z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | tr '[:upper:]' '[:lower:]')
-          VERSIONED_FOLDER="${FOLDER_NAME}-${DATE}-${RUN_ID}"
-          
-          echo "Source workflow: $WORKFLOW_NAME"
-          echo "Versioned folder: $VERSIONED_FOLDER"
-          
+          WF_NAME="${{ github.event.workflow_run.name || 'manual-deploy' }}"
+
+          # slug化（絵文字・記号除去、lowercase、連続ハイフン整形）
+          SLUG=$(echo "$WF_NAME" \
+            | sed 's/[🧪🚀📁]//g; s/[^a-zA-Z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' \
+            | tr '[:upper:]' '[:lower:]')
+          VERSIONED_FOLDER="${SLUG}-${TODAY}-${RUN_ID}"
+
+          echo "WF_NAME=$WF_NAME"
+          echo "VERSIONED_FOLDER=$VERSIONED_FOLDER"
+
           mkdir -p pages-content
-          
-          # Create versioned folder for this deployment
-          mkdir -p "pages-content/$VERSIONED_FOLDER"
-          cp -R downloaded-artifacts/. "pages-content/$VERSIONED_FOLDER/" 2>/dev/null || true
-          
-          # Copy existing docs for long-term preservation
-          if [ -d docs ]; then cp -R docs/. pages-content/ 2>/dev/null || true; fi
-          
-          # Create/update root index.html pointing to latest
-          cat > pages-content/index.html << ENDHTML
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <meta charset="UTF-8">
-              <title>Latest Deployment - $WORKFLOW_NAME</title>
-              <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
-          </head>
-          <body>
-              <p>Redirecting to latest deployment: <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
-          </body>
-          </html>
-          ENDHTML
-          
-          echo "=== DEBUG: Final pages-content structure ==="
-          find pages-content -name "*.html" | head -10
-          
-          echo "=== 📊 SIZE REPORT ==="
-          TOTAL_SIZE=$(du -sh pages-content | cut -f1)
-          TOTAL_FILES=$(find pages-content -type f | wc -l)
-          echo "📁 Total size: $TOTAL_SIZE"
-          echo "📄 Total files: $TOTAL_FILES"
-          
-          # Check if size exceeds 500MB (GitHub Pages 1GB limit)
-          SIZE_BYTES=$(du -sb pages-content | cut -f1)
-          if [ "$SIZE_BYTES" -gt 524288000 ]; then
-            echo "⚠️  WARNING: Site size ($TOTAL_SIZE) is approaching GitHub Pages limit (1GB)"
+
+          # --- リセット後の累積ロジック ------------------------------------
+          # 目印ファイル .post-reset が公開中サイトにあれば「累積モード」
+          if curl -sfI "$BASE_URL/.post-reset" >/dev/null 2>&1; then
+            echo "累積モード: 既存サイトをミラーしてマージします"
+            mkdir -p previous-site
+            wget -q -e robots=off -np -nH --cut-dirs=1 -r "$BASE_URL/" -P previous-site
+            # previous-site は BASE_URL/ 直下にmirrorされるので、そのままコピー
+            cp -R previous-site/. pages-content/
+          else
+            echo "リセット初回: 既存サイトは取り込まない（過去は404でOK）"
           fi
-          
+          # ------------------------------------------------------------------
+
+          # 今回のartifactをバージョン付きフォルダに配置
+          mkdir -p "pages-content/$VERSIONED_FOLDER"
+          cp -R downloaded-artifacts/. "pages-content/$VERSIONED_FOLDER"/
+
+          # ルートに最新へリダイレクトする index.html を作成
+          cat <<EOF > pages-content/index.html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Latest Deployment - $WF_NAME</title>
+  <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
+</head>
+<body>
+  <p>Redirecting to latest deployment: <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
+</body>
+</html>
+EOF
+
+          # リセット完了マーカー設置（2回目以降の累積に使う）
+          echo "reset done at $(date -u)" > pages-content/.post-reset
+
+          echo "=== DEBUG: Final Structure ==="
+          find pages-content -maxdepth 3 -type f -name 'index.html' | sed 's/^/  /'
+
+          echo "=== SIZE REPORT ==="
+          du -sh pages-content | sed 's/^/  /'
+          echo "Files: $(find pages-content -type f | wc -l)"
+
       - name: ✅ Existence Check
         run: |
           if ! find pages-content -maxdepth 3 -name index.html | grep -q .; then
-            echo "no index.html found in pages-content"; exit 1
+            echo "no index.html found in pages-content"
+            exit 1
           fi
-          
+
       - name: 📦 Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: pages-content/
-          
+
       - name: 🚀 Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
