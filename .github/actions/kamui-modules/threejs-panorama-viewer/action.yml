@@ -183,7 +183,7 @@ runs:
         cp ${{ github.action_path }}/panorama-script.js "${{ inputs.output_folder }}/panorama-script.js"
         
         # Copy shared viewer components
-        SHARED_DIR="../shared-viewer-components"
+        SHARED_DIR="./.github/actions/kamui-modules/shared-viewer-components"
         mkdir -p "${{ inputs.output_folder }}/shared-components"
         if [ -d "$SHARED_DIR" ]; then
           cp "$SHARED_DIR/audio-reactive-system.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ audio-reactive-system.js not found"
@@ -193,26 +193,29 @@ runs:
           cp "$SHARED_DIR/particle-effects.js" "${{ inputs.output_folder }}/shared-components/" 2>/dev/null || echo "⚠️ particle-effects.js not found"
         fi
         
-        # Replace placeholders in HTML file (cross-platform sed)
+        # Replace placeholders in HTML file and JS file (cross-platform sed)
         HTML_FILE="${{ inputs.output_folder }}/${{ inputs.output_filename }}"
+        JS_FILE="${{ inputs.output_folder }}/panorama-script.js"
         if [[ "$OSTYPE" == "darwin"* ]]; then
-          # macOS sed syntax
+          # macOS sed syntax - HTML file
           sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$HTML_FILE"
           sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$HTML_FILE"
           sed -i '' "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" "$HTML_FILE"
-          sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$HTML_FILE"
-          sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$HTML_FILE"
           sed -i '' "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
           sed -i '' "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
+          # macOS sed syntax - JS file
+          sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
+          sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
         else
-          # Linux sed syntax
+          # Linux sed syntax - HTML file
           sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$HTML_FILE"
           sed -i "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$HTML_FILE"
           sed -i "s/PARTICLE_DENSITY_PLACEHOLDER/${{ inputs.particle_density }}/g" "$HTML_FILE"
-          sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$HTML_FILE"
-          sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$HTML_FILE"
           sed -i "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
           sed -i "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
+          # Linux sed syntax - JS file
+          sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
+          sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
         fi
         
         # Set PLY file path based on pointcloud readiness
