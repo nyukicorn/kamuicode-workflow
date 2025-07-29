@@ -122,7 +122,7 @@ function setupMusicAnalysis(audioElement) {
 }
 
 function setupMicrophoneAnalysis() {
-    if (micAnalyser) return Promise.resolve();
+    if (micAnalyser) return Promise.resolve(true);
     
     return navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -352,6 +352,10 @@ function toggleMicrophone() {
         microphoneEnabled = false;
         if (microphoneSource) {
             microphoneSource.disconnect();
+            microphoneSource = null;  // Reset to null for clean state
+        }
+        if (micAnalyser) {
+            micAnalyser = null;  // Reset analyser too
         }
         const button = document.getElementById('microphoneToggle');
         button.innerHTML = '🎙️ Mic OFF';
