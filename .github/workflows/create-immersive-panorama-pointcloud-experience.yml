@@ -180,21 +180,11 @@ jobs:
               ;;
           esac
       
-      - name: Generate 3D Point Cloud from Panorama
-        id: pointcloud
-        uses: ./.github/actions/kamui-modules/pointcloud-generation
-        with:
-          input-image-path: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
-          output-folder: '${{ steps.setup.outputs.folder-name }}'
-          branch-name: '${{ steps.setup.outputs.branch-name }}'
-          depth-model: ${{ inputs.depth-model }}
-          color-mode: ${{ inputs.color-mode }}
-
       - name: Create Immersive 360° Panorama Pointcloud Viewer
         id: immersive-viewer
         uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
         with:
-          ply_file_path: ${{ steps.pointcloud.outputs.ply-file-path }}
+          input_image: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
           output_folder: 'docs/${{ steps.setup.outputs.folder-name }}'
           enable_pointcloud_mode: 'true'
           depth_model: ${{ inputs.depth-model }}
