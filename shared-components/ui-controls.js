@@ -393,5 +393,7 @@ function initializeCompleteUISystem(sceneObject, backgroundColorHex = '#1a1a1a')
 
 // Export functions to global scope for HTML events
 window.updatePointSize = updatePointSize;
+window.updatePointSizeImpl = updatePointSize;  // Alias for viewer compatibility
 window.toggleBrightness = toggleBrightness;
 window.updateGlowIntensity = updateGlowIntensity;
+window.updateGlowIntensityImpl = updateGlowIntensity;  // Alias for viewer compatibility

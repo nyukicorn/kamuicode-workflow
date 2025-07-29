@@ -341,6 +341,12 @@ function toggleMicrophone() {
                 button.title = 'Microphone access failed';
                 console.log('🎤 Microphone setup failed');
             }
+        }).catch(error => {
+            console.error('🎤 Microphone setup failed:', error);
+            microphoneEnabled = false;
+            const button = document.getElementById('microphoneToggle');
+            button.innerHTML = '🎙️ Mic Error';
+            button.title = 'Microphone error occurred';
         });
     } else {
         microphoneEnabled = false;
