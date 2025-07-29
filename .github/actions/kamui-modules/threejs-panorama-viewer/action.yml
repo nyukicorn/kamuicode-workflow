@@ -204,6 +204,8 @@ runs:
           sed -i '' "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
           sed -i '' "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
           # macOS sed syntax - JS file
+          sed -i '' "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$JS_FILE"
+          sed -i '' "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$JS_FILE"
           sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
           sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
           sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/true/g" "$JS_FILE"
@@ -215,6 +217,8 @@ runs:
           sed -i "s/POINTCLOUD_MODE_PLACEHOLDER/${{ inputs.enable_pointcloud_mode }}/g" "$HTML_FILE"
           sed -i "s/COLOR_MODE_PLACEHOLDER/${{ inputs.color_mode }}/g" "$HTML_FILE"
           # Linux sed syntax - JS file
+          sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$JS_FILE"
+          sed -i "s/CAM_RADIUS_PLACEHOLDER/${{ inputs.camera_position_radius }}/g" "$JS_FILE"
           sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
           sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
           sed -i "s/ENABLE_DEPTH_PLACEHOLDER/true/g" "$JS_FILE"

@@ -47,7 +47,11 @@ function init() {
     // Initialize UI system with lighting
     lights = initializeCompleteUISystem(scene, 'BACKGROUND_COLOR_PLACEHOLDER');
     
-    // Audio initialization is handled in the HTML template
+    // Initialize audio if available
+    if (typeof setupMusic === 'function') {
+        setupMusic();
+        console.log('🎵 Music system initialized');
+    }
     
     // Load panorama PLY file with depth information
     loadPanoramaPLY();
@@ -511,7 +515,10 @@ window.toggleMicrophone = window.toggleMicrophone || (() => console.warn('Microp
 window.toggleAudioMode = window.toggleAudioMode || (() => console.warn('Audio mode function not loaded'));
 window.toggleDynamicMode = window.toggleDynamicMode || (() => console.warn('Dynamic mode function not loaded'));
 
-// Music window integration is handled in the HTML template
+// Export music functions to global scope for HTML template
+if (typeof setupMusic !== 'undefined') {
+    window.setupMusic = setupMusic;
+}
 
 // Start the panorama application
 init();
