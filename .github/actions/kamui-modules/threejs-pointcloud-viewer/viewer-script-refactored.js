@@ -149,8 +149,8 @@ function resetToNormalState() {
         resetToNormalVisualState(pointCloud, lights.ambientLight, lights.directionalLight);
     }
     // Also reset audio system
-    if (typeof resetToNormalState === 'function') {
-        resetToNormalState();
+    if (typeof resetAudioToNormalState === 'function') {
+        resetAudioToNormalState();
     }
 }
 

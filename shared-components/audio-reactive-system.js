@@ -320,7 +320,7 @@ function toggleAudioReactive() {
         console.log('🔇 Audio-reactive mode disabled');
         
         // Reset to normal state when disabling audio reactive
-        resetToNormalState();
+        resetAudioToNormalState();
     }
 }
 
@@ -354,7 +354,7 @@ function toggleMicrophone() {
         
         // Reset to normal state when disabling microphone (if audio reactive is also off)
         if (!audioReactiveEnabled) {
-            resetToNormalState();
+            resetAudioToNormalState();
         }
     }
 }
@@ -472,7 +472,7 @@ function applyAudioReactiveEffects() {
     }
 }
 
-function resetToNormalState() {
+function resetAudioToNormalState() {
     // Reset audio analysis values
     currentVolumeLevel = 0;
     frequencyBands.bass = 0;
