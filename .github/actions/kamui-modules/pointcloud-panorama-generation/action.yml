@@ -273,9 +273,11 @@ runs:
             print(f"   Color depth: {depth_color_path}")
             
             # Output paths for GitHub Actions
-            print(f"::set-output name=depth_gray_path::{depth_gray_path}")
-            print(f"::set-output name=depth_color_path::{depth_color_path}")
-            print(f"::set-output name=processing_time::{processing_time:.2f}")
+            import os
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"depth_gray_path={depth_gray_path}\n")
+                f.write(f"depth_color_path={depth_color_path}\n")
+                f.write(f"processing_time={processing_time:.2f}\n")
 
         if __name__ == "__main__":
             main()
@@ -536,9 +538,10 @@ runs:
                 await generator.savePLY(points, outputPath);
                 
                 // Output results for GitHub Actions
-                console.log(`::set-output name=ply_path::${outputPath}`);
-                console.log(`::set-output name=particle_count::${points.length}`);
-                console.log(`::set-output name=sphere_radius::${generator.options.sphereRadius}`);
+                const fs = require('fs');
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `panorama_ply_path=${outputPath}\n`);
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `particle_count=${points.length}\n`);
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `sphere_radius=${generator.options.sphereRadius}\n`);
                 
                 const sphereInfo = {
                     radius: generator.options.sphereRadius,
@@ -548,7 +551,7 @@ runs:
                     depthInversion: generator.options.depthInversion
                 };
                 
-                console.log(`::set-output name=sphere_info::${JSON.stringify(sphereInfo)}`);
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, `sphere_info=${JSON.stringify(sphereInfo)}\n`);
                 
                 console.log('✅ Panorama PLY generation completed successfully!');
                 
@@ -622,7 +625,7 @@ runs:
         echo "   Report: ${{ inputs.output_directory }}/panorama_generation_report.md"
         
         # Set final outputs
-        echo "::set-output name=processing_time::${TOTAL_TIME}"
+        echo "processing_time=${TOTAL_TIME}" >> $GITHUB_OUTPUT
 
     - name: Cleanup Temporary Files
       shell: bash
