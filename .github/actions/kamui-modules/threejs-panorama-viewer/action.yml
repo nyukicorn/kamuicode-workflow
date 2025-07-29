@@ -206,6 +206,7 @@ runs:
           # macOS sed syntax - JS file
           sed -i '' "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
           sed -i '' "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
+          sed -i '' "s/ENABLE_DEPTH_PLACEHOLDER/true/g" "$JS_FILE"
         else
           # Linux sed syntax - HTML file
           sed -i "s/BACKGROUND_COLOR_PLACEHOLDER/${{ inputs.background_color }}/g" "$HTML_FILE"
@@ -216,6 +217,7 @@ runs:
           # Linux sed syntax - JS file
           sed -i "s/AUTO_ROTATE_PLACEHOLDER/${{ inputs.auto_rotate }}/g" "$JS_FILE"
           sed -i "s/ROTATION_SPEED_PLACEHOLDER/${{ inputs.rotation_speed }}/g" "$JS_FILE"
+          sed -i "s/ENABLE_DEPTH_PLACEHOLDER/true/g" "$JS_FILE"
         fi
         
         # Set PLY file path based on pointcloud readiness
