@@ -12,7 +12,8 @@ let sphereRadius = 200;
 let particleSize = 2.0;
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
-let rotationSpeed = ROTATION_SPEED_PLACEHOLDER;
+// rotationSpeed is already declared in camera-controls.js, just set the value
+rotationSpeed = ROTATION_SPEED_PLACEHOLDER;
 let particleDensity = 'PARTICLE_DENSITY_PLACEHOLDER'; // low/medium/high
 let enableDepthVisualization = ENABLE_DEPTH_PLACEHOLDER;
 let plyFilePath = 'PLY_FILE_PATH_PLACEHOLDER';
