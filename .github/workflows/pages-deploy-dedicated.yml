@@ -66,19 +66,19 @@ jobs:
 
           # ルート index.html → 最新へリダイレクト
           cat <<EOF > pages-content/index.html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Latest Deployment - $WF_NAME</title>
-  <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
-</head>
-<body>
-  <p>Redirecting to latest deployment:
-     <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
-</body>
-</html>
-EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Latest Deployment - $WF_NAME</title>
+            <meta http-equiv="refresh" content="0; url=./$VERSIONED_FOLDER/">
+          </head>
+          <body>
+            <p>Redirecting to latest deployment:
+               <a href="./$VERSIONED_FOLDER/">$VERSIONED_FOLDER</a></p>
+          </body>
+          </html>
+          EOF
 
           # リセット完了マーカー（累積の目印）
           echo "reset done at $(date -u)" > pages-content/.post-reset
