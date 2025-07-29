@@ -62,8 +62,8 @@ function setupControlsAutoHide() {
     console.log('🎛️ Modern auto-hide system initialized (YouTube/Netflix style)');
 }
 
-// Point size control
-function updatePointSize(value, pointCloudObject) {
+// Point size control - Implementation function
+function updatePointSizeImpl(value, pointCloudObject) {
     pointSize = parseFloat(value);
     if (pointCloudObject && pointCloudObject.material) {
         pointCloudObject.material.size = pointSize;
@@ -109,8 +109,8 @@ function toggleBrightness(sceneObject, ambientLightObject, directionalLightObjec
     console.log(`💡 Brightness toggled to: ${brightnessLevel > 0.5 ? 'Light' : 'Dark'} mode`);
 }
 
-// Glow intensity control
-function updateGlowIntensity(value, pointCloudObject) {
+// Glow intensity control - Implementation function
+function updateGlowIntensityImpl(value, pointCloudObject) {
     glowIntensity = parseFloat(value) / 100.0; // 0-100% to 0-1.0
     
     if (pointCloudObject && pointCloudObject.material) {
@@ -141,6 +141,15 @@ function updateGlowIntensity(value, pointCloudObject) {
     }
     
     console.log(`✨ Glow intensity updated to: ${Math.round(glowIntensity * 100)}%`);
+}
+
+// Wrapper functions for HTML compatibility
+function updatePointSize(value, pointCloudObject) {
+    updatePointSizeImpl(value, pointCloudObject);
+}
+
+function updateGlowIntensity(value, pointCloudObject) {
+    updateGlowIntensityImpl(value, pointCloudObject);
 }
 
 // Initialize UI system with lighting setup
@@ -393,5 +402,7 @@ function initializeCompleteUISystem(sceneObject, backgroundColorHex = '#1a1a1a')
 
 // Export functions to global scope for HTML events
 window.updatePointSize = updatePointSize;
+window.updatePointSizeImpl = updatePointSizeImpl;
 window.toggleBrightness = toggleBrightness;
 window.updateGlowIntensity = updateGlowIntensity;
+window.updateGlowIntensityImpl = updateGlowIntensityImpl;

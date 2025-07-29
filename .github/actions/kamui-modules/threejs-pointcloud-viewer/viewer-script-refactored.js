@@ -122,7 +122,12 @@ function resetCamera() {
 }
 
 function updatePointSize(value) {
-    window.updatePointSize(value, pointCloud);
+    // Call UI controls implementation to avoid recursion
+    if (window.updatePointSizeImpl) {
+        window.updatePointSizeImpl(value, pointCloud);
+    } else {
+        console.warn('updatePointSizeImpl not loaded');
+    }
 }
 
 function toggleBrightness() {
@@ -130,7 +135,12 @@ function toggleBrightness() {
 }
 
 function updateGlowIntensity(value) {
-    window.updateGlowIntensity(value, pointCloud);
+    // Call UI controls implementation to avoid recursion
+    if (window.updateGlowIntensityImpl) {
+        window.updateGlowIntensityImpl(value, pointCloud);
+    } else {
+        console.warn('updateGlowIntensityImpl not loaded');
+    }
 }
 
 // Audio reactive integration
