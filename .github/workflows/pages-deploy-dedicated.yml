@@ -64,14 +64,43 @@ jobs:
 
           mkdir -p pages-content
 
-          # --- 累積モード -------------------------------
+          # --- 累積モード (エラーハンドリング強化版) -------------------------------
+          echo "🔍 Checking for existing site at: $BASE_URL"
           if curl -sfI "$BASE_URL/.post-reset" >/dev/null 2>&1; then
-            echo "累積モード: 現行サイトをミラーして取り込み"
+            echo "✅ Post-reset marker found - attempting to mirror existing site"
             mkdir -p previous-site
-            wget -q -e robots=off -np -nH --cut-dirs=1 -r "$BASE_URL/" -P previous-site
-            cp -R previous-site/. pages-content/
+            
+            # まずはindex.htmlなど主要ファイルのみを取得
+            echo "🔄 Attempting to retrieve existing site content..."
+            WGET_SUCCESS=false
+            
+            # 軽量な取得を試行
+            if wget -q --tries=1 --timeout=15 "$BASE_URL/index.html" -O previous-site/index.html 2>/dev/null; then
+              echo "✅ Retrieved main index.html"
+              WGET_SUCCESS=true
+            fi
+            
+            # 追加でディレクトリを探索（エラーを許容）
+            if [ "$WGET_SUCCESS" = "true" ]; then
+              echo "🔄 Attempting full site mirror (errors will be ignored)..."
+              wget -q -e robots=off -np -nH --cut-dirs=1 -r \
+                   --level=2 --reject="*.tmp,*.log,*.backup" \
+                   --tries=1 --timeout=10 \
+                   "$BASE_URL/" -P previous-site 2>/dev/null || {
+                echo "⚠️ Full mirror had issues (exit code: $?), but continuing with partial content"
+              }
+            fi
+            
+            # 取得できた分をコピー
+            if [ -d "previous-site" ] && [ "$(find previous-site -type f | wc -l)" -gt 0 ]; then
+              cp -R previous-site/. pages-content/ 2>/dev/null || true
+              FILE_COUNT=$(find previous-site -type f | wc -l)
+              echo "✅ Successfully integrated $FILE_COUNT files from existing site"
+            else
+              echo "⚠️ No existing files retrieved - starting with fresh deployment"
+            fi
           else
-            echo "リセット初回: 過去サイトは取り込まない"
+            echo "🆕 No existing site detected - starting fresh deployment"
           fi
           # ---------------------------------------------
 
