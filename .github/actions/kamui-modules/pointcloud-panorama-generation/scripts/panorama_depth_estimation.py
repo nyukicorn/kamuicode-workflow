@@ -133,6 +133,20 @@ def main():
     output_dir = sys.argv[2]
     target_resolution = sys.argv[3]
     
+    # Convert to absolute paths using GitHub workspace
+    workspace = os.environ.get("GITHUB_WORKSPACE", os.getcwd())
+    print(f"🌐 GitHub workspace: {workspace}")
+    print(f"🌐 Current working directory: {os.getcwd()}")
+    
+    # Make paths absolute relative to workspace
+    if not os.path.isabs(input_image):
+        input_image = os.path.join(workspace, input_image)
+    if not os.path.isabs(output_dir):
+        output_dir = os.path.join(workspace, output_dir)
+    
+    print(f"🔍 Absolute input image: {input_image}")
+    print(f"🔍 Absolute output directory: {output_dir}")
+    
     print(f"🌐 Starting panorama depth estimation...")
     print(f"   Input: {input_image}")
     print(f"   Output: {output_dir}")
@@ -155,6 +169,29 @@ def main():
     print(f"✅ Depth estimation completed in {processing_time:.2f} seconds")
     print(f"   Grayscale depth: {depth_gray_path}")
     print(f"   Color depth: {depth_color_path}")
+    
+    # Verify files exist and are readable
+    if os.path.exists(depth_gray_path):
+        size = os.path.getsize(depth_gray_path)
+        print(f"✅ Grayscale depth file verified: {size} bytes")
+    else:
+        print(f"❌ Grayscale depth file not found: {depth_gray_path}")
+    
+    if os.path.exists(depth_color_path):
+        size = os.path.getsize(depth_color_path)
+        print(f"✅ Color depth file verified: {size} bytes")
+    else:
+        print(f"❌ Color depth file not found: {depth_color_path}")
+    
+    # Debug: List directory contents
+    print(f"🔍 Final directory contents in {output_dir}:")
+    try:
+        for item in os.listdir(output_dir):
+            item_path = os.path.join(output_dir, item)
+            size = os.path.getsize(item_path) if os.path.isfile(item_path) else "DIR"
+            print(f"   {item} ({size} bytes)" if size != "DIR" else f"   {item}/")
+    except Exception as e:
+        print(f"❌ Could not list directory: {e}")
     
     # Output paths for GitHub Actions
     with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
