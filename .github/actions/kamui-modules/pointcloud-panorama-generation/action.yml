@@ -78,7 +78,7 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: '${{ github.action_path }}/package.json'
+        cache-dependency-path: .github/actions/kamui-modules/pointcloud-panorama-generation/package.json
 
     - name: Install Node.js Dependencies
       shell: bash
