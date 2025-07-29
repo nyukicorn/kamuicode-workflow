@@ -92,14 +92,24 @@ def simulate_midas_depth_estimation(image, target_resolution):
 
 def save_depth_maps(depth_map, output_dir, base_name):
     """Save depth maps in multiple formats"""
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"📁 Created/verified output directory: {output_dir}")
+    
     # Save grayscale depth map
     depth_gray_path = os.path.join(output_dir, f"{base_name}_depth_gray.png")
-    cv2.imwrite(depth_gray_path, depth_map)
+    success = cv2.imwrite(depth_gray_path, depth_map)
+    if not success:
+        raise RuntimeError(f"Failed to save grayscale depth map: {depth_gray_path}")
+    print(f"💾 Saved grayscale depth map: {depth_gray_path}")
     
     # Save colorized depth map for visualization
     depth_color = cv2.applyColorMap(depth_map, cv2.COLORMAP_PLASMA)
     depth_color_path = os.path.join(output_dir, f"{base_name}_depth.png")
-    cv2.imwrite(depth_color_path, depth_color)
+    success = cv2.imwrite(depth_color_path, depth_color)
+    if not success:
+        raise RuntimeError(f"Failed to save color depth map: {depth_color_path}")
+    print(f"💾 Saved color depth map: {depth_color_path}")
     
     # Calculate statistics
     mean_depth = np.mean(depth_map)
