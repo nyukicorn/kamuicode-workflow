@@ -192,17 +192,22 @@ jobs:
 
       - name: Create Immersive 360° Panorama Pointcloud Viewer
         id: immersive-viewer
-        uses: ./.github/actions/kamui-modules/threejs-pointcloud-viewer
+        uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
         with:
-          ply-file-path: ${{ steps.pointcloud.outputs.ply-file-path }}
-          output-folder: 'docs/${{ steps.setup.outputs.folder-name }}'
-          viewer-title: 'Immersive 360° Panorama Pointcloud Experience'
-          camera-position: '0,0,150'
-          background-color: ${{ steps.bg-color.outputs.color }}
-          point-size: '2.0'
-          animation-speed: '0.8'
-          music-file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
-          branch-name: '${{ steps.setup.outputs.branch-name }}'
+          ply_file_path: ${{ steps.pointcloud.outputs.ply-file-path }}
+          output_folder: 'docs/${{ steps.setup.outputs.folder-name }}'
+          enable_pointcloud_mode: 'true'
+          depth_model: ${{ inputs.depth-model }}
+          color_mode: ${{ inputs.color-mode }}
+          output_filename: 'index.html'
+          background_color: ${{ steps.bg-color.outputs.color }}
+          camera_position_radius: '150'
+          particle_density: ${{ inputs.particle-density }}
+          auto_rotate: 'true'
+          rotation_speed: '1.0'
+          enable_music: ${{ inputs.enable-music }}
+          music_file: ${{ inputs.enable-music == true && steps.save-music.outputs.music-path || '' }}
+          branch_name: '${{ steps.setup.outputs.branch-name }}'
       
       - name: 📦 Upload Production Artifact
         run: |
