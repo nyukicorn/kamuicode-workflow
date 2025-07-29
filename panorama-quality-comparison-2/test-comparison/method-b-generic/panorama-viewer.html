@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Method B - Generic Three.js Panorama</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000814; }
+        canvas { display: block; }
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial, sans-serif;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .method-label {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #00ff88;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="method-label">Method B: Generic Three.js</div>
+    <div class="controls">
+        <h3>🌐 Generic Panorama</h3>
+        <p>• Standard sphere mapping</p>
+        <p>• Basic camera controls</p>
+        <p>• Simple texture application</p>
+        <p><small>Drag to rotate | Scroll to zoom</small></p>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Basic Three.js panorama implementation
+        let scene, camera, renderer, sphere;
+        let mouse = { x: 0, y: 0 };
+        let mouseDown = false;
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000814);
+            document.body.appendChild(renderer.domElement);
+            
+            // Create sphere geometry for panorama
+            const geometry = new THREE.SphereGeometry(200, 32, 16);
+            
+            // Load panorama texture
+            const loader = new THREE.TextureLoader();
+            loader.load('../../../threejs-experience-20250719-16385462254/src/panorama.jpg', function(texture) {
+                const material = new THREE.MeshBasicMaterial({ 
+                    map: texture,
+                    side: THREE.BackSide  // Render inside of sphere
+                });
+                
+                sphere = new THREE.Mesh(geometry, material);
+                scene.add(sphere);
+            });
+            
+            // Camera position
+            camera.position.set(0, 0, 0);
+            
+            // Mouse controls
+            setupControls();
+            
+            // Start render loop
+            animate();
+        }
+        
+        function setupControls() {
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('wheel', onWheel);
+        }
+        
+        function onMouseDown(event) {
+            mouseDown = true;
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+        
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouse.x;
+            const deltaY = event.clientY - mouse.y;
+            
+            camera.rotation.y += deltaX * 0.005;
+            camera.rotation.x += deltaY * 0.005;
+            
+            // Limit vertical rotation
+            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+            
+            mouse.x = event.clientX;
+            mouse.y = event.clientY;
+        }
+        
+        function onMouseUp() {
+            mouseDown = false;
+        }
+        
+        function onWheel(event) {
+            camera.fov += event.deltaY * 0.05;
+            camera.fov = Math.max(10, Math.min(75, camera.fov));
+            camera.updateProjectionMatrix();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Simple auto-rotation
+            if (sphere && !mouseDown) {
+                camera.rotation.y += 0.002;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+        
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
