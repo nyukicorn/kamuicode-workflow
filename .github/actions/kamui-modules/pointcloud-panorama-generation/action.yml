@@ -154,53 +154,59 @@ runs:
 
     - name: Generate Spherical PLY File
       shell: bash
-      working-directory: ${{ github.action_path }}
       run: |
         echo "🌐 Generating spherical PLY point cloud..."
         START_TIME=$(date +%s)
         
         # Debug: Check working directory and files
         echo "📁 Current working directory: $(pwd)"
+        echo "📁 GitHub workspace: ${{ github.workspace }}"
         echo "📋 Action path files:"
         ls -la "${{ github.action_path }}"
         echo "📋 Scripts directory:"
         ls -la "${{ github.action_path }}/scripts/" || echo "❌ Scripts directory not found"
         
-        # Find the generated depth files
+        # Debug: Check if depth files exist in workspace
+        echo "🔍 Checking workspace for depth files:"
+        find "${{ github.workspace }}" -name "*_depth_gray.png" -ls 2>/dev/null || echo "No depth files found in workspace"
+        
+        # Find the generated depth files - use absolute paths
         PANORAMA_BASE=$(basename "${{ inputs.panorama_image_path }}" | sed 's/\.[^.]*$//')
-        DEPTH_GRAY_PATH="${{ inputs.output_directory }}/${PANORAMA_BASE}_depth_gray.png"
+        DEPTH_GRAY_PATH="${{ github.workspace }}/${{ inputs.output_directory }}/${PANORAMA_BASE}_depth_gray.png"
+        PANORAMA_IMAGE_PATH="${{ github.workspace }}/${{ inputs.panorama_image_path }}"
+        OUTPUT_DIR="${{ github.workspace }}/${{ inputs.output_directory }}"
         
         echo "🔍 Debug information:"
         echo "   Panorama base: ${PANORAMA_BASE}"
-        echo "   Depth path: ${DEPTH_GRAY_PATH}"
-        echo "   Panorama image: ${{ inputs.panorama_image_path }}"
-        echo "   Output directory: ${{ inputs.output_directory }}"
+        echo "   Depth path (absolute): ${DEPTH_GRAY_PATH}"
+        echo "   Panorama image (absolute): ${PANORAMA_IMAGE_PATH}"
+        echo "   Output directory (absolute): ${OUTPUT_DIR}"
         
         # Check if depth file exists
         if [[ ! -f "${DEPTH_GRAY_PATH}" ]]; then
           echo "❌ Depth file not found: ${DEPTH_GRAY_PATH}"
           echo "📁 Available files in output directory:"
-          ls -la "${{ inputs.output_directory }}" || echo "Output directory doesn't exist"
+          ls -la "${OUTPUT_DIR}" || echo "Output directory doesn't exist"
           exit 1
         fi
         
         # Check if panorama image exists
-        if [[ ! -f "${{ inputs.panorama_image_path }}" ]]; then
-          echo "❌ Panorama image not found: ${{ inputs.panorama_image_path }}"
+        if [[ ! -f "${PANORAMA_IMAGE_PATH}" ]]; then
+          echo "❌ Panorama image not found: ${PANORAMA_IMAGE_PATH}"
           exit 1
         fi
         
-        # Run PLY generation with full path
+        # Run PLY generation with absolute paths
         echo "🚀 Starting Node.js PLY generation..."
         node "${{ github.action_path }}/scripts/panorama_ply_generator.js" \
           "${DEPTH_GRAY_PATH}" \
-          "${{ inputs.panorama_image_path }}" \
+          "${PANORAMA_IMAGE_PATH}" \
           --sphereRadius "${{ inputs.sphere_radius }}" \
           --depthVariation "${{ inputs.depth_variation }}" \
           --enablePoleCompression "${{ inputs.enable_pole_compression }}" \
           --depthInversion "${{ inputs.depth_inversion }}" \
           --particleDensity "${{ inputs.particle_density }}" \
-          --outputDir "${{ inputs.output_directory }}"
+          --outputDir "${OUTPUT_DIR}"
         
         NODE_EXIT_CODE=$?
         echo "📊 Node.js exit code: ${NODE_EXIT_CODE}"
