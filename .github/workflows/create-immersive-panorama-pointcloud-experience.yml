@@ -198,6 +198,7 @@ jobs:
         uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
         with:
           ply_file_path: ${{ steps.panorama-pointcloud.outputs.panorama_ply_path }}
+          input_image: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
           output_folder: 'docs/${{ steps.setup.outputs.folder-name }}'
           enable_pointcloud_mode: 'true'
           output_filename: 'index.html'
