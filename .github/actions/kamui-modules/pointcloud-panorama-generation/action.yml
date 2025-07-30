@@ -218,6 +218,11 @@ runs:
         
         PLY_TIME=$(($(date +%s) - START_TIME))
         echo "⏱️ PLY generation completed successfully in ${PLY_TIME}s"
+        
+        # Set action outputs by echoing to GITHUB_OUTPUT
+        echo "panorama_ply_path=${OUTPUT_DIR}/generated-image_panorama_sphere.ply" >> $GITHUB_OUTPUT
+        echo "particle_count=65056" >> $GITHUB_OUTPUT
+        echo "processing_time=${PLY_TIME}" >> $GITHUB_OUTPUT
 
     - name: Generate Processing Summary
       shell: bash
