@@ -618,9 +618,9 @@ function createBackgroundPanoramaSphere(texture) {
 }
 
 // Basic audio system initialization
-let audioContext = null;
-let audioElement = null;
-let isPlaying = false;
+let panoramaAudioContext = null;
+let panoramaAudioElement = null;
+let panoramaMusicPlaying = false;
 
 function initializeBasicAudioSystem() {
     console.log('🎵 Setting up basic audio system...');
@@ -632,18 +632,18 @@ function initializeBasicAudioSystem() {
         const audio = new Audio(file);
         audio.onerror = () => console.log(`🎵 Music file not found: ${file}`);
         audio.oncanplay = () => {
-            audioElement = audio;
-            audioElement.loop = true;
-            audioElement.volume = 0.5;
+            panoramaAudioElement = audio;
+            panoramaAudioElement.loop = true;
+            panoramaAudioElement.volume = 0.5;
             console.log(`✅ Music loaded: ${file}`);
         };
         audio.load();
-        if (audioElement) break;
+        if (panoramaAudioElement) break;
     }
     
     // Initialize Web Audio API for reactive effects
     try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        panoramaAudioContext = new (window.AudioContext || window.webkitAudioContext)();
         console.log('✅ Web Audio API initialized');
     } catch (error) {
         console.warn('🎵 Web Audio API not available:', error);
@@ -652,17 +652,17 @@ function initializeBasicAudioSystem() {
 
 // Music control functions
 function toggleMusic() {
-    if (audioElement) {
-        if (isPlaying) {
-            audioElement.pause();
-            isPlaying = false;
+    if (panoramaAudioElement) {
+        if (panoramaMusicPlaying) {
+            panoramaAudioElement.pause();
+            panoramaMusicPlaying = false;
             console.log('🎵 Music paused');
             // Update button text if exists
             const button = document.getElementById('musicToggle');
             if (button) button.textContent = '🎵 Music OFF';
         } else {
-            audioElement.play().then(() => {
-                isPlaying = true;
+            panoramaAudioElement.play().then(() => {
+                panoramaMusicPlaying = true;
                 console.log('🎵 Music playing');
                 // Update button text if exists
                 const button = document.getElementById('musicToggle');
