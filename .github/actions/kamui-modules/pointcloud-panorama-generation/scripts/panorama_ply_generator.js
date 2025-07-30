@@ -40,9 +40,9 @@ class PanoramaPLYGenerator {
     
     getParticleCount(density) {
         const counts = {
-            'low': 25000,      // 360度パノラマ用に増加
-            'medium': 50000,   // 360度パノラマ用に増加
-            'high': 100000     // 360度パノラマ用に大幅増加
+            'low': 50000,      // 360度パノラマ用により大幅増加
+            'medium': 100000,  // 360度パノラマ用により大幅増加  
+            'high': 200000     // 360度パノラマ用により大幅増加
         };
         return counts[density] || counts['medium'];
     }
@@ -138,23 +138,15 @@ class PanoramaPLYGenerator {
         let processedPixels = 0;
         const startTime = Date.now();
         
-        // Sample pixels based on density requirements with polar compensation
+        // Sample pixels based on density requirements - シンプルな均等サンプリングに戻す
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                // Calculate normalized coordinates first
+                // Skip pixels based on sampling rate
+                if (Math.random() > samplingRate) continue;
+                
+                // Get normalized coordinates (0-1)
                 const u = x / width;
                 const v = y / height;
-                
-                // Polar region compensation: increase sampling near poles
-                const theta = v * Math.PI;
-                const sinTheta = Math.sin(theta);
-                
-                // Compensation factor: higher sampling near poles (where sin(theta) is small)
-                const polarCompensation = 1.0 / Math.max(0.1, sinTheta);
-                const adjustedSamplingRate = Math.min(1.0, samplingRate * polarCompensation);
-                
-                // Skip pixels based on adjusted sampling rate
-                if (Math.random() > adjustedSamplingRate) continue;
                 
                 // Get depth value (use red channel for grayscale)
                 const depthIdx = (y * width + x) * 4;

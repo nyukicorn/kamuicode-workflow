@@ -291,12 +291,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - 360度パノラマ用に最適化
+    // Determine particle count based on density setting - 360度パノラマ用により大幅増加
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 25000; break;     // 360度パノラマ用に増加
-        case 'high': particleCount = 100000; break;   // 360度パノラマ用に大幅増加
-        default: particleCount = 50000; // medium     // 360度パノラマ用に増加
+        case 'low': particleCount = 50000; break;     // 360度パノラマ用により大幅増加
+        case 'high': particleCount = 200000; break;   // 360度パノラマ用により大幅増加
+        default: particleCount = 100000; // medium    // 360度パノラマ用により大幅増加
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -325,16 +325,13 @@ function createSphericalParticleSystemFromImage() {
     
     // Generate particles using spherical coordinates with simulated depth
     for (let i = 0; i < particleCount && particleIndex < particleCount; i++) {
-        // Generate uniform distribution on sphere with polar compensation
+        // Generate uniform distribution on sphere
         const u = Math.random();
         const v = Math.random();
         
         // Convert to spherical coordinates (phi: 0 to 2π, theta: 0 to π)
         const phi = u * 2 * Math.PI;          // Longitude (0 to 2π)
-        
-        // Use equirectangular mapping instead of uniform sphere distribution
-        // This ensures proper coverage of polar regions
-        const theta = v * Math.PI;            // Latitude (0 to π) - equirectangular mapping
+        const theta = Math.acos(2 * v - 1);   // Latitude (0 to π) - uniform distribution
         
         // Map spherical coordinates to image coordinates
         const imageX = Math.floor((phi / (2 * Math.PI)) * analysisWidth);
@@ -361,28 +358,18 @@ function createSphericalParticleSystemFromImage() {
         const y = adjustedRadius * Math.cos(theta);
         const z = adjustedRadius * Math.sin(theta) * Math.sin(phi);
         
-        // Polar region compensation: add multiple particles for polar areas
-        const sinTheta = Math.sin(theta);
-        const isPolarRegion = sinTheta < 0.4; // Top/bottom 40% is considered polar
-        const particlesToAdd = isPolarRegion ? Math.floor(Math.random() * 2) + 2 : 1;
+        // Store position
+        positions[particleIndex * 3] = x;
+        positions[particleIndex * 3 + 1] = y;
+        positions[particleIndex * 3 + 2] = z;
         
-        for (let p = 0; p < particlesToAdd && particleIndex < particleCount; p++) {
-            // Add slight random variation for polar duplicates
-            const randomOffset = isPolarRegion ? (Math.random() - 0.5) * 0.1 : 0;
-            
-            // Store position with optional polar variation
-            positions[particleIndex * 3] = x + randomOffset;
-            positions[particleIndex * 3 + 1] = y + randomOffset;
-            positions[particleIndex * 3 + 2] = z + randomOffset;
-            
-            // Store color with brightness enhancement
-            const enhancementFactor = 1.2 + brightness * 0.5;
-            colors[particleIndex * 3] = Math.min(1.0, r * enhancementFactor);
-            colors[particleIndex * 3 + 1] = Math.min(1.0, g * enhancementFactor);
-            colors[particleIndex * 3 + 2] = Math.min(1.0, b * enhancementFactor);
-            
-            particleIndex++;
-        }
+        // Store color with brightness enhancement
+        const enhancementFactor = 1.2 + brightness * 0.5;
+        colors[particleIndex * 3] = Math.min(1.0, r * enhancementFactor);
+        colors[particleIndex * 3 + 1] = Math.min(1.0, g * enhancementFactor);
+        colors[particleIndex * 3 + 2] = Math.min(1.0, b * enhancementFactor);
+        
+        particleIndex++;
     }
     
     // Adjust arrays to actual particle count
