@@ -66,6 +66,11 @@ class PanoramaPLYGenerator {
         if (!isFinite(processedDepth)) {
             processedDepth = 0.5; // Safe default
         }
+        
+        // For very low depth values (sky/distant areas), use reasonable default
+        if (processedDepth < 0.02) { // Less than 5/255
+            processedDepth = 0.8; // Treat as distant background
+        }
         if (this.options.depthInversion) {
             processedDepth = 1.0 - processedDepth;
         }
@@ -152,8 +157,8 @@ class PanoramaPLYGenerator {
                 const depthIdx = (y * width + x) * 4;
                 const depthValue = depthData.data[depthIdx];
                 
-                // Skip very dark/transparent areas
-                if (depthValue < 5) continue;
+                // Skip only completely black areas (but allow sky/light areas)
+                if (depthValue < 1) continue;
                 
                 // Convert to spherical coordinates with depth
                 const spherePos = this.equirectangularToSphere(
@@ -170,8 +175,8 @@ class PanoramaPLYGenerator {
                 const b = imageData.data[colorIdx + 2] || 128;
                 const a = imageData.data[colorIdx + 3] || 255;
                 
-                // Skip transparent pixels
-                if (a < 128) continue;
+                // Skip only completely transparent pixels
+                if (a < 32) continue;
                 
                 points.push({
                     x: spherePos.x,
