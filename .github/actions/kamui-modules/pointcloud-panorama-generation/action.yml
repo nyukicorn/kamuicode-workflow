@@ -49,18 +49,7 @@ inputs:
 outputs:
   panorama_ply_path:
     description: 'Path to generated PLY point cloud file'
-  
-  depth_map_path:
-    description: 'Path to generated depth map (PNG)'
-  
-  particle_count:
-    description: 'Number of particles generated'
-  
-  processing_time:
-    description: 'Total processing time in seconds'
-  
-  sphere_info:
-    description: 'Sphere configuration details (radius, variation, etc.)'
+    value: ${{ steps.generate-ply.outputs.panorama_ply_path }}
 
 runs:
   using: 'composite'
@@ -153,6 +142,7 @@ runs:
         echo "⏱️ Depth estimation completed in ${DEPTH_TIME}s"
 
     - name: Generate Spherical PLY File
+      id: generate-ply
       shell: bash
       run: |
         echo "🌐 Generating spherical PLY point cloud..."
