@@ -625,8 +625,15 @@ let panoramaMusicPlaying = false;
 function initializeBasicAudioSystem() {
     console.log('🎵 Setting up basic audio system...');
     
-    // Find music file in the page
-    const musicFiles = ['assets/background-music.wav', 'assets/background-music.mp3'];
+    // Find music file in the page - try multiple possible names
+    const musicFiles = [
+        'assets/background-music.wav', 
+        'assets/background-music.mp3',
+        'assets/music.wav',
+        'assets/music.mp3',
+        'assets/generated-music.wav',
+        'assets/generated-music.mp3'
+    ];
     
     for (const file of musicFiles) {
         const audio = new Audio(file);
@@ -679,18 +686,48 @@ function toggleMusic() {
 }
 
 function toggleAudioReactive() {
-    if (typeof window.toggleAudioReactive === 'function') {
+    if (typeof window.toggleAudioReactive === 'function' && window.toggleAudioReactive !== toggleAudioReactive) {
         window.toggleAudioReactive();
     } else {
         console.warn('🎵 Audio reactive system not available');
+        // Basic audio reactive fallback
+        if (panoramaAudioContext && panoramaAudioElement) {
+            console.log('🎵 Attempting basic audio reactive effects...');
+            // Simple volume-based particle effects
+            try {
+                const source = panoramaAudioContext.createMediaElementSource(panoramaAudioElement);
+                const analyser = panoramaAudioContext.createAnalyser();
+                source.connect(analyser);
+                analyser.connect(panoramaAudioContext.destination);
+                
+                // Store for animation loop
+                window.audioAnalyser = analyser;
+                console.log('✅ Basic audio reactive effects enabled');
+            } catch (error) {
+                console.warn('🎵 Audio reactive setup failed:', error);
+            }
+        }
     }
 }
 
 function toggleMicrophone() {
-    if (typeof window.toggleMicrophone === 'function') {
+    if (typeof window.toggleMicrophone === 'function' && window.toggleMicrophone !== toggleMicrophone) {
         window.toggleMicrophone();
     } else {
         console.warn('🎤 Microphone system not available');
+        // Basic microphone toggle fallback
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            console.log('🎤 Attempting to access microphone...');
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    console.log('🎤 Microphone access granted');
+                    // Store stream for later use
+                    window.microphoneStream = stream;
+                })
+                .catch(error => {
+                    console.warn('🎤 Microphone access denied:', error);
+                });
+        }
     }
 }
 
