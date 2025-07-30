@@ -200,7 +200,9 @@ function loadPanoramaImageFallback() {
     const loader = new THREE.TextureLoader();
     
     // Try to load panorama image from assets
-    const imagePath = 'assets/panorama-image.png';
+    const baseURL = window.location.pathname.replace(/\/[^\/]*$/, '/');
+    const imagePath = baseURL + 'assets/panorama-image.png';
+    console.log('🔍 Loading image from:', imagePath);
     
     loader.load(imagePath, 
         function(texture) {
