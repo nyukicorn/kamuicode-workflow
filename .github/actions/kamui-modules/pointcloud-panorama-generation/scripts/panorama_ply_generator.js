@@ -48,34 +48,70 @@ class PanoramaPLYGenerator {
     }
     
     equirectangularToSphere(u, v, depthValue, baseRadius) {
+        // Validate inputs and set safe defaults
+        if (!isFinite(u) || !isFinite(v) || !isFinite(depthValue) || !isFinite(baseRadius)) {
+            console.warn(`⚠️ Invalid input detected: u=${u}, v=${v}, depth=${depthValue}, radius=${baseRadius}`);
+            u = Math.max(0, Math.min(1, u || 0));
+            v = Math.max(0, Math.min(1, v || 0));
+            depthValue = isFinite(depthValue) ? depthValue : 128;
+            baseRadius = isFinite(baseRadius) ? baseRadius : 200;
+        }
+        
         // Convert normalized coordinates to spherical
         const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
         const theta = v * Math.PI;             // Latitude: 0 to π
         
-        // Process depth value
+        // Process depth value with validation
         let processedDepth = depthValue / 255.0; // Normalize to 0-1
+        if (!isFinite(processedDepth)) {
+            processedDepth = 0.5; // Safe default
+        }
         if (this.options.depthInversion) {
             processedDepth = 1.0 - processedDepth;
         }
         
-        // Depth-based radius adjustment
+        // Depth-based radius adjustment with validation
         const depthFactor = processedDepth;
         const radiusVariation = baseRadius * this.options.depthVariation;
         let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
         
+        // Ensure radius is valid
+        if (!isFinite(adjustedRadius) || adjustedRadius <= 0) {
+            adjustedRadius = baseRadius;
+        }
+        
         // Pole compression to reduce distortion
         if (this.options.enablePoleCompression) {
             const poleWeight = Math.sin(theta); // 0 at poles, 1 at equator
-            const compressionFactor = 0.9 + poleWeight * 0.1;
-            adjustedRadius *= compressionFactor;
+            if (isFinite(poleWeight)) {
+                const compressionFactor = 0.9 + poleWeight * 0.1;
+                adjustedRadius *= compressionFactor;
+            }
         }
         
-        // Convert to Cartesian coordinates
-        return {
-            x: adjustedRadius * Math.sin(theta) * Math.cos(phi),
-            y: adjustedRadius * Math.cos(theta),
-            z: adjustedRadius * Math.sin(theta) * Math.sin(phi)
+        // Convert to Cartesian coordinates with validation
+        const sinTheta = Math.sin(theta);
+        const cosTheta = Math.cos(theta);
+        const cosPhi = Math.cos(phi);
+        const sinPhi = Math.sin(phi);
+        
+        const coords = {
+            x: adjustedRadius * sinTheta * cosPhi,
+            y: adjustedRadius * cosTheta,
+            z: adjustedRadius * sinTheta * sinPhi
         };
+        
+        // Final validation of coordinates
+        if (!isFinite(coords.x) || !isFinite(coords.y) || !isFinite(coords.z)) {
+            console.warn(`⚠️ Invalid coordinates generated, using defaults`);
+            return {
+                x: baseRadius * Math.sin(Math.PI * 0.5) * Math.cos(0),
+                y: baseRadius * Math.cos(Math.PI * 0.5),
+                z: baseRadius * Math.sin(Math.PI * 0.5) * Math.sin(0)
+            };
+        }
+        
+        return coords;
     }
     
     async convertPanoramaToSphere(depthPath, imagePath) {
