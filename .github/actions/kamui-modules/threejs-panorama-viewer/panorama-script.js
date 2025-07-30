@@ -291,12 +291,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - パフォーマンステスト用にさらに増加
+    // Determine particle count based on density setting - 詳細改善のため大幅増加
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 75000; break;     // パフォーマンステスト用にさらに増加
-        case 'high': particleCount = 300000; break;   // パフォーマンステスト用にさらに増加
-        default: particleCount = 150000; // medium    // パフォーマンステスト用にさらに増加
+        case 'low': particleCount = 100000; break;    // 詳細改善のため大幅増加
+        case 'high': particleCount = 500000; break;   // 詳細改善のため大幅増加
+        default: particleCount = 250000; // medium    // 詳細改善のため大幅増加
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -540,7 +540,15 @@ function toggleBrightness() {
 }
 
 function updateGlowIntensity(value) {
-    window.updateGlowIntensity(value, panoramaParticles);
+    if (typeof window.updateGlowIntensity === 'function' && window.updateGlowIntensity !== updateGlowIntensity) {
+        window.updateGlowIntensity(value, panoramaParticles);
+    } else {
+        // Fallback: direct particle material update
+        if (panoramaParticles && panoramaParticles.material) {
+            panoramaParticles.material.opacity = Math.max(0.1, Math.min(1.0, value));
+            panoramaParticles.material.needsUpdate = true;
+        }
+    }
 }
 
 // Audio reactive integration
@@ -602,7 +610,36 @@ function createBackgroundPanoramaSphere(texture) {
     console.log('✅ Background panorama sphere created');
 }
 
+// Music control functions
+function toggleMusic() {
+    if (typeof window.toggleMusicPlayback === 'function') {
+        window.toggleMusicPlayback();
+    } else {
+        console.warn('🎵 Music system not available');
+    }
+}
+
+function toggleAudioReactive() {
+    if (typeof window.toggleAudioReactive === 'function') {
+        window.toggleAudioReactive();
+    } else {
+        console.warn('🎵 Audio reactive system not available');
+    }
+}
+
+function toggleMicrophone() {
+    if (typeof window.toggleMicrophone === 'function') {
+        window.toggleMicrophone();
+    } else {
+        console.warn('🎤 Microphone system not available');
+    }
+}
+
 // Export music functions to global scope for HTML template
+window.toggleMusic = toggleMusic;
+window.toggleAudioReactive = toggleAudioReactive;
+window.toggleMicrophone = toggleMicrophone;
+
 if (typeof setupMusic !== 'undefined') {
     window.setupMusic = setupMusic;
 }
