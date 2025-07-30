@@ -291,12 +291,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - 360度パノラマ用により大幅増加
+    // Determine particle count based on density setting - パフォーマンステスト用にさらに増加
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 50000; break;     // 360度パノラマ用により大幅増加
-        case 'high': particleCount = 200000; break;   // 360度パノラマ用により大幅増加
-        default: particleCount = 100000; // medium    // 360度パノラマ用により大幅増加
+        case 'low': particleCount = 75000; break;     // パフォーマンステスト用にさらに増加
+        case 'high': particleCount = 300000; break;   // パフォーマンステスト用にさらに増加
+        default: particleCount = 150000; // medium    // パフォーマンステスト用にさらに増加
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
