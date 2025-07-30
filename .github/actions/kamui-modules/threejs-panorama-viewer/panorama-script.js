@@ -200,12 +200,15 @@ function loadPanoramaImageFallback() {
     const loader = new THREE.TextureLoader();
     
     // Try to load panorama image from assets
-    const imagePath = plyFilePath.replace(/\.ply$/i, '.jpg') || 'assets/panorama-image.jpg';
+    const imagePath = 'assets/panorama-image.png';
     
     loader.load(imagePath, 
         function(texture) {
             console.log('✅ Panorama texture loaded');
             panoramaTexture = texture;
+            
+            // Create background panorama sphere
+            createBackgroundPanoramaSphere(texture);
             
             // Create spherical particle distribution from image
             createSphericalParticleSystemFromImage();
@@ -514,6 +517,29 @@ window.toggleAudioReactive = window.toggleAudioReactive || (() => console.warn('
 window.toggleMicrophone = window.toggleMicrophone || (() => console.warn('Microphone function not loaded'));
 window.toggleAudioMode = window.toggleAudioMode || (() => console.warn('Audio mode function not loaded'));
 window.toggleDynamicMode = window.toggleDynamicMode || (() => console.warn('Dynamic mode function not loaded'));
+
+// Create background panorama sphere for immersive experience
+function createBackgroundPanoramaSphere(texture) {
+    console.log('🌐 Creating background panorama sphere...');
+    
+    // Create sphere geometry (large radius, facing inward)
+    const sphereGeometry = new THREE.SphereGeometry(sphereRadius * 2, 64, 32);
+    
+    // Create material with panorama texture
+    const sphereMaterial = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.BackSide // Important: render on inside faces
+    });
+    
+    // Create the background sphere mesh
+    const backgroundSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    backgroundSphere.name = 'backgroundPanorama';
+    
+    // Add to scene
+    scene.add(backgroundSphere);
+    
+    console.log('✅ Background panorama sphere created');
+}
 
 // Export music functions to global scope for HTML template
 if (typeof setupMusic !== 'undefined') {
