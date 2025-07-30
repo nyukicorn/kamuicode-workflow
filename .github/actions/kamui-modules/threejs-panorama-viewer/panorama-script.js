@@ -56,8 +56,15 @@ function init() {
     
     // Initialize audio if available
     if (typeof setupMusic === 'function') {
-        setupMusic();
-        console.log('🎵 Music system initialized');
+        try {
+            setupMusic();
+            console.log('🎵 Music system initialized');
+        } catch (error) {
+            console.warn('🎵 Music system initialization failed:', error);
+        }
+    } else {
+        console.log('🎵 Music system not found, initializing basic audio support...');
+        initializeBasicAudioSystem();
     }
     
     // Load panorama PLY file with depth information
@@ -291,12 +298,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - 詳細改善のため大幅増加
+    // Determine particle count based on density setting - 限界テスト用に100万粒子
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 100000; break;    // 詳細改善のため大幅増加
-        case 'high': particleCount = 500000; break;   // 詳細改善のため大幅増加
-        default: particleCount = 250000; // medium    // 詳細改善のため大幅増加
+        case 'low': particleCount = 200000; break;    // 限界テスト用にさらに増加
+        case 'high': particleCount = 1000000; break;  // 限界テスト：100万粒子
+        default: particleCount = 500000; // medium    // 限界テスト用にさらに増加
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -610,9 +617,61 @@ function createBackgroundPanoramaSphere(texture) {
     console.log('✅ Background panorama sphere created');
 }
 
+// Basic audio system initialization
+let audioContext = null;
+let audioElement = null;
+let isPlaying = false;
+
+function initializeBasicAudioSystem() {
+    console.log('🎵 Setting up basic audio system...');
+    
+    // Find music file in the page
+    const musicFiles = ['assets/background-music.wav', 'assets/background-music.mp3'];
+    
+    for (const file of musicFiles) {
+        const audio = new Audio(file);
+        audio.onerror = () => console.log(`🎵 Music file not found: ${file}`);
+        audio.oncanplay = () => {
+            audioElement = audio;
+            audioElement.loop = true;
+            audioElement.volume = 0.5;
+            console.log(`✅ Music loaded: ${file}`);
+        };
+        audio.load();
+        if (audioElement) break;
+    }
+    
+    // Initialize Web Audio API for reactive effects
+    try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('✅ Web Audio API initialized');
+    } catch (error) {
+        console.warn('🎵 Web Audio API not available:', error);
+    }
+}
+
 // Music control functions
 function toggleMusic() {
-    if (typeof window.toggleMusicPlayback === 'function') {
+    if (audioElement) {
+        if (isPlaying) {
+            audioElement.pause();
+            isPlaying = false;
+            console.log('🎵 Music paused');
+            // Update button text if exists
+            const button = document.getElementById('musicToggle');
+            if (button) button.textContent = '🎵 Music OFF';
+        } else {
+            audioElement.play().then(() => {
+                isPlaying = true;
+                console.log('🎵 Music playing');
+                // Update button text if exists
+                const button = document.getElementById('musicToggle');
+                if (button) button.textContent = '🎵 Music ON';
+            }).catch(error => {
+                console.warn('🎵 Music play failed:', error);
+            });
+        }
+    } else if (typeof window.toggleMusicPlayback === 'function') {
         window.toggleMusicPlayback();
     } else {
         console.warn('🎵 Music system not available');
