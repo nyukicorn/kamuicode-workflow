@@ -138,15 +138,23 @@ class PanoramaPLYGenerator {
         let processedPixels = 0;
         const startTime = Date.now();
         
-        // Sample pixels based on density requirements
+        // Sample pixels based on density requirements with polar compensation
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                // Skip pixels based on sampling rate
-                if (Math.random() > samplingRate) continue;
-                
-                // Get normalized coordinates (0-1)
+                // Calculate normalized coordinates first
                 const u = x / width;
                 const v = y / height;
+                
+                // Polar region compensation: increase sampling near poles
+                const theta = v * Math.PI;
+                const sinTheta = Math.sin(theta);
+                
+                // Compensation factor: higher sampling near poles (where sin(theta) is small)
+                const polarCompensation = 1.0 / Math.max(0.1, sinTheta);
+                const adjustedSamplingRate = Math.min(1.0, samplingRate * polarCompensation);
+                
+                // Skip pixels based on adjusted sampling rate
+                if (Math.random() > adjustedSamplingRate) continue;
                 
                 // Get depth value (use red channel for grayscale)
                 const depthIdx = (y * width + x) * 4;
