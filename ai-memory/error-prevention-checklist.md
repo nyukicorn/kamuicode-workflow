@@ -197,3 +197,149 @@ except yaml.YAMLError as e:
 1. **部分的な検証**: エラー箇所周辺だけを抽出して検証
 2. **インデント可視化**: `cat -A`でタブ・スペースを確認
 3. **段階的修正**: 1つのエラーを修正→検証→次のエラーへ
+
+## 複合システム統合エラー (2025-01-30追記)
+
+### YAML + Python + GitHub Actions 複合エラーパターン
+
+#### エラー分類フレームワーク
+```yaml
+Layer 1 (構文レベル): YAML, Python, JSON等の書式問題
+Layer 2 (実行環境): パス解決, 権限, 依存関係問題  
+Layer 3 (ロジック): パラメータ, フロー, 状態管理問題
+Layer 4 (統合): システム間連携, 出力形式, プロトコル問題
+```
+
+#### 30秒緊急チェックリスト
+```markdown
+□ エラーメッセージ全文をコピペしたか？
+□ エラーの「種類」を特定したか？（構文/実行時/設定/パス）
+□ 最後に変更したファイルを特定したか？
+□ 類似する動作例を1つ以上確認したか？
+□ 推測で修正する前に根拠を明文化したか？
+```
+
+### YAML内Python統合時の必須確認
+
+#### 1. ヒアドキュメント問題の予防
+```yaml
+# 危険パターン
+run: |
+  python3 << 'EOF'
+import cv2  # ← この行がYAMLキーとして解釈される
+EOF
+
+# 安全パターン  
+run: |
+  python3 -c "
+  import cv2
+  # Pythonコードをここに書く
+  "
+  
+# 最安全パターン
+run: |
+  python3 scripts/external_script.py
+```
+
+#### 2. スコープ問題の回避
+- **原則**: 複雑なPythonスクリプトは最初から外部ファイル化
+- **検証**: `import`文がモジュール最上位にあることを確認
+- **エラー**: `UnboundLocalError: local variable 'module' referenced before assignment`
+
+### Composite Action出力変数問題
+
+#### GitHub Actions出力の正しい設定
+```yaml
+# action.yml内の正しい設定
+outputs:
+  output_name:
+    description: 'Description of output'
+    value: ${{ steps.step-id.outputs.output_name }}
+
+# JavaScript/Pythonでの出力設定
+run: |
+  echo "output_name=value" >> $GITHUB_OUTPUT
+```
+
+#### よくある間違い
+- `::set-output`コマンド（廃止済み）を使用
+- `$GITHUB_OUTPUT`への書き込みのみ（value mappingなし）
+- JavaScript ActionとComposite Actionの混同
+
+### ファイルパス・作業ディレクトリ問題
+
+#### 絶対パス徹底の重要性
+```python
+# 危険パターン
+relative_path = "images/input.png"
+
+# 安全パターン
+workspace = os.environ.get("GITHUB_WORKSPACE", os.getcwd())
+absolute_path = os.path.join(workspace, "images/input.png")
+```
+
+#### 検証コマンド
+```bash
+# 現在の作業ディレクトリ確認
+pwd
+echo $GITHUB_WORKSPACE
+
+# ファイル存在確認
+ls -la $GITHUB_WORKSPACE/expected/path/
+find $GITHUB_WORKSPACE -name "target-file.*" -type f
+```
+
+### 必須パラメータ管理
+
+#### action.yml定義の厳密チェック
+```yaml
+inputs:
+  required_param:
+    description: 'This is required'
+    required: true
+  optional_param:
+    description: 'This is optional'
+    required: false
+    default: 'default_value'
+```
+
+#### 実行時の全パラメータ確認
+```yaml
+with:
+  required_param: ${{ steps.previous.outputs.value }}
+  optional_param: ${{ steps.setup.outputs.folder_name }}/path/to/file
+```
+
+### 予防策の投資対効果ランキング
+
+#### ⭐⭐⭐ 最高優先度（工数30分→エラー削減90%）
+1. **外部ファイル化**: YAMLに複雑ロジックを書かない
+2. **絶対パス徹底**: `GITHUB_WORKSPACE`基準のパス使用
+3. **既存パターン確認**: 動作例との差分明確化
+
+#### ⭐⭐ 高優先度（工数1時間→エラー削減70%）  
+4. **出力変数の明示的設定**: Composite Actionのvalue mapping
+5. **エラーメッセージの精読**: 推測修正を避ける
+6. **段階的修正・検証**: 1問題1修正1検証
+
+#### ⭐ 標準優先度（工数2時間→エラー削減50%）
+7. **複合エラーの分類**: Layer別問題分析
+8. **類似コード調査**: 成功パターンの適用
+9. **根本原因分析**: 表面的症状から脱却
+
+### 複合システムエラー発生時の対処順序
+
+1. **エラー分類**: Layer 1-4のどこに該当するか特定
+2. **システム切り分け**: YAML/Python/GitHub Actions/ファイルシステム
+3. **データフロー追跡**: 入力→処理→出力の各段階確認
+4. **既存パターン比較**: 類似する動作例との差分分析
+5. **段階的修正**: 1つのLayer問題を完全解決してから次へ
+6. **統合テスト**: 修正後の全体動作確認
+
+### 絶対に避けるべき複合エラー対応
+
+- **推測による複数修正**: 複数のLayerを同時に修正
+- **表面的症状への固執**: エラーメッセージのみでの判断  
+- **複雑化による解決**: シンプルソリューションを回避
+- **仮説への執着**: 証拠と矛盾する仮説の継続
+- **統合テストの省略**: 部分修正後の全体確認不足

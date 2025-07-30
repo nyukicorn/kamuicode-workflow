@@ -52,7 +52,7 @@ on:
           - 'low'
           - 'medium'
           - 'high'
-        default: 'medium'
+        default: 'high'
       
       depth-model:
         description: '深度推定モデル'
@@ -203,7 +203,7 @@ jobs:
           enable_pointcloud_mode: 'true'
           output_filename: 'index.html'
           background_color: ${{ steps.bg-color.outputs.color }}
-          camera_position_radius: '150'
+          camera_position_radius: '60'
           particle_density: ${{ inputs.particle-density }}
           auto_rotate: 'true'
           rotation_speed: '1.0'

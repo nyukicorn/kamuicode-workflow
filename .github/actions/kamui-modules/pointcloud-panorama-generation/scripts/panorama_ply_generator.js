@@ -40,9 +40,9 @@ class PanoramaPLYGenerator {
     
     getParticleCount(density) {
         const counts = {
-            'low': 15000,
-            'medium': 35000,
-            'high': 65000
+            'low': 25000,      // 360度パノラマ用に増加
+            'medium': 50000,   // 360度パノラマ用に増加
+            'high': 100000     // 360度パノラマ用に大幅増加
         };
         return counts[density] || counts['medium'];
     }

@@ -8,8 +8,8 @@ let panoramaTexture = null;
 let lights = null;
 let sphereRadius = 200;
 
-// Panorama configuration
-let particleSize = 2.0;
+// Panorama configuration - 360度パノラマ用に最適化
+let particleSize = 3.5;
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -32,14 +32,21 @@ function init() {
     renderer = cameraData.renderer;
     controls = cameraData.controls;
     
-    // Set initial camera position (inside the sphere)
+    // Set initial camera position (inside the sphere) - 360度パノラマ用に最適化
     const initialRadius = CAM_RADIUS_PLACEHOLDER;
     setCameraPosition(0, 0, 0); // Center of the sphere
+    
+    // 360度パノラマ用にカメラ制約を調整
+    const optimalViewingDistance = sphereRadius * 0.3; // 球体半径の30%の位置
     
     // Configure controls for panoramic experience
     controls.enablePan = false; // Disable panning for true panoramic experience
     controls.minDistance = 5;   // Minimum zoom in
-    controls.maxDistance = initialRadius - 20; // Maximum zoom out (stay inside sphere)
+    controls.maxDistance = sphereRadius - 20; // Maximum zoom out (stay inside sphere)
+    
+    // 360度パノラマ用の初期カメラ位置を最適化
+    camera.position.set(0, 0, optimalViewingDistance);
+    controls.update();
     
     // Set auto-rotate settings
     setAutoRotateSettings(autoRotate, rotationSpeed);
@@ -126,12 +133,12 @@ function createDepthEnhancedParticleSystem(geometry) {
         enhanceDepthVisualization(positions, colors);
     }
     
-    // Create particle system using shared component
+    // Create particle system using shared component - 360度パノラマ用に最適化
     panoramaParticles = createParticleSystem(geometry, {
         size: particleSize,
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.95,  // 不透明度を上げて見やすく
         vertexColors: true,
         blending: THREE.AdditiveBlending
     });
@@ -284,12 +291,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting
+    // Determine particle count based on density setting - 360度パノラマ用に最適化
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 10000; break;
-        case 'high': particleCount = 50000; break;
-        default: particleCount = 25000; // medium
+        case 'low': particleCount = 25000; break;     // 360度パノラマ用に増加
+        case 'high': particleCount = 100000; break;   // 360度パノラマ用に大幅増加
+        default: particleCount = 50000; // medium     // 360度パノラマ用に増加
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
