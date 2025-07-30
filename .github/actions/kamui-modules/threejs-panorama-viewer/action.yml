@@ -110,6 +110,14 @@ runs:
       shell: bash
       run: |
         echo "🖼️ Processing input for immersive panoramic display..."
+        
+        # Debug input parameters
+        echo "🔍 Input Parameters Debug:"
+        echo "   PLY file path: ${{ inputs.ply_file_path }}"
+        echo "   Input image: ${{ inputs.input_image }}"
+        echo "   Output folder: ${{ inputs.output_folder }}"
+        echo "   Enable pointcloud: ${{ inputs.enable_pointcloud_mode }}"
+        
         # Create output directory structure
         mkdir -p "${{ inputs.output_folder }}"
         mkdir -p "${{ inputs.output_folder }}/assets"
@@ -120,22 +128,35 @@ runs:
           cp "${{ inputs.ply_file_path }}" "${{ inputs.output_folder }}/assets/panorama.ply"
           echo "POINTCLOUD_READY=true" >> $GITHUB_ENV
           
-          # Find corresponding image
-          PLY_PATH="${{ inputs.ply_file_path }}"
-          IMAGE_PATH="${PLY_PATH%.ply}.png"
-          if [ ! -f "$IMAGE_PATH" ]; then
-            IMAGE_PATH="${PLY_PATH%.ply}.jpg"
-          fi
-          if [ -f "$IMAGE_PATH" ]; then
-            cp "$IMAGE_PATH" "${{ inputs.output_folder }}/assets/panorama-image.jpg"
-            echo "✅ Found corresponding image: $IMAGE_PATH"
+          # Use input_image if provided, otherwise try to find corresponding image
+          if [ -n "${{ inputs.input_image }}" ] && [ -f "${{ inputs.input_image }}" ]; then
+            echo "✅ Using provided input image: ${{ inputs.input_image }}"
+            echo "🖼️ Copying image to: ${{ inputs.output_folder }}/assets/panorama-image.png"
+            cp "${{ inputs.input_image }}" "${{ inputs.output_folder }}/assets/panorama-image.png"
+            echo "✅ Image copy completed successfully"
+          else
+            # Find corresponding image (fallback)
+            echo "🔍 Searching for corresponding image for PLY file..."
+            PLY_PATH="${{ inputs.ply_file_path }}"
+            IMAGE_PATH="${PLY_PATH%.ply}.png"
+            echo "   Trying: $IMAGE_PATH"
+            if [ ! -f "$IMAGE_PATH" ]; then
+              IMAGE_PATH="${PLY_PATH%.ply}.jpg"
+              echo "   Trying: $IMAGE_PATH"
+            fi
+            if [ -f "$IMAGE_PATH" ]; then
+              cp "$IMAGE_PATH" "${{ inputs.output_folder }}/assets/panorama-image.png"
+              echo "✅ Found corresponding image: $IMAGE_PATH"
+            else
+              echo "⚠️ No corresponding image found for PLY file"
+            fi
           fi
           
         elif [ -n "${{ inputs.input_image }}" ] && [ -f "${{ inputs.input_image }}" ]; then
           echo "🎯 Generating pointcloud from panorama image: ${{ inputs.input_image }}"
           
-          # Copy original image to assets
-          cp "${{ inputs.input_image }}" "${{ inputs.output_folder }}/assets/panorama-image.jpg"
+          # Copy original image to assets (maintain PNG format)
+          cp "${{ inputs.input_image }}" "${{ inputs.output_folder }}/assets/panorama-image.png"
           
           if [ "${{ inputs.enable_pointcloud_mode }}" = "true" ]; then
             echo "🧠 Running depth estimation for panorama..."
@@ -303,12 +324,15 @@ runs:
           echo "✅ Pointcloud PLY file: $(basename "$PLY_FILE")"
         fi
         
-        IMAGE_FILE="${{ inputs.output_folder }}/assets/panorama-image.jpg"
+        IMAGE_FILE="${{ inputs.output_folder }}/assets/panorama-image.png"
+        echo "🔍 Checking for panorama image: $IMAGE_FILE"
         if [ ! -f "$IMAGE_FILE" ]; then
           echo "❌ Panorama image not found: $IMAGE_FILE"
+          echo "📁 Available files in assets directory:"
+          ls -la "${{ inputs.output_folder }}/assets/" || echo "Assets directory doesn't exist"
           exit 1
         fi
-        echo "✅ Panorama image: $(basename "$IMAGE_FILE")"
+        echo "✅ Panorama image: $(basename "$IMAGE_FILE") ($(du -h "$IMAGE_FILE" | cut -f1))"
         
         # Check shared components
         SHARED_COUNT=$(find "${{ inputs.output_folder }}/shared-components" -name "*.js" 2>/dev/null | wc -l)
