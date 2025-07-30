@@ -199,20 +199,74 @@ function loadPanoramaImageFallback() {
     
     const loader = new THREE.TextureLoader();
     
-    // Try to load panorama image from assets
-    const baseURL = window.location.pathname.replace(/\/[^\/]*$/, '/');
-    const imagePath = baseURL + 'assets/panorama-image.png';
-    console.log('🔍 Loading image from:', imagePath);
+    // Multiple path attempts for GitHub Pages compatibility
+    const possiblePaths = [
+        'assets/panorama-image.png',  // Direct relative path
+        './assets/panorama-image.png', // Explicit relative path
+        window.location.pathname.replace(/\/[^\/]*$/, '/') + 'assets/panorama-image.png', // Dynamic base URL
+        // GitHub Pages absolute path construction
+        window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '/') + 'assets/panorama-image.png'
+    ];
     
-    loader.load(imagePath, 
+    console.log('🔍 Attempting to load image from multiple paths...');
+    possiblePaths.forEach((path, index) => {
+        console.log(`   Path ${index + 1}: ${path}`);
+    });
+    
+    // Try loading from each path sequentially
+    tryLoadFromPaths(loader, possiblePaths, 0);
+}
+
+function tryLoadFromPaths(loader, paths, index) {
+    if (index >= paths.length) {
+        console.error('❌ All image paths failed, creating test pattern');
+        createTestSphericalPattern();
+        return;
+    }
+    
+    const currentPath = paths[index];
+    console.log(`🔍 Trying path ${index + 1}/${paths.length}: ${currentPath}`);
+    
+    // Pre-check image existence with fetch to avoid CORS issues
+    checkImageExistence(currentPath)
+        .then(exists => {
+            if (exists) {
+                console.log(`✅ Image confirmed to exist at path ${index + 1}`);
+                loadImageFromPath(loader, currentPath, index, paths);
+            } else {
+                console.warn(`⚠️ Image not found at path ${index + 1}, trying next...`);
+                tryLoadFromPaths(loader, paths, index + 1);
+            }
+        })
+        .catch(error => {
+            console.warn(`⚠️ Error checking path ${index + 1}: ${error.message}`);
+            // Still try to load in case it's a false negative
+            loadImageFromPath(loader, currentPath, index, paths);
+        });
+}
+
+function checkImageExistence(imagePath) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = imagePath;
+        
+        // Timeout after 3 seconds
+        setTimeout(() => resolve(false), 3000);
+    });
+}
+
+function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
+    loader.load(currentPath,
         function(texture) {
-            console.log('✅ Panorama texture loaded');
+            console.log(`✅ Panorama texture loaded from path ${pathIndex + 1}: ${currentPath}`);
             panoramaTexture = texture;
             
             // Create background panorama sphere
             createBackgroundPanoramaSphere(texture);
             
-            // Create spherical particle distribution from image
+            // Create spherical particle distribution from image  
             createSphericalParticleSystemFromImage();
         },
         function(progress) {
@@ -220,11 +274,9 @@ function loadPanoramaImageFallback() {
             updateLoadingProgress(`Loading panorama: ${percent}%`);
         },
         function(error) {
-            console.error('❌ Error loading panorama image:', error);
-            showLoadingIndicator('❌ Failed to load panorama image');
-            
-            // Create test spherical pattern as final fallback
-            createTestSphericalPattern();
+            console.warn(`⚠️ THREE.js TextureLoader failed for path ${pathIndex + 1}: ${error.message || error}`);
+            // Try next path
+            tryLoadFromPaths(loader, allPaths, pathIndex + 1);
         }
     );
 }
