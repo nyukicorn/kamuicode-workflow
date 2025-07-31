@@ -45,7 +45,7 @@ let adaptiveSystem = {
         mid: [], 
         treble: [],
         volume: [],
-        maxHistoryLength: 120 // 2 seconds at 60fps
+        maxHistoryLength: 60 // 2 seconds at 30fps (optimized for performance)
     }
 };
 

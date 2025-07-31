@@ -514,6 +514,8 @@ function createTestSphericalPattern() {
     console.log('✅ Test spherical pattern with depth variation created');
 }
 
+// Audio reactive effects run at full 60fps for maximum immersion
+
 function animate() {
     requestAnimationFrame(animate);
     
@@ -525,7 +527,7 @@ function animate() {
         applyMouseGravity(panoramaParticles);
     }
     
-    // Apply audio-reactive effects (shared component)
+    // Apply audio-reactive effects (shared component) - 60fps for maximum immersion
     if ((audioReactiveEnabled || microphoneEnabled) && panoramaParticles) {
         applyAudioReactiveEffects();
     }
