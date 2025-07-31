@@ -187,18 +187,40 @@ class PanoramaPLYGenerator {
                 // Skip only completely transparent pixels, but KEEP all color values including pure black (0,0,0)
                 if (a < 5) continue; // Ultra-relaxed transparency threshold
                 
-                // For pure black areas (space/universe), give them a subtle blue tint for visibility
+                // ENHANCED: For dark areas (space/sky/background), create beautiful star field
                 let finalR = r, finalG = g, finalB = b;
-                if (r === 0 && g === 0 && b === 0) {
-                    // Pure black becomes dark space blue with stars effect
-                    finalR = Math.random() < 0.1 ? 40 : 5;  // Occasional bright spots (stars)
-                    finalG = Math.random() < 0.1 ? 60 : 10; // Deep space blue
-                    finalB = Math.random() < 0.1 ? 100 : 25; // Blue space tint
-                } else if (r < 20 && g < 20 && b < 20) {
-                    // Very dark areas become subtle space gradients
-                    finalR = Math.max(r, 8);
-                    finalG = Math.max(g, 15);
-                    finalB = Math.max(b, 30);
+                
+                // Calculate darkness level (0 = pure black, 1 = bright)
+                const brightness = (r + g + b) / (3 * 255);
+                const isDark = brightness < 0.15; // Much more inclusive threshold (was pure black only)
+                
+                if (isDark) {
+                    // Create varied space effects based on darkness level
+                    const starChance = Math.random();
+                    const spaceDepth = 1 - brightness; // Darker = deeper space
+                    
+                    if (starChance < 0.02) {
+                        // 2% chance: Bright stars
+                        finalR = 200 + Math.random() * 55;
+                        finalG = 200 + Math.random() * 55;
+                        finalB = 180 + Math.random() * 75;
+                    } else if (starChance < 0.05) {
+                        // 3% chance: Medium stars  
+                        finalR = 120 + Math.random() * 80;
+                        finalG = 120 + Math.random() * 80;
+                        finalB = 140 + Math.random() * 80;
+                    } else if (starChance < 0.15) {
+                        // 10% chance: Dim stars
+                        finalR = 40 + Math.random() * 40;
+                        finalG = 40 + Math.random() * 40;
+                        finalB = 60 + Math.random() * 60;
+                    } else {
+                        // Rest: Deep space gradient with subtle nebula colors
+                        const nebulaEffect = Math.random() * spaceDepth;
+                        finalR = Math.max(r, Math.floor(8 + nebulaEffect * 15));   // Subtle red nebula
+                        finalG = Math.max(g, Math.floor(12 + nebulaEffect * 20));  // Space blue-green
+                        finalB = Math.max(b, Math.floor(25 + nebulaEffect * 40)); // Deep space blue
+                    }
                 }
                 
                 points.push({
