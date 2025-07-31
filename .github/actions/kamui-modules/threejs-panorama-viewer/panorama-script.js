@@ -910,18 +910,18 @@ function applyAudioReactiveEffects() {
     // Analyze audio
     analyzeAudio();
     
-    // Calculate effect intensities
-    const bassImpact = Math.pow(frequencyBands.bass, 1.5);
-    const midImpact = frequencyBands.mid;
-    const trebleImpact = Math.pow(frequencyBands.treble, 0.8);
-    const volumeImpact = Math.pow(currentVolumeLevel, 0.7);
+    // Calculate effect intensities - ENHANCED for more dramatic response
+    const bassImpact = Math.pow(frequencyBands.bass, 1.2); // Reduced power for more sensitivity
+    const midImpact = Math.pow(frequencyBands.mid, 0.8); // Add power curve for better response  
+    const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
+    const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // Update effects with smooth transitions - ENHANCED for more visible impact
-    const effectSpeed = 0.25; // Faster response (was 0.15)
-    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 1.5 - panoramaEffects.sizeMultiplier) * effectSpeed; // 3x stronger (was 0.5)
-    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 4.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // 2x stronger (was 2.0)
-    panoramaEffects.colorIntensity += (midImpact * 3.0 - panoramaEffects.colorIntensity) * effectSpeed; // 1.5x stronger (was 2.0)
-    panoramaEffects.movementIntensity += (trebleImpact * 0.8 - panoramaEffects.movementIntensity) * effectSpeed; // 2.6x stronger (was 0.3)
+    // Update effects with smooth transitions - ULTRA ENHANCED for clear visibility
+    const effectSpeed = 0.4; // Much faster response (was 0.25)
+    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 3.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // 2x stronger bass response
+    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 6.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // 1.5x stronger brightness
+    panoramaEffects.colorIntensity += (midImpact * 5.0 - panoramaEffects.colorIntensity) * effectSpeed; // Much stronger color shift
+    panoramaEffects.movementIntensity += (trebleImpact * 1.5 - panoramaEffects.movementIntensity) * effectSpeed; // Nearly 2x stronger movement
     
     // Apply size effect
     if (panoramaParticles.material) {
@@ -941,10 +941,10 @@ function applyAudioReactiveEffects() {
         const colorShift = panoramaEffects.colorIntensity;
         
         for (let i = 0; i < colors.length; i += 3) {
-            // Apply brightness and color shifting - ENHANCED for more visible impact
-            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 0.6));     // R - 2x stronger
-            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness * (1.0 + colorShift * 0.2)); // G - slight boost
-            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.4)); // B - 2x stronger
+            // Apply brightness and color shifting - ULTRA ENHANCED for maximum visibility
+            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 1.0));     // R - Much stronger red boost
+            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness * (1.0 + colorShift * 0.3)); // G - Moderate boost
+            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.8)); // B - Much stronger blue reduction
         }
         
         panoramaParticles.geometry.attributes.color.needsUpdate = true;
@@ -977,6 +977,12 @@ function applyAudioReactiveEffects() {
         }
         
         panoramaParticles.geometry.attributes.position.needsUpdate = true;
+    }
+    
+    // Enhanced debug logging for audio reactive testing
+    if (Math.random() < 0.05) { // 5% chance to log for frequent feedback
+        console.log(`🎵 AUDIO: vol=${(volumeImpact * 100).toFixed(1)}% bass=${(bassImpact * 100).toFixed(1)}% mid=${(midImpact * 100).toFixed(1)}% treble=${(trebleImpact * 100).toFixed(1)}%`);
+        console.log(`🎨 EFFECTS: size=${panoramaEffects.sizeMultiplier.toFixed(2)}x bright=${panoramaEffects.brightnessMultiplier.toFixed(2)}x color=${panoramaEffects.colorIntensity.toFixed(2)}x move=${panoramaEffects.movementIntensity.toFixed(2)}`);
     }
 }
 
