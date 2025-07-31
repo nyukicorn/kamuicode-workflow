@@ -551,9 +551,11 @@ function resetCamera() {
 function updateParticleSize(value) {
     particleSize = parseFloat(value);
     if (panoramaParticles && panoramaParticles.material) {
-        panoramaParticles.material.size = particleSize;
+        // Apply size with current audio effect multiplier
+        const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
+        panoramaParticles.material.size = particleSize * currentMultiplier;
         panoramaParticles.material.needsUpdate = true;
-        console.log(`✨ Particle size updated: ${particleSize}`);
+        console.log(`✨ Particle size updated: ${particleSize} (effective: ${particleSize * currentMultiplier})`);
     }
 }
 
@@ -573,9 +575,10 @@ function updateGlowIntensity(value) {
         panoramaParticles.material.opacity = Math.min(1.0, 0.8 + glowValue * 0.2);
         panoramaParticles.material.blending = glowValue > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
         
-        // Scale particles slightly for glow effect
+        // Scale particles significantly for glow effect - ENHANCED
         const baseSize = particleSize;
-        panoramaParticles.material.size = baseSize * (1.0 + glowValue * 0.5);
+        const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
+        panoramaParticles.material.size = baseSize * currentMultiplier * (1.0 + glowValue * 1.2); // 2.4x stronger glow effect
         
         // Update colors to simulate glow
         if (panoramaParticles.geometry.attributes.color) {
@@ -893,12 +896,12 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.8);
     const volumeImpact = Math.pow(currentVolumeLevel, 0.7);
     
-    // Update effects with smooth transitions
-    const effectSpeed = 0.15;
-    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 0.5 - panoramaEffects.sizeMultiplier) * effectSpeed;
-    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.0 - panoramaEffects.brightnessMultiplier) * effectSpeed;
-    panoramaEffects.colorIntensity += (midImpact * 2.0 - panoramaEffects.colorIntensity) * effectSpeed;
-    panoramaEffects.movementIntensity += (trebleImpact * 0.3 - panoramaEffects.movementIntensity) * effectSpeed;
+    // Update effects with smooth transitions - ENHANCED for more visible impact
+    const effectSpeed = 0.25; // Faster response (was 0.15)
+    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 1.5 - panoramaEffects.sizeMultiplier) * effectSpeed; // 3x stronger (was 0.5)
+    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 4.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // 2x stronger (was 2.0)
+    panoramaEffects.colorIntensity += (midImpact * 3.0 - panoramaEffects.colorIntensity) * effectSpeed; // 1.5x stronger (was 2.0)
+    panoramaEffects.movementIntensity += (trebleImpact * 0.8 - panoramaEffects.movementIntensity) * effectSpeed; // 2.6x stronger (was 0.3)
     
     // Apply size effect
     if (panoramaParticles.material) {
@@ -918,10 +921,10 @@ function applyAudioReactiveEffects() {
         const colorShift = panoramaEffects.colorIntensity;
         
         for (let i = 0; i < colors.length; i += 3) {
-            // Apply brightness and color shifting
-            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 0.3));     // R
-            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness);                   // G
-            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.2)); // B
+            // Apply brightness and color shifting - ENHANCED for more visible impact
+            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 0.6));     // R - 2x stronger
+            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness * (1.0 + colorShift * 0.2)); // G - slight boost
+            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.4)); // B - 2x stronger
         }
         
         panoramaParticles.geometry.attributes.color.needsUpdate = true;
