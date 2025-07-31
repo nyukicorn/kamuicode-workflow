@@ -183,9 +183,9 @@ class PanoramaPLYGenerator {
                 const b = imageData.data[colorIdx + 2] || 128;
                 const a = imageData.data[colorIdx + 3] || 255;
                 
-                // ENHANCED: Include black space areas (universe/sky) as particles
-                // Skip only completely transparent pixels, but KEEP all color values including pure black (0,0,0)
-                if (a < 5) continue; // Ultra-relaxed transparency threshold
+                // ULTIMATE: Include ALL areas as particles - no transparency filtering
+                // Skip only completely invisible pixels (a = 0), keep everything else including semi-transparent
+                if (a < 1) continue; // MAXIMUM inclusivity - only skip completely invisible pixels
                 
                 // ENHANCED: For dark areas (space/sky/background), create beautiful star field
                 let finalR = r, finalG = g, finalB = b;
@@ -220,6 +220,19 @@ class PanoramaPLYGenerator {
                         finalR = Math.max(r, Math.floor(8 + nebulaEffect * 15));   // Subtle red nebula
                         finalG = Math.max(g, Math.floor(12 + nebulaEffect * 20));  // Space blue-green
                         finalB = Math.max(b, Math.floor(25 + nebulaEffect * 40)); // Deep space blue
+                    }
+                } else {
+                    // ENHANCE: Boost colors for natural areas (ocean, forests) for better visibility
+                    if (g > r && g > b && g > 30) {
+                        // Green areas (forests) - enhance green
+                        finalG = Math.min(255, g * 1.3);
+                        finalR = Math.max(r, 20);
+                        finalB = Math.max(b, 15);
+                    } else if (b > r && b > g && b > 20) {
+                        // Blue areas (oceans) - enhance blue
+                        finalB = Math.min(255, b * 1.4);
+                        finalR = Math.max(r, 10);
+                        finalG = Math.max(g, 25);
                     }
                 }
                 

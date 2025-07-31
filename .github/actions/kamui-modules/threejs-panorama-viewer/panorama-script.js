@@ -923,16 +923,32 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
     const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // Update effects with smooth transitions - ULTRA ENHANCED for maximum visibility in dense particles
-    const effectSpeed = 0.5; // Faster response for more dramatic effects
-    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 5.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // MASSIVE bass response (5x)
-    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 8.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // EXTREME brightness boost (8x)
-    panoramaEffects.colorIntensity += (midImpact * 3.0 - panoramaEffects.colorIntensity) * effectSpeed; // Strong color pulsing (3x)
-    panoramaEffects.movementIntensity += (trebleImpact * 2.0 - panoramaEffects.movementIntensity) * effectSpeed; // Double movement response
+    // DIRECT real-time effects - NO smoothing for immediate beat response
+    // Users want to see immediate visual response to music beats and volume changes
+    panoramaEffects.sizeMultiplier = 1.0 + bassImpact * 3.0; // DIRECT bass response for size pulsing
+    panoramaEffects.brightnessMultiplier = 1.0 + volumeImpact * 4.0; // DIRECT volume response for brightness
+    panoramaEffects.colorIntensity = 1.0 + midImpact * 2.0; // DIRECT mid response for color intensity
+    panoramaEffects.movementIntensity = 1.0 + trebleImpact * 1.5; // DIRECT treble response for movement
     
-    // Apply size effect
+    // Add beat detection for dramatic pulses
+    const currentBass = frequencyBands.bass;
+    const bassChange = Math.abs(currentBass - (panoramaEffects.lastBass || 0));
+    if (bassChange > 0.3) { // Strong bass change detected
+        panoramaEffects.beatPulse = 2.0; // Dramatic beat pulse
+    } else {
+        panoramaEffects.beatPulse = Math.max(1.0, (panoramaEffects.beatPulse || 1.0) * 0.9); // Fade out
+    }
+    panoramaEffects.lastBass = currentBass;
+    
+    // Apply size effect - ENHANCED with beat pulse for dramatic music response
     if (panoramaParticles.material) {
-        panoramaParticles.material.size = particleSize * panoramaEffects.sizeMultiplier;
+        const baseMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
+        const beatMultiplier = audioReactiveEnabled ? (panoramaEffects.beatPulse || 1.0) : 1.0;
+        const totalMultiplier = baseMultiplier * beatMultiplier;
+        const effectiveSize = particleSize * totalMultiplier;
+        const finalSize = Math.max(0.5, effectiveSize * 8.0); // Same 8x multiplier as slider
+        panoramaParticles.material.size = finalSize;
+        panoramaParticles.material.needsUpdate = true;
     }
     
     // Apply color effects
