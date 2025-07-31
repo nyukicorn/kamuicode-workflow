@@ -555,10 +555,17 @@ function updateParticleSize(value) {
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
         const effectiveSize = particleSize * currentMultiplier;
         
-        // Ensure minimum visible size and apply dramatic scaling - ENHANCED for 2M particles
-        const finalSize = Math.max(1.0, effectiveSize * 20.0); // MASSIVE: 20x multiplier for EXTREME visibility with 1M+ particles
+        // ADAPTIVE: Adjust multiplier based on particle count for optimal visibility
+        const particleCount = panoramaParticles.geometry.attributes.position.count;
+        const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
+        // 100万→30倍、200万→20倍、300万→10倍、400万→10倍（最小値）
+        
+        // Ensure minimum visible size and apply adaptive scaling
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier);
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
+        
+        console.log(`📏 Adaptive particle size: ${particleCount.toLocaleString()} particles → ${adaptiveMultiplier}x multiplier`);
         
         // FORCE the material to update immediately
         panoramaParticles.material.uniformsNeedUpdate = true;
@@ -947,7 +954,10 @@ function applyAudioReactiveEffects() {
         const beatMultiplier = audioReactiveEnabled ? (panoramaEffects.beatPulse || 1.0) : 1.0;
         const totalMultiplier = baseMultiplier * beatMultiplier;
         const effectiveSize = particleSize * totalMultiplier;
-        const finalSize = Math.max(1.0, effectiveSize * 20.0); // Same 20x multiplier as slider
+        // Use adaptive multiplier for audio reactive effects too
+        const particleCount = panoramaParticles.geometry.attributes.position.count;
+        const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier); // Same adaptive multiplier as slider
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
     }
@@ -1031,7 +1041,10 @@ function resetAudioEffects() {
             // FIXED: Apply the same 8x multiplier as everywhere else
             const currentSliderValue = document.getElementById('particleSize') ? 
                 parseFloat(document.getElementById('particleSize').value) : particleSize;
-            const finalSize = Math.max(1.0, currentSliderValue * 20.0); // Apply consistent 20x multiplier
+            // Apply adaptive multiplier based on particle count
+            const particleCount = panoramaParticles.geometry.attributes.position.count;
+            const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
+            const finalSize = Math.max(1.0, currentSliderValue * adaptiveMultiplier); // Apply adaptive multiplier
             panoramaParticles.material.size = finalSize;
             panoramaParticles.material.needsUpdate = true;
         }
@@ -1085,7 +1098,7 @@ setTimeout(() => {
     // Test the functions
     console.log('🔧 Testing particle size change...');
     if (typeof window.updateParticleSize === 'function') {
-        window.updateParticleSize(10.0); // Test with MAXIMUM size (10.0 * 20x = 200 final size!)
+        window.updateParticleSize(10.0); // Test with MAXIMUM size (adaptive multiplier based on particle count)
     }
 }, 2000);
 
