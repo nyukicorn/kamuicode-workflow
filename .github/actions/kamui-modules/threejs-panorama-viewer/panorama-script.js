@@ -530,6 +530,8 @@ function animate() {
     // Apply audio-reactive effects (shared component) - 60fps for maximum immersion
     if ((audioReactiveEnabled || microphoneEnabled) && panoramaParticles) {
         applyAudioReactiveEffects();
+        // Apply frequency-based color mixing
+        applyFrequencyColorMixing();
     }
     
     // Update particle system effects (shared component)
@@ -937,8 +939,14 @@ function applyAudioReactiveEffects() {
     // This creates extremely dramatic "tiny dim → huge bright" effect
     panoramaEffects.sizeMultiplier = 0.1 + bassImpact * 2.4; // Size: 10% to 250% based on bass (MASSIVE RANGE)
     panoramaEffects.brightnessMultiplier = 0.05 + volumeImpact * 1.95; // Brightness: 5% to 200% based on volume (EXTREME RANGE)
-    panoramaEffects.colorIntensity = 0.2 + midImpact * 1.3; // Color: 20% to 150% based on mid (ENHANCED RANGE)
     panoramaEffects.movementIntensity = 0.0 + trebleImpact * 1.5; // Movement: 0% to 150% based on treble (ENHANCED RANGE)
+    
+    // NEW: Frequency-based color mixing for musical visualization
+    panoramaEffects.colorMix = {
+        bassRed: bassImpact * 1.5,      // 🔴 Bass → Red/Orange (warm, heavy)
+        midGreen: midImpact * 1.2,      // 🟢 Mid → Green/Yellow (melody, natural)  
+        trebleBlue: trebleImpact * 1.8  // 🔵 Treble → Blue/Purple (sharp, cool)
+    };
     
     // Add beat detection for dramatic pulses - now works within 0-1 range
     const currentBass = frequencyBands.bass;
@@ -1025,8 +1033,57 @@ function applyAudioReactiveEffects() {
     // Enhanced debug logging for audio reactive testing
     if (Math.random() < 0.05) { // 5% chance to log for frequent feedback
         console.log(`🎵 AUDIO: vol=${(volumeImpact * 100).toFixed(1)}% bass=${(bassImpact * 100).toFixed(1)}% mid=${(midImpact * 100).toFixed(1)}% treble=${(trebleImpact * 100).toFixed(1)}%`);
-        console.log(`🎨 EFFECTS: size=${panoramaEffects.sizeMultiplier.toFixed(2)}x bright=${panoramaEffects.brightnessMultiplier.toFixed(2)}x color=${panoramaEffects.colorIntensity.toFixed(2)}x move=${panoramaEffects.movementIntensity.toFixed(2)}`);
+        console.log(`🎨 EFFECTS: size=${panoramaEffects.sizeMultiplier.toFixed(2)}x bright=${panoramaEffects.brightnessMultiplier.toFixed(2)}x move=${panoramaEffects.movementIntensity.toFixed(2)}`);
+        console.log(`🌈 COLORS: red=${panoramaEffects.colorMix.bassRed.toFixed(2)} green=${panoramaEffects.colorMix.midGreen.toFixed(2)} blue=${panoramaEffects.colorMix.trebleBlue.toFixed(2)}`);
     }
+}
+
+// NEW: Apply frequency-based color mixing to particles  
+function applyFrequencyColorMixing() {
+    if (!panoramaParticles || !audioReactiveEnabled || !panoramaEffects.colorMix) return;
+    
+    const geometry = panoramaParticles.geometry;
+    const colors = geometry.attributes.color.array;
+    const originalColors = geometry.userData.originalColors;
+    
+    // Store original colors if not already stored
+    if (!originalColors) {
+        geometry.userData.originalColors = new Float32Array(colors);
+        return; // Skip first frame to ensure original colors are stored
+    }
+    
+    const colorMix = panoramaEffects.colorMix;
+    
+    // Apply frequency-based color mixing
+    for (let i = 0; i < colors.length; i += 3) {
+        const origR = originalColors[i];
+        const origG = originalColors[i + 1]; 
+        const origB = originalColors[i + 2];
+        
+        // Mix original color with frequency-based colors
+        // 🔴 Bass adds warm red/orange tones
+        const bassInfluence = colorMix.bassRed;
+        const redMix = origR + (bassInfluence * (1.0 - origR) * 0.8); // Blend toward red
+        const bassWarmth = bassInfluence * 0.3; // Add warmth to green/blue
+        
+        // 🟢 Mid enhances natural green/yellow tones  
+        const midInfluence = colorMix.midGreen;
+        const greenMix = origG + (midInfluence * (1.0 - origG) * 0.9); // Blend toward green
+        const midNatural = midInfluence * 0.2; // Natural color enhancement
+        
+        // 🔵 Treble adds cool blue/purple tones
+        const trebleInfluence = colorMix.trebleBlue;
+        const blueMix = origB + (trebleInfluence * (1.0 - origB) * 1.0); // Blend toward blue
+        const trebleCool = trebleInfluence * 0.4; // Cool tone shift
+        
+        // Combine all influences with gamma correction for natural blending
+        const gamma = 0.8; // Slight gamma for more vibrant mixing
+        colors[i] = Math.pow(Math.min(1.0, redMix + bassWarmth), gamma);           // Red
+        colors[i + 1] = Math.pow(Math.min(1.0, greenMix + midNatural), gamma);     // Green  
+        colors[i + 2] = Math.pow(Math.min(1.0, blueMix + trebleCool), gamma);      // Blue
+    }
+    
+    geometry.attributes.color.needsUpdate = true;
 }
 
 function resetAudioEffects() {
