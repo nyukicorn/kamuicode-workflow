@@ -923,20 +923,20 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
     const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // DIRECT real-time effects - NO smoothing for immediate beat response
-    // Users want to see immediate visual response to music beats and volume changes
-    panoramaEffects.sizeMultiplier = 1.0 + bassImpact * 3.0; // DIRECT bass response for size pulsing
-    panoramaEffects.brightnessMultiplier = 1.0 + volumeImpact * 4.0; // DIRECT volume response for brightness
-    panoramaEffects.colorIntensity = 1.0 + midImpact * 2.0; // DIRECT mid response for color intensity
-    panoramaEffects.movementIntensity = 1.0 + trebleImpact * 1.5; // DIRECT treble response for movement
+    // NEW: Effects go from 0 to user setting (not from setting upward)
+    // This creates more dramatic "lights off → lights on" effect
+    panoramaEffects.sizeMultiplier = 0.3 + bassImpact * 0.7; // Size: 30% to 100% based on bass
+    panoramaEffects.brightnessMultiplier = 0.1 + volumeImpact * 0.9; // Brightness: 10% to 100% based on volume
+    panoramaEffects.colorIntensity = 0.5 + midImpact * 0.5; // Color: 50% to 100% based on mid
+    panoramaEffects.movementIntensity = 0.0 + trebleImpact * 1.0; // Movement: 0% to 100% based on treble
     
-    // Add beat detection for dramatic pulses
+    // Add beat detection for dramatic pulses - now works within 0-1 range
     const currentBass = frequencyBands.bass;
     const bassChange = Math.abs(currentBass - (panoramaEffects.lastBass || 0));
     if (bassChange > 0.3) { // Strong bass change detected
-        panoramaEffects.beatPulse = 2.0; // Dramatic beat pulse
+        panoramaEffects.beatPulse = 1.5; // Moderate beat pulse (was 2.0)
     } else {
-        panoramaEffects.beatPulse = Math.max(1.0, (panoramaEffects.beatPulse || 1.0) * 0.9); // Fade out
+        panoramaEffects.beatPulse = Math.max(1.0, (panoramaEffects.beatPulse || 1.0) * 0.95); // Slower fade
     }
     panoramaEffects.lastBass = currentBass;
     
@@ -969,10 +969,12 @@ function applyAudioReactiveEffects() {
             const originalColorG = originalColors ? originalColors[i + 1] : colors[i + 1];
             const originalColorB = originalColors ? originalColors[i + 2] : colors[i + 2];
             
-            // Only enhance brightness, preserve color balance (no yellow tint)
-            colors[i] = Math.min(1.0, originalColor * brightness);         // R - Only brightness
-            colors[i + 1] = Math.min(1.0, originalColorG * brightness);   // G - Only brightness  
-            colors[i + 2] = Math.min(1.0, originalColorB * brightness);   // B - Only brightness
+            // Apply brightness with color preservation - prevent white washout
+            // Use gamma correction instead of simple multiplication
+            const gamma = 1.0 / (0.5 + brightness * 0.5); // Dynamic gamma from 2.0 to 0.67
+            colors[i] = Math.pow(originalColor, gamma);     // R - Gamma correction
+            colors[i + 1] = Math.pow(originalColorG, gamma); // G - Gamma correction  
+            colors[i + 2] = Math.pow(originalColorB, gamma); // B - Gamma correction
         }
         
         panoramaParticles.geometry.attributes.color.needsUpdate = true;
@@ -1025,9 +1027,11 @@ function resetAudioEffects() {
     if (panoramaParticles) {
         if (panoramaParticles.material) {
             // Use current slider value, not the multiplied value
+            // FIXED: Apply the same 8x multiplier as everywhere else
             const currentSliderValue = document.getElementById('particleSize') ? 
                 parseFloat(document.getElementById('particleSize').value) : particleSize;
-            panoramaParticles.material.size = currentSliderValue;
+            const finalSize = Math.max(0.5, currentSliderValue * 8.0); // Apply consistent 8x multiplier
+            panoramaParticles.material.size = finalSize;
             panoramaParticles.material.needsUpdate = true;
         }
         
