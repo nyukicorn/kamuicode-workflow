@@ -189,6 +189,14 @@ class PanoramaPLYGenerator {
                 // Skip only completely invisible pixels (a = 0), keep everything else including semi-transparent
                 if (a < 1) continue; // MAXIMUM inclusivity - only skip completely invisible pixels
                 
+                // COLOR-BASED SAMPLING: Force particle creation for colored areas regardless of depth
+                // This ensures sky, aurora, and other colored but depth-less areas get particles
+                const hasColor = (r + g + b) > 30; // Any visible color (not pure black)
+                if (!hasColor && depthValue < 5) {
+                    // Skip only if both no color AND no depth
+                    continue;
+                }
+                
                 // ENHANCED: For dark areas (space/sky/background), create beautiful star field
                 let finalR = r, finalG = g, finalB = b;
                 

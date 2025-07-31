@@ -1060,27 +1060,40 @@ function applyFrequencyColorMixing() {
         const origG = originalColors[i + 1]; 
         const origB = originalColors[i + 2];
         
-        // Mix original color with frequency-based colors
+        // C IMPROVED: Dynamic blending based on overall volume/intensity
+        // Base: maintain 80% original color, music affects up to 40%
+        const volumeIntensity = panoramaEffects.brightnessMultiplier; // Using overall volume as intensity
+        const changeIntensity = Math.min(0.4, (volumeIntensity - 0.5) * 0.8); // 0 to 0.4 range
+        
+        // Mix original color with frequency-based colors using dynamic intensity
         // 🔴 Bass adds warm red/orange tones
-        const bassInfluence = colorMix.bassRed;
-        const redMix = origR + (bassInfluence * (1.0 - origR) * 0.8); // Blend toward red
-        const bassWarmth = bassInfluence * 0.3; // Add warmth to green/blue
+        const bassInfluence = colorMix.bassRed * changeIntensity;
+        const bassColor = 1.0; // Pure red for bass
         
         // 🟢 Mid enhances natural green/yellow tones  
-        const midInfluence = colorMix.midGreen;
-        const greenMix = origG + (midInfluence * (1.0 - origG) * 0.9); // Blend toward green
-        const midNatural = midInfluence * 0.2; // Natural color enhancement
+        const midInfluence = colorMix.midGreen * changeIntensity;
+        const midColor = 1.0; // Pure green for mid
         
         // 🔵 Treble adds cool blue/purple tones
-        const trebleInfluence = colorMix.trebleBlue;
-        const blueMix = origB + (trebleInfluence * (1.0 - origB) * 1.0); // Blend toward blue
-        const trebleCool = trebleInfluence * 0.4; // Cool tone shift
+        const trebleInfluence = colorMix.trebleBlue * changeIntensity;
+        const trebleColor = 1.0; // Pure blue for treble
         
-        // Combine all influences with gamma correction for natural blending
-        const gamma = 0.8; // Slight gamma for more vibrant mixing
-        colors[i] = Math.pow(Math.min(1.0, redMix + bassWarmth), gamma);           // Red
-        colors[i + 1] = Math.pow(Math.min(1.0, greenMix + midNatural), gamma);     // Green  
-        colors[i + 2] = Math.pow(Math.min(1.0, blueMix + trebleCool), gamma);      // Blue
+        // Blend original with music colors based on intensity
+        // When quiet: 100% original color
+        // When loud: up to 60% original + 40% music color
+        const preserveOriginal = 1.0 - changeIntensity;
+        
+        colors[i] = origR * preserveOriginal + 
+                   (bassColor * bassInfluence + origR * 0.2 * midInfluence);     // Red channel
+        colors[i + 1] = origG * preserveOriginal + 
+                       (midColor * midInfluence + origG * 0.2 * trebleInfluence); // Green channel
+        colors[i + 2] = origB * preserveOriginal + 
+                       (trebleColor * trebleInfluence + origB * 0.2 * bassInfluence); // Blue channel
+        
+        // Ensure colors stay in valid range
+        colors[i] = Math.min(1.0, colors[i]);
+        colors[i + 1] = Math.min(1.0, colors[i + 1]);
+        colors[i + 2] = Math.min(1.0, colors[i + 2]);
     }
     
     geometry.attributes.color.needsUpdate = true;
