@@ -8,26 +8,11 @@ let panoramaTexture = null;
 let lights = null;
 let sphereRadius = 200;
 
-// Audio analysis variables
-let audioContext = null;
-let musicAnalyser = null;
-let micAnalyser = null;
-let musicDataArray = null;
-let micDataArray = null;
-let audioReactiveEnabled = false;
-let microphoneEnabled = false;
-let currentVolumeLevel = 0;
-let volumeSmoothing = 0.3;
+// Use shared audio variables from audio-reactive-system.js
+// These variables are already declared in the shared component
 
-// Frequency band analysis
-let frequencyBands = {
-    bass: 0,      // 60-250Hz
-    mid: 0,       // 250-2000Hz
-    treble: 0     // 2000-8000Hz
-};
-
-// Current effect intensities
-let currentEffects = {
+// Panorama-specific effect intensities
+let panoramaEffects = {
     sizeMultiplier: 1.0,
     brightnessMultiplier: 1.0,
     colorIntensity: 1.0,
@@ -743,6 +728,12 @@ function toggleMusic() {
 }
 
 function toggleAudioReactive() {
+    // Use shared audio reactive system if available
+    if (typeof window.toggleAudioReactive === 'function' && window.toggleAudioReactive !== toggleAudioReactive) {
+        window.toggleAudioReactive();
+        return;
+    }
+    
     audioReactiveEnabled = !audioReactiveEnabled;
     
     const button = document.getElementById('audioReactiveToggle');
@@ -885,14 +876,14 @@ function applyAudioReactiveEffects() {
     
     // Update effects with smooth transitions
     const effectSpeed = 0.15;
-    currentEffects.sizeMultiplier += (1.0 + bassImpact * 0.5 - currentEffects.sizeMultiplier) * effectSpeed;
-    currentEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.0 - currentEffects.brightnessMultiplier) * effectSpeed;
-    currentEffects.colorIntensity += (midImpact * 2.0 - currentEffects.colorIntensity) * effectSpeed;
-    currentEffects.movementIntensity += (trebleImpact * 0.3 - currentEffects.movementIntensity) * effectSpeed;
+    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 0.5 - panoramaEffects.sizeMultiplier) * effectSpeed;
+    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.0 - panoramaEffects.brightnessMultiplier) * effectSpeed;
+    panoramaEffects.colorIntensity += (midImpact * 2.0 - panoramaEffects.colorIntensity) * effectSpeed;
+    panoramaEffects.movementIntensity += (trebleImpact * 0.3 - panoramaEffects.movementIntensity) * effectSpeed;
     
     // Apply size effect
     if (panoramaParticles.material) {
-        panoramaParticles.material.size = particleSize * currentEffects.sizeMultiplier;
+        panoramaParticles.material.size = particleSize * panoramaEffects.sizeMultiplier;
     }
     
     // Apply color effects
@@ -904,8 +895,8 @@ function applyAudioReactiveEffects() {
             panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
         }
         
-        const brightness = currentEffects.brightnessMultiplier;
-        const colorShift = currentEffects.colorIntensity;
+        const brightness = panoramaEffects.brightnessMultiplier;
+        const colorShift = panoramaEffects.colorIntensity;
         
         for (let i = 0; i < colors.length; i += 3) {
             // Apply brightness and color shifting
@@ -918,7 +909,7 @@ function applyAudioReactiveEffects() {
     }
     
     // Apply movement effect (subtle position variations)
-    if (currentEffects.movementIntensity > 0.1 && panoramaParticles.geometry.attributes.position) {
+    if (panoramaEffects.movementIntensity > 0.1 && panoramaParticles.geometry.attributes.position) {
         const positions = panoramaParticles.geometry.attributes.position.array;
         const originalPositions = panoramaParticles.geometry.userData.originalPositions;
         
@@ -927,7 +918,7 @@ function applyAudioReactiveEffects() {
         }
         
         const time = Date.now() * 0.001;
-        const movement = currentEffects.movementIntensity * 2.0;
+        const movement = panoramaEffects.movementIntensity * 2.0;
         
         for (let i = 0; i < positions.length; i += 3) {
             const offset = Math.sin(time * 2 + i * 0.01) * movement;
@@ -942,10 +933,10 @@ function applyAudioReactiveEffects() {
 
 function resetAudioEffects() {
     // Reset effect intensities
-    currentEffects.sizeMultiplier = 1.0;
-    currentEffects.brightnessMultiplier = 1.0;
-    currentEffects.colorIntensity = 0.0;
-    currentEffects.movementIntensity = 0.0;
+    panoramaEffects.sizeMultiplier = 1.0;
+    panoramaEffects.brightnessMultiplier = 1.0;
+    panoramaEffects.colorIntensity = 0.0;
+    panoramaEffects.movementIntensity = 0.0;
     
     // Reset particle properties
     if (panoramaParticles) {
