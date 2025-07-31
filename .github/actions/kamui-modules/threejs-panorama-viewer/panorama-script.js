@@ -1023,11 +1023,32 @@ function resetAudioEffects() {
     }
 }
 
-// Export music functions to global scope for HTML template
+// Export all interactive functions to global scope for HTML template
 window.toggleMusic = toggleMusic;
 window.toggleAudioReactive = toggleAudioReactive;
 window.toggleMicrophone = toggleMicrophone;
 window.updatePointSize = updateParticleSize;
+
+// Export slider functions (CRITICAL FIX)
+window.updateParticleSize = updateParticleSize;
+window.updateGlowIntensity = updateGlowIntensity;
+
+// Export other control functions
+window.resetCamera = resetCamera;
+window.toggleBrightness = toggleBrightness;
+
+// Debug: Test slider functions on initialization
+console.log('🔧 Testing slider functions availability...');
+setTimeout(() => {
+    console.log('🔧 updateParticleSize available:', typeof window.updateParticleSize);
+    console.log('🔧 updateGlowIntensity available:', typeof window.updateGlowIntensity);
+    
+    // Test the functions
+    console.log('🔧 Testing particle size change...');
+    if (typeof window.updateParticleSize === 'function') {
+        window.updateParticleSize(8.0); // Test with large size
+    }
+}, 2000);
 
 if (typeof setupMusic !== 'undefined') {
     window.setupMusic = setupMusic;
