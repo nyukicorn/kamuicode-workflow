@@ -610,8 +610,27 @@ function resetToNormalState() {
 // Mouse interaction integration
 function resetParticlePositions() {
     if (panoramaParticles) {
-        window.resetParticlePositions(panoramaParticles);
-        resetParticleColors(panoramaParticles);
+        // Use shared component function if available, otherwise use fallback
+        if (typeof window.resetParticlePositions === 'function' && window.resetParticlePositions !== resetParticlePositions) {
+            window.resetParticlePositions(panoramaParticles);
+        } else {
+            // Fallback: reset positions manually
+            if (panoramaParticles.geometry.userData.originalPositions) {
+                const positions = panoramaParticles.geometry.attributes.position.array;
+                const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+                
+                for (let i = 0; i < positions.length; i++) {
+                    positions[i] = originalPositions[i];
+                }
+                
+                panoramaParticles.geometry.attributes.position.needsUpdate = true;
+            }
+        }
+        
+        // Reset colors if available
+        if (typeof resetParticleColors === 'function') {
+            resetParticleColors(panoramaParticles);
+        }
     }
 }
 
