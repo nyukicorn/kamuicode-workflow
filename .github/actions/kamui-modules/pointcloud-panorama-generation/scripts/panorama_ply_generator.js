@@ -191,9 +191,16 @@ class PanoramaPLYGenerator {
                 
                 // COLOR-BASED SAMPLING: Force particle creation for colored areas regardless of depth
                 // This ensures sky, aurora, and other colored but depth-less areas get particles
-                const hasColor = (r + g + b) > 30; // Any visible color (not pure black)
-                if (!hasColor && depthValue < 5) {
-                    // Skip only if both no color AND no depth
+                const colorSum = r + g + b;
+                const hasSignificantColor = colorSum > 50; // Any visible color (raised threshold)
+                
+                // CRITICAL FIX: If there's color, ALWAYS create particle regardless of depth
+                // This is especially important for sky, aurora, and gradient areas
+                if (hasSignificantColor) {
+                    // Has color = force particle creation
+                    // Continue to particle creation
+                } else if (depthValue < 5) {
+                    // No color AND no depth = skip
                     continue;
                 }
                 

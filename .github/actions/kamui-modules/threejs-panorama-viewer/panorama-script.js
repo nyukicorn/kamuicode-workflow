@@ -1060,40 +1060,35 @@ function applyFrequencyColorMixing() {
         const origG = originalColors[i + 1]; 
         const origB = originalColors[i + 2];
         
-        // C IMPROVED: Dynamic blending based on overall volume/intensity
-        // Base: maintain 80% original color, music affects up to 40%
-        const volumeIntensity = panoramaEffects.brightnessMultiplier; // Using overall volume as intensity
-        const changeIntensity = Math.min(0.4, (volumeIntensity - 0.5) * 0.8); // 0 to 0.4 range
+        // ADDITIVE BLEND: Music adds light to original colors (like stage lighting)
+        // This preserves original beauty while adding musical illumination
         
-        // Mix original color with frequency-based colors using dynamic intensity
-        // 🔴 Bass adds warm red/orange tones
-        const bassInfluence = colorMix.bassRed * changeIntensity;
-        const bassColor = 1.0; // Pure red for bass
+        // Calculate light intensity based on frequency strengths
+        // 🔴 Bass adds warm red/orange light (sunset effect)
+        const bassLight = colorMix.bassRed * 0.8; // Strong warm light
         
-        // 🟢 Mid enhances natural green/yellow tones  
-        const midInfluence = colorMix.midGreen * changeIntensity;
-        const midColor = 1.0; // Pure green for mid
+        // 🟢 Mid adds natural green/yellow light (life energy)  
+        const midLight = colorMix.midGreen * 0.6; // Moderate natural light
         
-        // 🔵 Treble adds cool blue/purple tones
-        const trebleInfluence = colorMix.trebleBlue * changeIntensity;
-        const trebleColor = 1.0; // Pure blue for treble
+        // 🔵 Treble adds cool blue/purple light (moonlight effect)
+        const trebleLight = colorMix.trebleBlue * 0.7; // Cool ethereal light
         
-        // Blend original with music colors based on intensity
-        // When quiet: 100% original color
-        // When loud: up to 60% original + 40% music color
-        const preserveOriginal = 1.0 - changeIntensity;
+        // ADDITIVE BLENDING: Original color + Musical light
+        // This creates a "music illuminates the scene" effect
+        colors[i] = Math.min(1.0, origR + bassLight * 0.9);      // Red: Original + warm bass light
+        colors[i + 1] = Math.min(1.0, origG + midLight * 0.8);   // Green: Original + natural mid light
+        colors[i + 2] = Math.min(1.0, origB + trebleLight * 1.0); // Blue: Original + cool treble light
         
-        colors[i] = origR * preserveOriginal + 
-                   (bassColor * bassInfluence + origR * 0.2 * midInfluence);     // Red channel
-        colors[i + 1] = origG * preserveOriginal + 
-                       (midColor * midInfluence + origG * 0.2 * trebleInfluence); // Green channel
-        colors[i + 2] = origB * preserveOriginal + 
-                       (trebleColor * trebleInfluence + origB * 0.2 * bassInfluence); // Blue channel
+        // Cross-illumination for more interesting color mixing
+        // Bass also slightly warms greens and blues
+        colors[i + 1] = Math.min(1.0, colors[i + 1] + bassLight * 0.2);  // Warm up greens
+        colors[i + 2] = Math.min(1.0, colors[i + 2] + bassLight * 0.1);  // Slightly warm blues
         
-        // Ensure colors stay in valid range
-        colors[i] = Math.min(1.0, colors[i]);
-        colors[i + 1] = Math.min(1.0, colors[i + 1]);
-        colors[i + 2] = Math.min(1.0, colors[i + 2]);
+        // Treble adds sparkle to all channels for shimmer effect
+        const sparkle = trebleLight * 0.15;
+        colors[i] = Math.min(1.0, colors[i] + sparkle);
+        colors[i + 1] = Math.min(1.0, colors[i + 1] + sparkle);
+        colors[i + 2] = Math.min(1.0, colors[i + 2] + sparkle * 1.5); // Extra blue sparkle
     }
     
     geometry.attributes.color.needsUpdate = true;
