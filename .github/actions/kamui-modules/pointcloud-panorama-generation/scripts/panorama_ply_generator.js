@@ -61,14 +61,16 @@ class PanoramaPLYGenerator {
         const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
         const theta = v * Math.PI;             // Latitude: 0 to π
         
-        // Process depth value with validation
+        // Process depth value with validation - ENHANCED to include all pixels
         let processedDepth = depthValue / 255.0; // Normalize to 0-1
         if (!isFinite(processedDepth)) {
             processedDepth = 0.5; // Safe default
         }
         
-        // For very low depth values (sky/distant areas), use reasonable default
-        if (processedDepth < 0.02) { // Less than 5/255
+        // Accept all depth values including 0 (black areas) - treat as distant background
+        if (processedDepth === 0) {
+            processedDepth = 0.9; // Black areas become distant background
+        } else if (processedDepth < 0.02) { // Very dark areas
             processedDepth = 0.8; // Treat as distant background
         }
         if (this.options.depthInversion) {
@@ -143,11 +145,16 @@ class PanoramaPLYGenerator {
         let processedPixels = 0;
         const startTime = Date.now();
         
-        // Sample pixels based on density requirements - シンプルな均等サンプリングに戻す
+        // Sample pixels based on density requirements - ENHANCED for maximum particle count
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                // Skip pixels based on sampling rate
-                if (Math.random() > samplingRate) continue;
+                // For high density, use deterministic sampling instead of random for more predictable results
+                if (this.options.particleDensity === 'high') {
+                    // Use every pixel for high density (ignore sampling rate)
+                } else {
+                    // Skip pixels based on sampling rate for lower densities
+                    if (Math.random() > samplingRate) continue;
+                }
                 
                 // Get normalized coordinates (0-1)
                 const u = x / width;
@@ -176,8 +183,8 @@ class PanoramaPLYGenerator {
                 const b = imageData.data[colorIdx + 2] || 128;
                 const a = imageData.data[colorIdx + 3] || 255;
                 
-                // Skip only completely transparent pixels
-                if (a < 32) continue;
+                // Skip only completely transparent pixels - RELAXED condition for more particles
+                if (a < 10) continue; // Changed from 32 to 10 to include more semi-transparent areas
                 
                 points.push({
                     x: spherePos.x,
