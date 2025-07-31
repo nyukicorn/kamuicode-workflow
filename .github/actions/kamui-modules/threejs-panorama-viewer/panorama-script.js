@@ -19,8 +19,8 @@ let panoramaEffects = {
     movementIntensity: 0.0
 };
 
-// Panorama configuration - 360度パノラマ用に最適化
-let particleSize = 3.5;
+// Panorama configuration - 360度パノラマ用に最適化 - ENHANCED for visibility
+let particleSize = 5.0; // Increased from 3.5 to 5.0 for better initial visibility
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -551,11 +551,21 @@ function resetCamera() {
 function updateParticleSize(value) {
     particleSize = parseFloat(value);
     if (panoramaParticles && panoramaParticles.material) {
-        // Apply size with current audio effect multiplier
+        // Apply size with current audio effect multiplier - ENHANCED for dramatic visibility
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        panoramaParticles.material.size = particleSize * currentMultiplier;
+        const effectiveSize = particleSize * currentMultiplier;
+        
+        // Ensure minimum visible size and apply dramatic scaling
+        const finalSize = Math.max(0.1, effectiveSize * 2.0); // 2x multiplier for visibility
+        panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
-        console.log(`✨ Particle size updated: ${particleSize} (effective: ${particleSize * currentMultiplier})`);
+        
+        console.log(`✨ Particle size updated: ${particleSize} → effective: ${effectiveSize} → final: ${finalSize}`);
+        
+        // Force render update
+        if (typeof renderer !== 'undefined') {
+            renderer.render(scene, camera);
+        }
     }
 }
 
@@ -564,21 +574,23 @@ function toggleBrightness() {
 }
 
 function updateGlowIntensity(value) {
-    const glowValue = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    const glowValue = parseFloat(value) / 100; // Convert 0-200 to 0-2 (now supports 200% glow)
     
     if (panoramaParticles && panoramaParticles.material) {
-        // Update material properties for glow effect
+        // Update material properties for glow effect - DRAMATICALLY ENHANCED
         const baseBrightness = 1.0;
-        const glowBrightness = baseBrightness + (glowValue * 2.0); // Max 3x brightness
+        const glowBrightness = baseBrightness + (glowValue * 4.0); // Max 5x brightness (was 3x)
         
         // Create emissive-like effect by adjusting material properties
-        panoramaParticles.material.opacity = Math.min(1.0, 0.8 + glowValue * 0.2);
-        panoramaParticles.material.blending = glowValue > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
+        panoramaParticles.material.opacity = Math.min(1.0, 0.7 + glowValue * 0.3); // More dramatic opacity change
+        panoramaParticles.material.blending = glowValue > 0.3 ? THREE.AdditiveBlending : THREE.NormalBlending; // Lower threshold
         
-        // Scale particles significantly for glow effect - ENHANCED
+        // Scale particles MASSIVELY for glow effect - ULTRA ENHANCED
         const baseSize = particleSize;
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        panoramaParticles.material.size = baseSize * currentMultiplier * (1.0 + glowValue * 1.2); // 2.4x stronger glow effect
+        const glowSizeMultiplier = 1.0 + glowValue * 3.0; // 3x stronger size effect (was 1.2x)
+        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * 2.0; // Additional 2x base multiplier
+        panoramaParticles.material.size = finalSize;
         
         // Update colors to simulate glow
         if (panoramaParticles.geometry.attributes.color) {
@@ -590,16 +602,24 @@ function updateGlowIntensity(value) {
                 panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
             }
             
-            // Apply brightness multiplication
+            // Apply brightness multiplication - ULTRA ENHANCED
             for (let i = 0; i < colors.length; i++) {
-                colors[i] = Math.min(1.0, (originalColors ? originalColors[i] : colors[i]) * glowBrightness);
+                const originalColor = originalColors ? originalColors[i] : colors[i];
+                colors[i] = Math.min(1.0, originalColor * glowBrightness);
             }
             
             panoramaParticles.geometry.attributes.color.needsUpdate = true;
         }
         
         panoramaParticles.material.needsUpdate = true;
-        console.log(`✨ Glow intensity updated: ${(glowValue * 100).toFixed(0)}%`);
+        
+        // Enhanced logging with more details
+        console.log(`✨ Glow intensity updated: ${(glowValue * 100).toFixed(0)}% → size: ${finalSize.toFixed(2)} brightness: ${glowBrightness.toFixed(2)}x`);
+        
+        // Force render update
+        if (typeof renderer !== 'undefined') {
+            renderer.render(scene, camera);
+        }
     }
 }
 
