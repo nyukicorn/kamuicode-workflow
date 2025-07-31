@@ -8,6 +8,32 @@ let panoramaTexture = null;
 let lights = null;
 let sphereRadius = 200;
 
+// Audio analysis variables
+let audioContext = null;
+let musicAnalyser = null;
+let micAnalyser = null;
+let musicDataArray = null;
+let micDataArray = null;
+let audioReactiveEnabled = false;
+let microphoneEnabled = false;
+let currentVolumeLevel = 0;
+let volumeSmoothing = 0.3;
+
+// Frequency band analysis
+let frequencyBands = {
+    bass: 0,      // 60-250Hz
+    mid: 0,       // 250-2000Hz
+    treble: 0     // 2000-8000Hz
+};
+
+// Current effect intensities
+let currentEffects = {
+    sizeMultiplier: 1.0,
+    brightnessMultiplier: 1.0,
+    colorIntensity: 1.0,
+    movementIntensity: 0.0
+};
+
 // Panorama configuration - 360度パノラマ用に最適化
 let particleSize = 3.5;
 // autoRotate is already declared in camera-controls.js, just set the value
@@ -298,12 +324,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - 限界テスト用に100万粒子
+    // Determine particle count based on density setting - 高密度で全体を表現
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 200000; break;    // 限界テスト用にさらに増加
-        case 'high': particleCount = 1000000; break;  // 限界テスト：100万粒子
-        default: particleCount = 500000; // medium    // 限界テスト用にさらに増加
+        case 'low': particleCount = 500000; break;     // 50万パーティクル
+        case 'high': particleCount = 3000000; break;   // 300万パーティクル
+        default: particleCount = 1500000; // medium    // 150万パーティクル
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -539,7 +565,11 @@ function resetCamera() {
 
 function updateParticleSize(value) {
     particleSize = parseFloat(value);
-    window.updatePointSize(value, panoramaParticles);
+    if (panoramaParticles && panoramaParticles.material) {
+        panoramaParticles.material.size = particleSize;
+        panoramaParticles.material.needsUpdate = true;
+        console.log(`✨ Particle size updated: ${particleSize}`);
+    }
 }
 
 function toggleBrightness() {
@@ -547,14 +577,41 @@ function toggleBrightness() {
 }
 
 function updateGlowIntensity(value) {
-    if (typeof window.updateGlowIntensity === 'function' && window.updateGlowIntensity !== updateGlowIntensity) {
-        window.updateGlowIntensity(value, panoramaParticles);
-    } else {
-        // Fallback: direct particle material update
-        if (panoramaParticles && panoramaParticles.material) {
-            panoramaParticles.material.opacity = Math.max(0.1, Math.min(1.0, value));
-            panoramaParticles.material.needsUpdate = true;
+    const glowValue = parseFloat(value) / 100; // Convert 0-100 to 0-1
+    
+    if (panoramaParticles && panoramaParticles.material) {
+        // Update material properties for glow effect
+        const baseBrightness = 1.0;
+        const glowBrightness = baseBrightness + (glowValue * 2.0); // Max 3x brightness
+        
+        // Create emissive-like effect by adjusting material properties
+        panoramaParticles.material.opacity = Math.min(1.0, 0.8 + glowValue * 0.2);
+        panoramaParticles.material.blending = glowValue > 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending;
+        
+        // Scale particles slightly for glow effect
+        const baseSize = particleSize;
+        panoramaParticles.material.size = baseSize * (1.0 + glowValue * 0.5);
+        
+        // Update colors to simulate glow
+        if (panoramaParticles.geometry.attributes.color) {
+            const colors = panoramaParticles.geometry.attributes.color.array;
+            const originalColors = panoramaParticles.geometry.userData.originalColors;
+            
+            // Store original colors if not already stored
+            if (!originalColors) {
+                panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
+            }
+            
+            // Apply brightness multiplication
+            for (let i = 0; i < colors.length; i++) {
+                colors[i] = Math.min(1.0, (originalColors ? originalColors[i] : colors[i]) * glowBrightness);
+            }
+            
+            panoramaParticles.geometry.attributes.color.needsUpdate = true;
         }
+        
+        panoramaParticles.material.needsUpdate = true;
+        console.log(`✨ Glow intensity updated: ${(glowValue * 100).toFixed(0)}%`);
     }
 }
 
@@ -686,27 +743,49 @@ function toggleMusic() {
 }
 
 function toggleAudioReactive() {
-    if (typeof window.toggleAudioReactive === 'function' && window.toggleAudioReactive !== toggleAudioReactive) {
-        window.toggleAudioReactive();
-    } else {
-        console.warn('🎵 Audio reactive system not available');
-        // Basic audio reactive fallback
-        if (panoramaAudioContext && panoramaAudioElement) {
-            console.log('🎵 Attempting basic audio reactive effects...');
-            // Simple volume-based particle effects
+    audioReactiveEnabled = !audioReactiveEnabled;
+    
+    const button = document.getElementById('audioReactiveToggle');
+    if (button) {
+        button.textContent = audioReactiveEnabled ? '🔊 Audio React ON' : '🔇 Audio React OFF';
+    }
+    
+    if (audioReactiveEnabled) {
+        // Initialize audio context if not already done
+        if (!audioContext) {
             try {
-                const source = panoramaAudioContext.createMediaElementSource(panoramaAudioElement);
-                const analyser = panoramaAudioContext.createAnalyser();
-                source.connect(analyser);
-                analyser.connect(panoramaAudioContext.destination);
-                
-                // Store for animation loop
-                window.audioAnalyser = analyser;
-                console.log('✅ Basic audio reactive effects enabled');
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                console.log('✅ Audio context created');
             } catch (error) {
-                console.warn('🎵 Audio reactive setup failed:', error);
+                console.error('❌ Failed to create audio context:', error);
+                audioReactiveEnabled = false;
+                return;
             }
         }
+        
+        // Setup music analyser if music is available
+        if (panoramaAudioElement && !musicAnalyser) {
+            try {
+                const source = audioContext.createMediaElementSource(panoramaAudioElement);
+                musicAnalyser = audioContext.createAnalyser();
+                musicAnalyser.fftSize = 2048;
+                musicAnalyser.smoothingTimeConstant = 0.8;
+                
+                source.connect(musicAnalyser);
+                musicAnalyser.connect(audioContext.destination);
+                
+                musicDataArray = new Uint8Array(musicAnalyser.frequencyBinCount);
+                console.log('✅ Music analyser connected');
+            } catch (error) {
+                console.warn('⚠️ Music analyser setup failed:', error);
+            }
+        }
+        
+        console.log('🎵 Audio reactive effects enabled');
+    } else {
+        // Reset visual effects when disabled
+        resetAudioEffects();
+        console.log('🔇 Audio reactive effects disabled');
     }
 }
 
@@ -731,10 +810,181 @@ function toggleMicrophone() {
     }
 }
 
+// Audio reactive effects functions
+function analyzeAudio() {
+    if (!audioReactiveEnabled) return;
+    
+    let dataArray = null;
+    let analyser = null;
+    
+    if (microphoneEnabled && micAnalyser) {
+        analyser = micAnalyser;
+        dataArray = micDataArray;
+    } else if (musicAnalyser && panoramaMusicPlaying) {
+        analyser = musicAnalyser;
+        dataArray = musicDataArray;
+    }
+    
+    if (!analyser || !dataArray) return;
+    
+    // Get frequency data
+    analyser.getByteFrequencyData(dataArray);
+    
+    // Calculate overall volume
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+    }
+    const averageVolume = sum / dataArray.length / 255;
+    currentVolumeLevel = currentVolumeLevel * volumeSmoothing + averageVolume * (1 - volumeSmoothing);
+    
+    // Analyze frequency bands
+    const sampleRate = audioContext.sampleRate;
+    const binCount = analyser.frequencyBinCount;
+    const binFrequency = sampleRate / (binCount * 2);
+    
+    // Bass: 60-250Hz
+    const bassStart = Math.floor(60 / binFrequency);
+    const bassEnd = Math.floor(250 / binFrequency);
+    let bassSum = 0;
+    for (let i = bassStart; i < bassEnd; i++) {
+        bassSum += dataArray[i];
+    }
+    frequencyBands.bass = bassSum / (bassEnd - bassStart) / 255;
+    
+    // Mid: 250-2000Hz
+    const midStart = Math.floor(250 / binFrequency);
+    const midEnd = Math.floor(2000 / binFrequency);
+    let midSum = 0;
+    for (let i = midStart; i < midEnd; i++) {
+        midSum += dataArray[i];
+    }
+    frequencyBands.mid = midSum / (midEnd - midStart) / 255;
+    
+    // Treble: 2000-8000Hz
+    const trebleStart = Math.floor(2000 / binFrequency);
+    const trebleEnd = Math.floor(8000 / binFrequency);
+    let trebleSum = 0;
+    for (let i = trebleStart; i < trebleEnd; i++) {
+        trebleSum += dataArray[i];
+    }
+    frequencyBands.treble = trebleSum / (trebleEnd - trebleStart) / 255;
+}
+
+function applyAudioReactiveEffects() {
+    if (!panoramaParticles || !audioReactiveEnabled) return;
+    
+    // Analyze audio
+    analyzeAudio();
+    
+    // Calculate effect intensities
+    const bassImpact = Math.pow(frequencyBands.bass, 1.5);
+    const midImpact = frequencyBands.mid;
+    const trebleImpact = Math.pow(frequencyBands.treble, 0.8);
+    const volumeImpact = Math.pow(currentVolumeLevel, 0.7);
+    
+    // Update effects with smooth transitions
+    const effectSpeed = 0.15;
+    currentEffects.sizeMultiplier += (1.0 + bassImpact * 0.5 - currentEffects.sizeMultiplier) * effectSpeed;
+    currentEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.0 - currentEffects.brightnessMultiplier) * effectSpeed;
+    currentEffects.colorIntensity += (midImpact * 2.0 - currentEffects.colorIntensity) * effectSpeed;
+    currentEffects.movementIntensity += (trebleImpact * 0.3 - currentEffects.movementIntensity) * effectSpeed;
+    
+    // Apply size effect
+    if (panoramaParticles.material) {
+        panoramaParticles.material.size = particleSize * currentEffects.sizeMultiplier;
+    }
+    
+    // Apply color effects
+    if (panoramaParticles.geometry.attributes.color) {
+        const colors = panoramaParticles.geometry.attributes.color.array;
+        const originalColors = panoramaParticles.geometry.userData.originalColors;
+        
+        if (!originalColors) {
+            panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
+        }
+        
+        const brightness = currentEffects.brightnessMultiplier;
+        const colorShift = currentEffects.colorIntensity;
+        
+        for (let i = 0; i < colors.length; i += 3) {
+            // Apply brightness and color shifting
+            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 0.3));     // R
+            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness);                   // G
+            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.2)); // B
+        }
+        
+        panoramaParticles.geometry.attributes.color.needsUpdate = true;
+    }
+    
+    // Apply movement effect (subtle position variations)
+    if (currentEffects.movementIntensity > 0.1 && panoramaParticles.geometry.attributes.position) {
+        const positions = panoramaParticles.geometry.attributes.position.array;
+        const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+        
+        if (!originalPositions) {
+            panoramaParticles.geometry.userData.originalPositions = new Float32Array(positions);
+        }
+        
+        const time = Date.now() * 0.001;
+        const movement = currentEffects.movementIntensity * 2.0;
+        
+        for (let i = 0; i < positions.length; i += 3) {
+            const offset = Math.sin(time * 2 + i * 0.01) * movement;
+            positions[i] = (originalPositions[i] || positions[i]) + offset;
+            positions[i + 1] = (originalPositions[i + 1] || positions[i + 1]) + offset * 0.5;
+            positions[i + 2] = (originalPositions[i + 2] || positions[i + 2]) + offset * 0.7;
+        }
+        
+        panoramaParticles.geometry.attributes.position.needsUpdate = true;
+    }
+}
+
+function resetAudioEffects() {
+    // Reset effect intensities
+    currentEffects.sizeMultiplier = 1.0;
+    currentEffects.brightnessMultiplier = 1.0;
+    currentEffects.colorIntensity = 0.0;
+    currentEffects.movementIntensity = 0.0;
+    
+    // Reset particle properties
+    if (panoramaParticles) {
+        if (panoramaParticles.material) {
+            panoramaParticles.material.size = particleSize;
+            panoramaParticles.material.needsUpdate = true;
+        }
+        
+        // Reset colors
+        if (panoramaParticles.geometry.attributes.color && panoramaParticles.geometry.userData.originalColors) {
+            const colors = panoramaParticles.geometry.attributes.color.array;
+            const originalColors = panoramaParticles.geometry.userData.originalColors;
+            
+            for (let i = 0; i < colors.length; i++) {
+                colors[i] = originalColors[i];
+            }
+            
+            panoramaParticles.geometry.attributes.color.needsUpdate = true;
+        }
+        
+        // Reset positions
+        if (panoramaParticles.geometry.attributes.position && panoramaParticles.geometry.userData.originalPositions) {
+            const positions = panoramaParticles.geometry.attributes.position.array;
+            const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+            
+            for (let i = 0; i < positions.length; i++) {
+                positions[i] = originalPositions[i];
+            }
+            
+            panoramaParticles.geometry.attributes.position.needsUpdate = true;
+        }
+    }
+}
+
 // Export music functions to global scope for HTML template
 window.toggleMusic = toggleMusic;
 window.toggleAudioReactive = toggleAudioReactive;
 window.toggleMicrophone = toggleMicrophone;
+window.updatePointSize = updateParticleSize;
 
 if (typeof setupMusic !== 'undefined') {
     window.setupMusic = setupMusic;
