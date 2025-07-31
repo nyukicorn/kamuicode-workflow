@@ -187,7 +187,7 @@ jobs:
           panorama_image_path: ${{ steps.setup.outputs.folder-name }}/images/generated-image.png
           output_directory: '${{ steps.setup.outputs.folder-name }}/assets'
           sphere_radius: '200'
-          depth_resolution: '1536x768'
+          depth_resolution: '3072x1536'  # PHASE 1: Double resolution for better particle density
           particle_density: ${{ inputs.particle-density }}
           depth_variation: '0.4'
           enable_pole_compression: 'true'
