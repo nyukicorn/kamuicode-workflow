@@ -556,7 +556,7 @@ function updateParticleSize(value) {
         const effectiveSize = particleSize * currentMultiplier;
         
         // Ensure minimum visible size and apply dramatic scaling - ENHANCED for 2M particles
-        const finalSize = Math.max(0.5, effectiveSize * 8.0); // DOUBLED: 8x multiplier for MAXIMUM visibility
+        const finalSize = Math.max(1.0, effectiveSize * 20.0); // MASSIVE: 20x multiplier for EXTREME visibility with 1M+ particles
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
         
@@ -584,13 +584,13 @@ function updateGlowIntensity(value) {
     const glowValue = parseFloat(value) / 100; // Convert 0-200 to 0-2 (now supports 200% glow)
     
     if (panoramaParticles && panoramaParticles.material) {
-        // Update material properties for glow effect - BALANCED for visibility
+        // Update material properties for glow effect - EXTREME for visibility
         const baseBrightness = 1.0;
-        const glowBrightness = baseBrightness + (glowValue * 0.8); // Max 1.8x brightness - prevent white washout
+        const glowBrightness = baseBrightness + (glowValue * 2.0); // Max 3.0x brightness - DRAMATIC glow effect
         
         // Create emissive-like effect by adjusting material properties
-        panoramaParticles.material.opacity = Math.min(1.0, 0.7 + glowValue * 0.3); // More dramatic opacity change
-        panoramaParticles.material.blending = glowValue > 0.3 ? THREE.AdditiveBlending : THREE.NormalBlending; // Lower threshold
+        panoramaParticles.material.opacity = Math.min(1.0, 0.6 + glowValue * 0.4); // ENHANCED dramatic opacity change
+        panoramaParticles.material.blending = glowValue > 0.1 ? THREE.AdditiveBlending : THREE.NormalBlending; // MUCH lower threshold for instant glow
         
         // Scale particles moderately for glow effect - BALANCED for visibility
         const baseSize = particleSize;
@@ -924,12 +924,12 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
     const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // NEW: Effects go from 0 to user setting (not from setting upward)
-    // This creates more dramatic "lights off → lights on" effect
-    panoramaEffects.sizeMultiplier = 0.3 + bassImpact * 0.7; // Size: 30% to 100% based on bass
-    panoramaEffects.brightnessMultiplier = 0.1 + volumeImpact * 0.9; // Brightness: 10% to 100% based on volume
-    panoramaEffects.colorIntensity = 0.5 + midImpact * 0.5; // Color: 50% to 100% based on mid
-    panoramaEffects.movementIntensity = 0.0 + trebleImpact * 1.0; // Movement: 0% to 100% based on treble
+    // EXTREME: Effects go from minimal to massive (very dramatic changes)
+    // This creates extremely dramatic "tiny dim → huge bright" effect
+    panoramaEffects.sizeMultiplier = 0.1 + bassImpact * 2.4; // Size: 10% to 250% based on bass (MASSIVE RANGE)
+    panoramaEffects.brightnessMultiplier = 0.05 + volumeImpact * 1.95; // Brightness: 5% to 200% based on volume (EXTREME RANGE)
+    panoramaEffects.colorIntensity = 0.2 + midImpact * 1.3; // Color: 20% to 150% based on mid (ENHANCED RANGE)
+    panoramaEffects.movementIntensity = 0.0 + trebleImpact * 1.5; // Movement: 0% to 150% based on treble (ENHANCED RANGE)
     
     // Add beat detection for dramatic pulses - now works within 0-1 range
     const currentBass = frequencyBands.bass;
@@ -947,7 +947,7 @@ function applyAudioReactiveEffects() {
         const beatMultiplier = audioReactiveEnabled ? (panoramaEffects.beatPulse || 1.0) : 1.0;
         const totalMultiplier = baseMultiplier * beatMultiplier;
         const effectiveSize = particleSize * totalMultiplier;
-        const finalSize = Math.max(0.5, effectiveSize * 8.0); // Same 8x multiplier as slider
+        const finalSize = Math.max(1.0, effectiveSize * 20.0); // Same 20x multiplier as slider
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
     }
@@ -1031,7 +1031,7 @@ function resetAudioEffects() {
             // FIXED: Apply the same 8x multiplier as everywhere else
             const currentSliderValue = document.getElementById('particleSize') ? 
                 parseFloat(document.getElementById('particleSize').value) : particleSize;
-            const finalSize = Math.max(0.5, currentSliderValue * 8.0); // Apply consistent 8x multiplier
+            const finalSize = Math.max(1.0, currentSliderValue * 20.0); // Apply consistent 20x multiplier
             panoramaParticles.material.size = finalSize;
             panoramaParticles.material.needsUpdate = true;
         }
@@ -1085,7 +1085,7 @@ setTimeout(() => {
     // Test the functions
     console.log('🔧 Testing particle size change...');
     if (typeof window.updateParticleSize === 'function') {
-        window.updateParticleSize(8.0); // Test with large size
+        window.updateParticleSize(10.0); // Test with MAXIMUM size (10.0 * 20x = 200 final size!)
     }
 }, 2000);
 

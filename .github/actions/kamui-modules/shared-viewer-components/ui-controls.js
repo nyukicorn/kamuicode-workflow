@@ -68,7 +68,7 @@ function updatePointSize(value, pointCloudObject) {
     if (pointCloudObject && pointCloudObject.material) {
         // Check if this is a panorama viewer with special scaling
         const isPanorama = typeof panoramaParticles !== 'undefined';
-        const finalSize = isPanorama ? Math.max(0.5, pointSize * 8.0) : pointSize; // 8x for panorama
+        const finalSize = isPanorama ? Math.max(1.0, pointSize * 20.0) : pointSize; // 20x for panorama (EXTREME visibility)
         pointCloudObject.material.size = finalSize;
         console.log(`📏 Point size updated to: ${pointSize} → final: ${finalSize} (panorama: ${isPanorama})`);
     }
