@@ -158,7 +158,8 @@ class PanoramaPLYGenerator {
                 const depthValue = depthData.data[depthIdx];
                 
                 // Skip only completely black areas (but allow sky/light areas)
-                if (depthValue < 1) continue;
+                // Note: Removed this condition to include more particles
+                // if (depthValue < 1) continue;
                 
                 // Convert to spherical coordinates with depth
                 const spherePos = this.equirectangularToSphere(

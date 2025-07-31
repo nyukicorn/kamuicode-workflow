@@ -930,20 +930,27 @@ function applyAudioReactiveEffects() {
     // Apply movement effect (subtle position variations)
     if (panoramaEffects.movementIntensity > 0.1 && panoramaParticles.geometry.attributes.position) {
         const positions = panoramaParticles.geometry.attributes.position.array;
-        const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+        let originalPositions = panoramaParticles.geometry.userData.originalPositions;
         
         if (!originalPositions) {
             panoramaParticles.geometry.userData.originalPositions = new Float32Array(positions);
+            originalPositions = panoramaParticles.geometry.userData.originalPositions;
         }
         
         const time = Date.now() * 0.001;
         const movement = panoramaEffects.movementIntensity * 2.0;
         
+        // Ensure originalPositions is properly initialized
+        if (!originalPositions || originalPositions.length === 0) {
+            console.warn('⚠️ originalPositions not initialized properly, skipping movement effect');
+            return;
+        }
+        
         for (let i = 0; i < positions.length; i += 3) {
             const offset = Math.sin(time * 2 + i * 0.01) * movement;
-            positions[i] = (originalPositions[i] || positions[i]) + offset;
-            positions[i + 1] = (originalPositions[i + 1] || positions[i + 1]) + offset * 0.5;
-            positions[i + 2] = (originalPositions[i + 2] || positions[i + 2]) + offset * 0.7;
+            positions[i] = originalPositions[i] + offset;
+            positions[i + 1] = originalPositions[i + 1] + offset * 0.5;
+            positions[i + 2] = originalPositions[i + 2] + offset * 0.7;
         }
         
         panoramaParticles.geometry.attributes.position.needsUpdate = true;
@@ -960,7 +967,10 @@ function resetAudioEffects() {
     // Reset particle properties
     if (panoramaParticles) {
         if (panoramaParticles.material) {
-            panoramaParticles.material.size = particleSize;
+            // Use current slider value, not the multiplied value
+            const currentSliderValue = document.getElementById('particleSize') ? 
+                parseFloat(document.getElementById('particleSize').value) : particleSize;
+            panoramaParticles.material.size = currentSliderValue;
             panoramaParticles.material.needsUpdate = true;
         }
         
