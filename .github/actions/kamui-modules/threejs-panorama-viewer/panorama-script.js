@@ -555,8 +555,8 @@ function updateParticleSize(value) {
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
         const effectiveSize = particleSize * currentMultiplier;
         
-        // Ensure minimum visible size and apply dramatic scaling
-        const finalSize = Math.max(0.1, effectiveSize * 2.0); // 2x multiplier for visibility
+        // Ensure minimum visible size and apply dramatic scaling - ENHANCED for 2M particles
+        const finalSize = Math.max(0.5, effectiveSize * 4.0); // 4x multiplier for better visibility with dense particles
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
         
@@ -577,19 +577,19 @@ function updateGlowIntensity(value) {
     const glowValue = parseFloat(value) / 100; // Convert 0-200 to 0-2 (now supports 200% glow)
     
     if (panoramaParticles && panoramaParticles.material) {
-        // Update material properties for glow effect - DRAMATICALLY ENHANCED
+        // Update material properties for glow effect - BALANCED for visibility
         const baseBrightness = 1.0;
-        const glowBrightness = baseBrightness + (glowValue * 4.0); // Max 5x brightness (was 3x)
+        const glowBrightness = baseBrightness + (glowValue * 1.5); // Max 2.5x brightness (reduced from 5x)
         
         // Create emissive-like effect by adjusting material properties
         panoramaParticles.material.opacity = Math.min(1.0, 0.7 + glowValue * 0.3); // More dramatic opacity change
         panoramaParticles.material.blending = glowValue > 0.3 ? THREE.AdditiveBlending : THREE.NormalBlending; // Lower threshold
         
-        // Scale particles MASSIVELY for glow effect - ULTRA ENHANCED
+        // Scale particles moderately for glow effect - BALANCED for visibility
         const baseSize = particleSize;
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        const glowSizeMultiplier = 1.0 + glowValue * 3.0; // 3x stronger size effect (was 1.2x)
-        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * 2.0; // Additional 2x base multiplier
+        const glowSizeMultiplier = 1.0 + glowValue * 1.2; // Moderate size effect (reduced from 3x)
+        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * 4.0; // 4x base multiplier for dense particles
         panoramaParticles.material.size = finalSize;
         
         // Update colors to simulate glow
