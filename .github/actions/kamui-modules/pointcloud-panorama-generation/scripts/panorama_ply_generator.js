@@ -57,7 +57,7 @@ class PanoramaPLYGenerator {
             baseRadius = isFinite(baseRadius) ? baseRadius : 200;
         }
         
-        // Convert normalized coordinates to spherical
+        // Convert normalized coordinates to spherical (standard equirectangular)
         const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
         const theta = v * Math.PI;             // Latitude: 0 to π
         
@@ -87,12 +87,14 @@ class PanoramaPLYGenerator {
             adjustedRadius = baseRadius;
         }
         
-        // Pole compression to reduce distortion
+        // DISABLED: Pole compression causes particle clustering issues
+        // Instead of compressing, we'll distribute particles more evenly
         if (this.options.enablePoleCompression) {
+            // Reversed logic: expand poles instead of compress for better distribution
             const poleWeight = Math.sin(theta); // 0 at poles, 1 at equator
             if (isFinite(poleWeight)) {
-                const compressionFactor = 0.9 + poleWeight * 0.1;
-                adjustedRadius *= compressionFactor;
+                const expansionFactor = 1.1 - poleWeight * 0.1; // Expand poles (1.1 at poles, 1.0 at equator)
+                adjustedRadius *= expansionFactor;
             }
         }
         

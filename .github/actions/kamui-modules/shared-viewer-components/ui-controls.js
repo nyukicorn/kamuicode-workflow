@@ -62,12 +62,15 @@ function setupControlsAutoHide() {
     console.log('🎛️ Modern auto-hide system initialized (YouTube/Netflix style)');
 }
 
-// Point size control
+// Point size control - ENHANCED for panorama compatibility
 function updatePointSize(value, pointCloudObject) {
     pointSize = parseFloat(value);
     if (pointCloudObject && pointCloudObject.material) {
-        pointCloudObject.material.size = pointSize;
-        console.log(`📏 Point size updated to: ${pointSize}`);
+        // Check if this is a panorama viewer with special scaling
+        const isPanorama = typeof panoramaParticles !== 'undefined';
+        const finalSize = isPanorama ? Math.max(0.5, pointSize * 8.0) : pointSize; // 8x for panorama
+        pointCloudObject.material.size = finalSize;
+        console.log(`📏 Point size updated to: ${pointSize} → final: ${finalSize} (panorama: ${isPanorama})`);
     }
 }
 

@@ -586,7 +586,7 @@ function updateGlowIntensity(value) {
     if (panoramaParticles && panoramaParticles.material) {
         // Update material properties for glow effect - BALANCED for visibility
         const baseBrightness = 1.0;
-        const glowBrightness = baseBrightness + (glowValue * 1.5); // Max 2.5x brightness (reduced from 5x)
+        const glowBrightness = baseBrightness + (glowValue * 0.8); // Max 1.8x brightness - prevent white washout
         
         // Create emissive-like effect by adjusting material properties
         panoramaParticles.material.opacity = Math.min(1.0, 0.7 + glowValue * 0.3); // More dramatic opacity change
@@ -609,10 +609,11 @@ function updateGlowIntensity(value) {
                 panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
             }
             
-            // Apply brightness multiplication - ULTRA ENHANCED
+            // Apply brightness with gamma correction - prevent white washout
+            const gamma = 1.0 / (0.6 + glowValue * 0.4); // Dynamic gamma from 1.67 to 1.0
             for (let i = 0; i < colors.length; i++) {
                 const originalColor = originalColors ? originalColors[i] : colors[i];
-                colors[i] = Math.min(1.0, originalColor * glowBrightness);
+                colors[i] = Math.pow(originalColor, gamma);
             }
             
             panoramaParticles.geometry.attributes.color.needsUpdate = true;
