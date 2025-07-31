@@ -183,16 +183,31 @@ class PanoramaPLYGenerator {
                 const b = imageData.data[colorIdx + 2] || 128;
                 const a = imageData.data[colorIdx + 3] || 255;
                 
-                // Skip only completely transparent pixels - RELAXED condition for more particles
-                if (a < 10) continue; // Changed from 32 to 10 to include more semi-transparent areas
+                // ENHANCED: Include black space areas (universe/sky) as particles
+                // Skip only completely transparent pixels, but KEEP all color values including pure black (0,0,0)
+                if (a < 5) continue; // Ultra-relaxed transparency threshold
+                
+                // For pure black areas (space/universe), give them a subtle blue tint for visibility
+                let finalR = r, finalG = g, finalB = b;
+                if (r === 0 && g === 0 && b === 0) {
+                    // Pure black becomes dark space blue with stars effect
+                    finalR = Math.random() < 0.1 ? 40 : 5;  // Occasional bright spots (stars)
+                    finalG = Math.random() < 0.1 ? 60 : 10; // Deep space blue
+                    finalB = Math.random() < 0.1 ? 100 : 25; // Blue space tint
+                } else if (r < 20 && g < 20 && b < 20) {
+                    // Very dark areas become subtle space gradients
+                    finalR = Math.max(r, 8);
+                    finalG = Math.max(g, 15);
+                    finalB = Math.max(b, 30);
+                }
                 
                 points.push({
                     x: spherePos.x,
                     y: spherePos.y,
                     z: spherePos.z,
-                    r: r,
-                    g: g,
-                    b: b
+                    r: finalR,
+                    g: finalG,
+                    b: finalB
                 });
                 
                 processedPixels++;

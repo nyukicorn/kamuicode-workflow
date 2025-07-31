@@ -923,12 +923,12 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
     const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // Update effects with smooth transitions - ENHANCED but SUBTLE for natural look
-    const effectSpeed = 0.3; // Moderate response speed
-    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 2.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // Strong but not extreme
-    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.5 - panoramaEffects.brightnessMultiplier) * effectSpeed; // Moderate brightness boost
-    panoramaEffects.colorIntensity += (midImpact * 1.0 - panoramaEffects.colorIntensity) * effectSpeed; // Subtle color enhancement
-    panoramaEffects.movementIntensity += (trebleImpact * 1.0 - panoramaEffects.movementIntensity) * effectSpeed; // Moderate movement
+    // Update effects with smooth transitions - ULTRA ENHANCED for maximum visibility in dense particles
+    const effectSpeed = 0.5; // Faster response for more dramatic effects
+    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 5.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // MASSIVE bass response (5x)
+    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 8.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // EXTREME brightness boost (8x)
+    panoramaEffects.colorIntensity += (midImpact * 3.0 - panoramaEffects.colorIntensity) * effectSpeed; // Strong color pulsing (3x)
+    panoramaEffects.movementIntensity += (trebleImpact * 2.0 - panoramaEffects.movementIntensity) * effectSpeed; // Double movement response
     
     // Apply size effect
     if (panoramaParticles.material) {
