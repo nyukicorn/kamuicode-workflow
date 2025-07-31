@@ -556,15 +556,22 @@ function updateParticleSize(value) {
         const effectiveSize = particleSize * currentMultiplier;
         
         // Ensure minimum visible size and apply dramatic scaling - ENHANCED for 2M particles
-        const finalSize = Math.max(0.5, effectiveSize * 4.0); // 4x multiplier for better visibility with dense particles
+        const finalSize = Math.max(0.5, effectiveSize * 8.0); // DOUBLED: 8x multiplier for MAXIMUM visibility
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
         
+        // FORCE the material to update immediately
+        panoramaParticles.material.uniformsNeedUpdate = true;
+        
         console.log(`✨ Particle size updated: ${particleSize} → effective: ${effectiveSize} → final: ${finalSize}`);
         
-        // Force render update
+        // Force render update multiple times
         if (typeof renderer !== 'undefined') {
             renderer.render(scene, camera);
+            // Force immediate second render
+            requestAnimationFrame(() => {
+                renderer.render(scene, camera);
+            });
         }
     }
 }
@@ -916,12 +923,12 @@ function applyAudioReactiveEffects() {
     const trebleImpact = Math.pow(frequencyBands.treble, 0.6); // More sensitive to treble
     const volumeImpact = Math.pow(currentVolumeLevel, 0.5); // Much more sensitive to volume changes
     
-    // Update effects with smooth transitions - ULTRA ENHANCED for clear visibility
-    const effectSpeed = 0.4; // Much faster response (was 0.25)
-    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 3.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // 2x stronger bass response
-    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 6.0 - panoramaEffects.brightnessMultiplier) * effectSpeed; // 1.5x stronger brightness
-    panoramaEffects.colorIntensity += (midImpact * 5.0 - panoramaEffects.colorIntensity) * effectSpeed; // Much stronger color shift
-    panoramaEffects.movementIntensity += (trebleImpact * 1.5 - panoramaEffects.movementIntensity) * effectSpeed; // Nearly 2x stronger movement
+    // Update effects with smooth transitions - ENHANCED but SUBTLE for natural look
+    const effectSpeed = 0.3; // Moderate response speed
+    panoramaEffects.sizeMultiplier += (1.0 + bassImpact * 2.0 - panoramaEffects.sizeMultiplier) * effectSpeed; // Strong but not extreme
+    panoramaEffects.brightnessMultiplier += (1.0 + volumeImpact * 2.5 - panoramaEffects.brightnessMultiplier) * effectSpeed; // Moderate brightness boost
+    panoramaEffects.colorIntensity += (midImpact * 1.0 - panoramaEffects.colorIntensity) * effectSpeed; // Subtle color enhancement
+    panoramaEffects.movementIntensity += (trebleImpact * 1.0 - panoramaEffects.movementIntensity) * effectSpeed; // Moderate movement
     
     // Apply size effect
     if (panoramaParticles.material) {
@@ -941,10 +948,15 @@ function applyAudioReactiveEffects() {
         const colorShift = panoramaEffects.colorIntensity;
         
         for (let i = 0; i < colors.length; i += 3) {
-            // Apply brightness and color shifting - ULTRA ENHANCED for maximum visibility
-            colors[i] = Math.min(1.0, (originalColors[i] || colors[i]) * brightness * (1.0 + colorShift * 1.0));     // R - Much stronger red boost
-            colors[i + 1] = Math.min(1.0, (originalColors[i + 1] || colors[i + 1]) * brightness * (1.0 + colorShift * 0.3)); // G - Moderate boost
-            colors[i + 2] = Math.min(1.0, (originalColors[i + 2] || colors[i + 2]) * brightness * (1.0 - colorShift * 0.8)); // B - Much stronger blue reduction
+            // Apply subtle enhancement that preserves original colors - BALANCED approach
+            const originalColor = originalColors ? originalColors[i] : colors[i];
+            const originalColorG = originalColors ? originalColors[i + 1] : colors[i + 1];
+            const originalColorB = originalColors ? originalColors[i + 2] : colors[i + 2];
+            
+            // Only enhance brightness, preserve color balance (no yellow tint)
+            colors[i] = Math.min(1.0, originalColor * brightness);         // R - Only brightness
+            colors[i + 1] = Math.min(1.0, originalColorG * brightness);   // G - Only brightness  
+            colors[i + 2] = Math.min(1.0, originalColorB * brightness);   // B - Only brightness
         }
         
         panoramaParticles.geometry.attributes.color.needsUpdate = true;
