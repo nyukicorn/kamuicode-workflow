@@ -193,7 +193,7 @@ jobs:
           enable_pole_compression: 'true'
           depth_inversion: 'false'
 
-      - name: Create Immersive 360° Panorama Pointcloud Viewer
+      - name: Create Immersive 360° Panorama Pointcloud Viewer (sphereRadius=200 fixed)
         id: immersive-viewer
         uses: ./.github/actions/kamui-modules/threejs-panorama-viewer
         with:
