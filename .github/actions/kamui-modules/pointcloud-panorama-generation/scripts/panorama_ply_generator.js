@@ -87,15 +87,10 @@ class PanoramaPLYGenerator {
             adjustedRadius = baseRadius;
         }
         
-        // Pole distribution adjustment - keep particles closer to preserve sky/top areas
-        if (this.options.enablePoleCompression) {
-            // Modified: slight compression at poles to prevent overflow after scaling
-            const poleWeight = Math.sin(theta); // 0 at poles, 1 at equator
-            if (isFinite(poleWeight)) {
-                // Compress poles slightly (0.95 at poles, 1.0 at equator) to ensure they stay within range
-                const compressionFactor = 0.95 + poleWeight * 0.05;
-                adjustedRadius *= compressionFactor;
-            }
+        // DISABLED: Pole compression to preserve natural distribution
+        // Keeping original sphere structure without pole adjustments
+        if (this.options.enablePoleCompression && false) {
+            // Disabled - pole compression was affecting visual quality
         }
         
         // CRITICAL FIX: Scale radius range to fit within sphere while preserving depth variation
@@ -106,9 +101,9 @@ class PanoramaPLYGenerator {
         const originalMax = baseRadius + radiusVariation; // 240
         const normalizedDepth = (adjustedRadius - originalMin) / (originalMax - originalMin);
         
-        // Then scale to desired range (120-195) - adjusted to reduce center void and preserve sky
-        const targetMin = 120;  // Increased from 50 to reduce center void
-        const targetMax = 195;  // Increased from 190 to better accommodate sky/poles
+        // Scale to original wider range for natural depth and beauty
+        const targetMin = 80;   // Allow closer particles for depth variety
+        const targetMax = 280;  // Allow farther particles for natural panorama
         adjustedRadius = targetMin + normalizedDepth * (targetMax - targetMin);
         
         // Safety clamp (should not be needed but just in case)
