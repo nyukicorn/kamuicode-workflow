@@ -82,9 +82,9 @@ class PanoramaPLYGenerator {
         const radiusVariation = baseRadius * this.options.depthVariation;
         let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
         
-        // CRITICAL FIX: Ensure ALL particles stay within sphere bounds
-        // Clamp radius to sphere interior (camera at 60, sphere at 200)
-        adjustedRadius = Math.min(baseRadius, adjustedRadius);
+        // CRITICAL FIX: Clamp particles within sphere bounds while preserving depth
+        // Allow natural depth distribution but cap at sphere boundary (radius 200)
+        adjustedRadius = Math.min(200, adjustedRadius);
         
         // Ensure radius is valid
         if (!isFinite(adjustedRadius) || adjustedRadius <= 0) {
