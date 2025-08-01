@@ -136,15 +136,14 @@ function createDepthEnhancedParticleSystem(geometry) {
     const positions = geometry.attributes.position;
     const colors = geometry.attributes.color;
     
-    // Calculate sphere bounds for camera adjustment
-    geometry.computeBoundingSphere();
-    if (geometry.boundingSphere) {
-        sphereRadius = geometry.boundingSphere.radius;
-        console.log(`📏 Detected sphere radius: ${sphereRadius.toFixed(2)}`);
-        
-        // Adjust camera constraints based on actual sphere size
-        controls.maxDistance = sphereRadius - 20;
-    }
+    // CRITICAL FIX: Use fixed sphere radius instead of boundingSphere calculation
+    // PLY particles are already constrained to radius 200, but boundingSphere 
+    // calculation returns incorrect huge values causing coordinate scaling issues
+    sphereRadius = 200;
+    console.log(`📏 Using fixed sphere radius: ${sphereRadius} (boundingSphere calculation disabled)`);
+    
+    // Adjust camera constraints based on fixed sphere size
+    controls.maxDistance = sphereRadius - 20; // 180
     
     // Add depth visualization if enabled
     if (enableDepthVisualization && colors) {
