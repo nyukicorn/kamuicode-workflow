@@ -2,11 +2,13 @@
 // Uses shared components for camera, UI, audio, and mouse interaction
 // Implements PLY loading with depth information from pointcloud-panorama-generation
 
-// Global variables (panorama specific)
-let panoramaParticles = null;
+// Global variables (panorama specific) - DUAL SPHERE ARCHITECTURE
+let innerSphereParticles = null; // Deep PLY pointcloud (radius ~200)
+let outerSphereParticles = null; // Panorama image pointcloud (radius ~400)
 let panoramaTexture = null;
 let lights = null;
-let sphereRadius = 200;
+let innerSphereRadius = 200;
+let outerSphereRadius = 400;
 
 // Use shared audio variables from audio-reactive-system.js
 // These variables are already declared in the shared component
@@ -50,10 +52,10 @@ function init() {
     // 360度パノラマ用にカメラ制約を調整
     const optimalViewingDistance = sphereRadius * 0.3; // 球体半径の30%の位置
     
-    // Configure controls for panoramic experience
-    controls.enablePan = false; // Disable panning for true panoramic experience
-    controls.minDistance = 5;   // Minimum zoom in
-    controls.maxDistance = sphereRadius - 20; // Maximum zoom out (stay inside sphere)
+    // Configure controls for dual sphere exploration - UNLIMITED MOVEMENT
+    controls.enablePan = true;  // Enable panning for full 3D exploration
+    controls.minDistance = 1;   // Very close inspection
+    controls.maxDistance = outerSphereRadius * 3; // Allow far outside view (1200 units)
     
     // 360度パノラマ用の初期カメラ位置を最適化
     camera.position.set(0, 0, optimalViewingDistance);
@@ -136,25 +138,25 @@ function createDepthEnhancedParticleSystem(geometry) {
     const positions = geometry.attributes.position;
     const colors = geometry.attributes.color;
     
-    // Calculate bounding sphere for proper scale
+    // Calculate bounding sphere for inner sphere (PLY data)
     geometry.computeBoundingSphere();
-    sphereRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : 200;
-    console.log(`📏 Calculated sphere radius: ${sphereRadius}`);
+    innerSphereRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : 200;
+    console.log(`📏 Inner sphere radius: ${innerSphereRadius}`);
     
-    // Adjust camera constraints to allow free movement
-    controls.maxDistance = sphereRadius * 2; // Allow moving outside for better view
+    // Camera constraints already set for dual sphere exploration
     
-    // Create background panorama sphere if image exists (for context)
+    // DUAL SPHERE: Create outer sphere from panorama image as pointcloud
     const imagePath = 'assets/panorama-image.png';
     const loader = new THREE.TextureLoader();
     loader.load(imagePath, 
         function(texture) {
-            console.log('🖼️ Loading background panorama image for context...');
-            createBackgroundPanoramaSphere(texture);
+            console.log('🌐 Creating outer sphere pointcloud from panorama image...');
+            createOuterSpherePointcloud(texture);
         },
         undefined,
         function(error) {
-            console.log('📝 Background panorama image not found (normal for PLY-only mode)');
+            console.log('📝 Panorama image not found, creating outer sphere from fallback pattern');
+            createOuterSphereFallback();
         }
     );
     
@@ -163,27 +165,27 @@ function createDepthEnhancedParticleSystem(geometry) {
         enhanceDepthVisualization(positions, colors);
     }
     
-    // Create particle system using shared component - 360度パノラマ用に最適化
-    panoramaParticles = createParticleSystem(geometry, {
-        size: particleSize,
+    // Create inner sphere particle system - 内側球体（深度情報付き）
+    innerSphereParticles = createParticleSystem(geometry, {
+        size: particleSize * 0.8,  // Slightly smaller for inner sphere
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.95,  // 不透明度を上げて見やすく
+        opacity: 0.95,
         vertexColors: true,
         blending: THREE.AdditiveBlending
     });
     
-    scene.add(panoramaParticles);
+    scene.add(innerSphereParticles);
     
-    // Initialize mouse interaction with the panorama
-    initializeMouseInteraction(panoramaParticles, camera);
+    // Initialize mouse interaction with inner sphere
+    initializeMouseInteraction(innerSphereParticles, camera);
     
     // Update UI with statistics
-    updateStatsDisplay(panoramaParticles);
+    updateStatsDisplay(innerSphereParticles);
     hideLoadingIndicator();
     
-    console.log(`✅ Depth-enhanced panorama created: ${positions.count.toLocaleString()} particles`);
-    console.log(`Sphere radius: ${sphereRadius}, Camera at center`);
+    console.log(`✅ Inner sphere created: ${positions.count.toLocaleString()} particles`);
+    console.log(`Inner sphere radius: ${innerSphereRadius}`);
 }
 
 function enhanceDepthVisualization(positions, colors) {
@@ -534,21 +536,27 @@ function animate() {
     // Update camera controls (shared component)
     updateCameraControls();
     
-    // Apply mouse gravity effect (shared component)
-    if (panoramaParticles) {
-        applyMouseGravity(panoramaParticles);
+    // Apply mouse gravity effect to both spheres
+    if (innerSphereParticles) {
+        applyMouseGravity(innerSphereParticles);
+    }
+    if (outerSphereParticles) {
+        applyMouseGravity(outerSphereParticles);
     }
     
-    // Apply audio-reactive effects (shared component) - 60fps for maximum immersion
-    if ((audioReactiveEnabled || microphoneEnabled) && panoramaParticles) {
+    // Apply audio-reactive effects to both spheres - 60fps for maximum immersion
+    if ((audioReactiveEnabled || microphoneEnabled) && (innerSphereParticles || outerSphereParticles)) {
         applyAudioReactiveEffects();
         // Apply frequency-based color mixing
         applyFrequencyColorMixing();
     }
     
-    // Update particle system effects (shared component)
-    if (panoramaParticles) {
-        updateParticleSystem(panoramaParticles, camera, lights.ambientLight, lights.directionalLight);
+    // Update particle system effects for both spheres
+    if (innerSphereParticles) {
+        updateParticleSystem(innerSphereParticles, camera, lights.ambientLight, lights.directionalLight);
+    }
+    if (outerSphereParticles) {
+        updateParticleSystem(outerSphereParticles, camera, lights.ambientLight, lights.directionalLight);
     }
     
     // Render scene (shared component)
@@ -566,36 +574,41 @@ function resetCamera() {
 
 function updateParticleSize(value) {
     particleSize = parseFloat(value);
-    if (panoramaParticles && panoramaParticles.material) {
-        // Apply size with current audio effect multiplier - ENHANCED for dramatic visibility
+    
+    // Update inner sphere
+    if (innerSphereParticles && innerSphereParticles.material) {
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
         const effectiveSize = particleSize * currentMultiplier;
         
-        // ADAPTIVE: Adjust multiplier based on particle count for optimal visibility (reduced range)
-        const particleCount = panoramaParticles.geometry.attributes.position.count;
+        // ADAPTIVE: Adjust multiplier based on particle count for optimal visibility
+        const particleCount = innerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        // 100万→6倍、150万→5倍、250万→3倍、500万→2倍（最小値）
         
-        // Ensure minimum visible size and apply adaptive scaling
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier);
-        panoramaParticles.material.size = finalSize;
-        panoramaParticles.material.needsUpdate = true;
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 0.8); // Smaller for inner
+        innerSphereParticles.material.size = finalSize;
+        innerSphereParticles.material.needsUpdate = true;
         
-        console.log(`📏 Adaptive particle size: ${particleCount.toLocaleString()} particles → ${adaptiveMultiplier}x multiplier`);
+        console.log(`📏 Inner sphere size: ${particleCount.toLocaleString()} particles → ${finalSize.toFixed(2)}`);
+    }
+    
+    // Update outer sphere
+    if (outerSphereParticles && outerSphereParticles.material) {
+        const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
+        const effectiveSize = particleSize * currentMultiplier;
         
-        // FORCE the material to update immediately
-        panoramaParticles.material.uniformsNeedUpdate = true;
+        const particleCount = outerSphereParticles.geometry.attributes.position.count;
+        const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
         
-        console.log(`✨ Particle size updated: ${particleSize} → effective: ${effectiveSize} → final: ${finalSize}`);
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 1.2); // Larger for outer
+        outerSphereParticles.material.size = finalSize;
+        outerSphereParticles.material.needsUpdate = true;
         
-        // Force render update multiple times
-        if (typeof renderer !== 'undefined') {
-            renderer.render(scene, camera);
-            // Force immediate second render
-            requestAnimationFrame(() => {
-                renderer.render(scene, camera);
-            });
-        }
+        console.log(`📏 Outer sphere size: ${particleCount.toLocaleString()} particles → ${finalSize.toFixed(2)}`);
+    }
+    
+    // Force render update
+    if (typeof renderer !== 'undefined') {
+        renderer.render(scene, camera);
     }
 }
 
@@ -712,26 +725,147 @@ window.toggleAudioMode = window.toggleAudioMode || (() => console.warn('Audio mo
 window.toggleDynamicMode = window.toggleDynamicMode || (() => console.warn('Dynamic mode function not loaded'));
 
 // Create background panorama sphere for immersive experience
-function createBackgroundPanoramaSphere(texture) {
-    console.log('🌐 Creating background panorama sphere...');
+// DUAL SPHERE: Create outer sphere pointcloud from panorama image
+function createOuterSpherePointcloud(texture) {
+    console.log('🌐 Creating outer sphere pointcloud from panorama image...');
     
-    // Create sphere geometry (large radius, facing inward)
-    const sphereGeometry = new THREE.SphereGeometry(sphereRadius * 2, 64, 32);
+    const img = texture.image;
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
     
-    // Create material with panorama texture
-    const sphereMaterial = new THREE.MeshBasicMaterial({
-        map: texture,
-        side: THREE.BackSide // Important: render on inside faces
+    // Higher resolution for outer sphere
+    const analysisWidth = 1024;
+    const analysisHeight = 512;
+    canvas.width = analysisWidth;
+    canvas.height = analysisHeight;
+    
+    // Draw image to canvas for pixel analysis
+    ctx.drawImage(img, 0, 0, analysisWidth, analysisHeight);
+    const imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight);
+    const pixels = imageData.data;
+    
+    // High particle count for outer sphere beauty
+    const targetParticleCount = 2000000; // 200万パーティクル
+    const totalPixels = analysisWidth * analysisHeight;
+    const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
+    
+    const positions = [];
+    const colors = [];
+    
+    console.log(`🎯 Outer sphere target: ${targetParticleCount.toLocaleString()} particles`);
+    
+    for (let y = 0; y < analysisHeight; y++) {
+        for (let x = 0; x < analysisWidth; x++) {
+            // Sample based on density
+            if (Math.random() > samplingRate) continue;
+            
+            // Convert to normalized coordinates (0-1)
+            const u = x / analysisWidth;
+            const v = y / analysisHeight;
+            
+            // Convert to spherical coordinates (standard equirectangular)
+            const phi = u * 2 * Math.PI;           // Longitude: 0 to 2π
+            const theta = v * Math.PI;             // Latitude: 0 to π
+            
+            // Get pixel color
+            const pixelIndex = (y * analysisWidth + x) * 4;
+            const r = pixels[pixelIndex] / 255;
+            const g = pixels[pixelIndex + 1] / 255;
+            const b = pixels[pixelIndex + 2] / 255;
+            const alpha = pixels[pixelIndex + 3] / 255;
+            
+            // Skip transparent pixels
+            if (alpha < 0.1) continue;
+            
+            // Convert to Cartesian coordinates on outer sphere
+            const sinTheta = Math.sin(theta);
+            const cosTheta = Math.cos(theta);
+            const cosPhi = Math.cos(phi);
+            const sinPhi = Math.sin(phi);
+            
+            const x3d = outerSphereRadius * sinTheta * cosPhi;
+            const y3d = outerSphereRadius * cosTheta;
+            const z3d = outerSphereRadius * sinTheta * sinPhi;
+            
+            positions.push(x3d, y3d, z3d);
+            
+            // Enhanced colors for outer sphere
+            const enhancementFactor = 1.1;
+            colors.push(
+                Math.min(1.0, r * enhancementFactor),
+                Math.min(1.0, g * enhancementFactor),
+                Math.min(1.0, b * enhancementFactor)
+            );
+        }
+    }
+    
+    // Create geometry for outer sphere
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
+    geometry.computeBoundingSphere();
+    
+    // Create outer sphere particle system
+    outerSphereParticles = createParticleSystem(geometry, {
+        size: particleSize * 1.2,  // Slightly larger for outer sphere
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.8,  // Slightly transparent for layering effect
+        vertexColors: true,
+        blending: THREE.NormalBlending
     });
     
-    // Create the background sphere mesh
-    const backgroundSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    backgroundSphere.name = 'backgroundPanorama';
+    scene.add(outerSphereParticles);
     
-    // Add to scene
-    scene.add(backgroundSphere);
+    console.log(`✅ Outer sphere created: ${positions.length / 3} particles`);
+    console.log(`Outer sphere radius: ${outerSphereRadius}`);
+}
+
+// DUAL SPHERE: Fallback outer sphere creation
+function createOuterSphereFallback() {
+    console.log('🧪 Creating fallback outer sphere pointcloud...');
     
-    console.log('✅ Background panorama sphere created');
+    const particleCount = 100000;
+    const positions = new Float32Array(particleCount * 3);
+    const colors = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+        // Uniform distribution on outer sphere
+        const u = Math.random();
+        const v = Math.random();
+        
+        const phi = u * 2 * Math.PI;
+        const theta = Math.acos(2 * v - 1);
+        
+        const x = outerSphereRadius * Math.sin(theta) * Math.cos(phi);
+        const y = outerSphereRadius * Math.cos(theta);
+        const z = outerSphereRadius * Math.sin(theta) * Math.sin(phi);
+        
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+        
+        // Cosmic colors for fallback
+        colors[i * 3] = 0.3 + Math.random() * 0.7;     // R
+        colors[i * 3 + 1] = 0.2 + Math.random() * 0.6; // G  
+        colors[i * 3 + 2] = 0.5 + Math.random() * 0.5; // B
+    }
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    
+    outerSphereParticles = createParticleSystem(geometry, {
+        size: particleSize * 1.2,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.8,
+        vertexColors: true
+    });
+    
+    scene.add(outerSphereParticles);
+    
+    console.log(`✅ Fallback outer sphere created: ${particleCount} particles`);
 }
 
 // Basic audio system initialization
