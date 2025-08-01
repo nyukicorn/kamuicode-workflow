@@ -21,8 +21,8 @@ let panoramaEffects = {
     movementIntensity: 0.0
 };
 
-// Panorama configuration - 360度パノラマ用に最適化 - MICROSCOPIC for art quality
-let particleSize = 0.15; // MICROSCOPIC particles (0.8→0.15) to eliminate paper confetti effect
+// Panorama configuration - 360度パノラマ用に最適化 - NANO-SCALE for true art
+let particleSize = 0.08; // NANO particles (0.15→0.08) for ultra-fine pointcloud art
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -180,6 +180,20 @@ function createDepthEnhancedParticleSystem(geometry) {
         
         console.log(`🚀 Particle decimation: ${currentParticleCount.toLocaleString()} -> ${(newPositions.length/3).toLocaleString()} (${(reductionFactor*100).toFixed(1)}%)`);
     }
+    
+    // ANTI-GRID: Add random scatter to eliminate grid-like arrangement
+    const finalPositions = geometry.attributes.position.array;
+    const scatterStrength = innerSphereRadius * 0.02; // 2% scatter for natural distribution
+    
+    for (let i = 0; i < finalPositions.length; i += 3) {
+        // Add small random offset to break grid patterns
+        finalPositions[i] += (Math.random() - 0.5) * scatterStrength;     // x
+        finalPositions[i + 1] += (Math.random() - 0.5) * scatterStrength; // y  
+        finalPositions[i + 2] += (Math.random() - 0.5) * scatterStrength; // z
+    }
+    
+    geometry.attributes.position.needsUpdate = true;
+    console.log(`🎲 Applied random scatter (${scatterStrength.toFixed(2)} units) to eliminate grid patterns`);
     
     // Camera constraints already set for dual sphere exploration
     
@@ -825,12 +839,13 @@ function createOuterSpherePointcloud(texture) {
             const brightness = (r + g + b) / 3; // Average brightness as depth info
             const depthValue = brightness * 255; // Convert back to 0-255 range for depth calculation
             
-            // Apply spherical depth transformation (same logic as inner sphere)
+            // Apply INVERTED spherical depth for cosmic/space scenes (bright=far, dark=near)
             let processedDepth = depthValue / 255.0; // Normalize to 0-1
-            if (processedDepth === 0) {
-                processedDepth = 0.9; // Dark areas = distant background
-            } else if (processedDepth < 0.02) {
-                processedDepth = 0.8; // Very dark = distant
+            processedDepth = 1.0 - processedDepth; // INVERT: bright areas become distant
+            if (processedDepth === 1.0) {
+                processedDepth = 0.9; // Pure black areas = slightly closer
+            } else if (processedDepth > 0.98) {
+                processedDepth = 0.8; // Very dark = closer to viewer
             }
             
             // Calculate depth-based radius for outer sphere
