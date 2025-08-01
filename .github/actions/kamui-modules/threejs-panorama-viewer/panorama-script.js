@@ -8,7 +8,7 @@ let outerSphereParticles = null; // Panorama image pointcloud (radius ~400)
 let panoramaTexture = null;
 let lights = null;
 let innerSphereRadius = 200;
-let outerSphereRadius = 400;
+let outerSphereRadius = 600; // Increased for better separation
 
 // Use shared audio variables from audio-reactive-system.js
 // These variables are already declared in the shared component
@@ -55,7 +55,7 @@ function init() {
     // Configure controls for dual sphere exploration - UNLIMITED MOVEMENT
     controls.enablePan = true;  // Enable panning for full 3D exploration
     controls.minDistance = 1;   // Very close inspection
-    controls.maxDistance = outerSphereRadius * 3; // Allow far outside view (1200 units)
+    controls.maxDistance = outerSphereRadius * 2; // Allow far outside view (1200 units)
     
     // 360度パノラマ用の初期カメラ位置を最適化
     camera.position.set(0, 0, optimalViewingDistance);
@@ -584,7 +584,7 @@ function updateParticleSize(value) {
         const particleCount = innerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
         
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 0.8); // Smaller for inner
+        const finalSize = Math.max(0.5, effectiveSize * adaptiveMultiplier * 0.4); // Much smaller for finer detail
         innerSphereParticles.material.size = finalSize;
         innerSphereParticles.material.needsUpdate = true;
         
@@ -599,7 +599,7 @@ function updateParticleSize(value) {
         const particleCount = outerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
         
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 1.2); // Larger for outer
+        const finalSize = Math.max(0.5, effectiveSize * adaptiveMultiplier * 0.6); // Smaller for finer detail
         outerSphereParticles.material.size = finalSize;
         outerSphereParticles.material.needsUpdate = true;
         
@@ -632,7 +632,7 @@ function updateGlowIntensity(value) {
         const glowSizeMultiplier = 1.0 + glowValue * 0.8;
         const particleCount = sphere.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        const sizeMultiplier = index === 0 ? 0.8 : 1.2; // Inner vs outer
+        const sizeMultiplier = index === 0 ? 0.4 : 0.6; // Much smaller particles
         const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * adaptiveMultiplier * sizeMultiplier;
         sphere.material.size = finalSize;
         
@@ -750,8 +750,8 @@ function createOuterSpherePointcloud(texture) {
     const imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight);
     const pixels = imageData.data;
     
-    // High particle count for outer sphere beauty
-    const targetParticleCount = 2000000; // 200万パーティクル
+    // ULTRA HIGH particle count for outer sphere beauty and density
+    const targetParticleCount = 3000000; // 300万パーティクル (increased for finer detail)
     const totalPixels = analysisWidth * analysisHeight;
     const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
     
@@ -795,12 +795,13 @@ function createOuterSpherePointcloud(texture) {
             
             positions.push(x3d, y3d, z3d);
             
-            // Enhanced colors for outer sphere
-            const enhancementFactor = 1.1;
+            // ENHANCED colors for outer sphere - MUCH brighter and more vibrant
+            const enhancementFactor = 2.0; // Doubled brightness boost
+            const gammaCorrection = 0.8; // Increase contrast (lower gamma = more contrast)
             colors.push(
-                Math.min(1.0, r * enhancementFactor),
-                Math.min(1.0, g * enhancementFactor),
-                Math.min(1.0, b * enhancementFactor)
+                Math.min(1.0, Math.pow(r, gammaCorrection) * enhancementFactor),
+                Math.min(1.0, Math.pow(g, gammaCorrection) * enhancementFactor),
+                Math.min(1.0, Math.pow(b, gammaCorrection) * enhancementFactor)
             );
         }
     }
@@ -811,12 +812,12 @@ function createOuterSpherePointcloud(texture) {
     geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
     geometry.computeBoundingSphere();
     
-    // Create outer sphere particle system
+    // Create outer sphere particle system - BRIGHTER and more visible
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 1.2,  // Slightly larger for outer sphere
+        size: particleSize * 0.8,  // Smaller particles for finer detail
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.8,  // Slightly transparent for layering effect
+        opacity: 0.95,  // More opaque for better visibility
         vertexColors: true,
         blending: THREE.NormalBlending
     });
@@ -831,7 +832,7 @@ function createOuterSpherePointcloud(texture) {
 function createOuterSphereFallback() {
     console.log('🧪 Creating fallback outer sphere pointcloud...');
     
-    const particleCount = 100000;
+    const particleCount = 500000; // Increased for better fallback quality
     const positions = new Float32Array(particleCount * 3);
     const colors = new Float32Array(particleCount * 3);
     
@@ -862,10 +863,10 @@ function createOuterSphereFallback() {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 1.2,
+        size: particleSize * 0.8, // Smaller for finer detail
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.95, // More opaque for visibility
         vertexColors: true
     });
     
@@ -1121,7 +1122,7 @@ function applyAudioReactiveEffects() {
     if (innerSphereParticles && innerSphereParticles.material) {
         const particleCount = innerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 0.8); // Smaller for inner
+        const finalSize = Math.max(0.5, effectiveSize * adaptiveMultiplier * 0.4); // Much smaller for detail
         innerSphereParticles.material.size = finalSize;
         innerSphereParticles.material.needsUpdate = true;
     }
@@ -1129,7 +1130,7 @@ function applyAudioReactiveEffects() {
     if (outerSphereParticles && outerSphereParticles.material) {
         const particleCount = outerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 1.2); // Larger for outer
+        const finalSize = Math.max(0.5, effectiveSize * adaptiveMultiplier * 0.6); // Smaller for detail
         outerSphereParticles.material.size = finalSize;
         outerSphereParticles.material.needsUpdate = true;
     }
@@ -1264,7 +1265,7 @@ function resetAudioEffects() {
         if (sphere.material) {
             const particleCount = sphere.geometry.attributes.position.count;
             const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-            const sizeMultiplier = index === 0 ? 0.8 : 1.2; // Inner vs outer
+            const sizeMultiplier = index === 0 ? 0.4 : 0.6; // Much smaller particles
             const finalSize = Math.max(1.0, currentSliderValue * adaptiveMultiplier * sizeMultiplier);
             sphere.material.size = finalSize;
             sphere.material.needsUpdate = true;
