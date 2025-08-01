@@ -98,13 +98,21 @@ class PanoramaPLYGenerator {
             }
         }
         
-        // CRITICAL FIX: Scale down to fit within sphere while preserving depth variation
-        // This maintains depth differences while ensuring all particles are within radius 200
-        if (adjustedRadius > 200) {
-            adjustedRadius = 200 * 0.95; // Scale down oversized particles to 95% of max radius
-        }
-        // Ensure minimum radius for depth variety
-        adjustedRadius = Math.max(adjustedRadius, 50); // Minimum 50 units from center
+        // CRITICAL FIX: Scale radius range to fit within sphere while preserving depth variation
+        // Current calculation can produce values from 160 to 240, we need to scale to fit 50-190
+        
+        // First, normalize the current range (160-240) to (0-1)
+        const originalMin = baseRadius - radiusVariation; // 160
+        const originalMax = baseRadius + radiusVariation; // 240
+        const normalizedDepth = (adjustedRadius - originalMin) / (originalMax - originalMin);
+        
+        // Then scale to desired range (50-190)
+        const targetMin = 50;
+        const targetMax = 190;
+        adjustedRadius = targetMin + normalizedDepth * (targetMax - targetMin);
+        
+        // Safety clamp (should not be needed but just in case)
+        adjustedRadius = Math.max(targetMin, Math.min(targetMax, adjustedRadius));
         
         // Convert to Cartesian coordinates with validation
         const sinTheta = Math.sin(theta);
