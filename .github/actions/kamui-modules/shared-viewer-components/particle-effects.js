@@ -38,8 +38,8 @@ function updateDynamic3DEffects(pointCloudObject, cameraObject) {
     let minCameraDistance = Infinity;
     let maxCameraDistance = -Infinity;
     
-    // Sample particles to find actual min/max camera distances
-    for (let i = 0; i < positionArray.length; i += 60) {
+    // Sample particles to find actual min/max camera distances - improved sampling for depth range
+    for (let i = 0; i < positionArray.length; i += 30) {
         const x = positionArray[i];
         const y = positionArray[i + 1];
         const z = positionArray[i + 2];
@@ -57,7 +57,7 @@ function updateDynamic3DEffects(pointCloudObject, cameraObject) {
     const depthRange = maxCameraDistance - minCameraDistance;
     
     // Apply true camera-based depth effects to every particle (optimized sampling)
-    for (let i = 0; i < positionArray.length; i += 9) { // Process every 3rd particle for better distribution
+    for (let i = 0; i < positionArray.length; i += 6) { // Process more particles for better depth distribution
         const x = positionArray[i];
         const y = positionArray[i + 1];
         const z = positionArray[i + 2];
@@ -73,8 +73,8 @@ function updateDynamic3DEffects(pointCloudObject, cameraObject) {
         const normalizedDepth = depthRange > 0 ? 
             Math.max(0, Math.min(1, (cameraDistance - minCameraDistance) / depthRange)) : 0;
         
-        // Natural depth intensity (closer = brighter, farther = darker)
-        const depthIntensity = 0.3 + (0.7 * (1 - normalizedDepth)); // 0.3 to 1.0 range
+        // Enhanced depth intensity for better 3D perception (closer = brighter, farther = darker)
+        const depthIntensity = 0.2 + (0.8 * (1 - normalizedDepth)); // 0.2 to 1.0 range - stronger contrast
         
         // Apply natural color darkening (no artificial color tints)
         const colorIndex = i;

@@ -7,8 +7,8 @@ let innerSphereParticles = null; // Deep PLY pointcloud (radius ~200)
 let outerSphereParticles = null; // Panorama image pointcloud (radius ~400)
 let panoramaTexture = null;
 let lights = null;
-let innerSphereRadius = 200;
-let outerSphereRadius = 600; // Increased for better separation
+let innerSphereRadius = 100; // Much smaller for outer sphere focus
+let outerSphereRadius = 600; // Large outer sphere for main experience
 
 // Use shared audio variables from audio-reactive-system.js
 // These variables are already declared in the shared component
