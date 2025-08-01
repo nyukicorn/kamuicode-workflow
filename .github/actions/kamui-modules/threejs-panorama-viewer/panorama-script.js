@@ -21,8 +21,8 @@ let panoramaEffects = {
     movementIntensity: 0.0
 };
 
-// Panorama configuration - 360度パノラマ用に最適化 - REDUCED for better detail
-let particleSize = 2.0; // Reduced from 5.0 to 2.0 for finer detail and less blob effect
+// Panorama configuration - 360度パノラマ用に最適化 - ULTRA SMALL for true pointcloud art
+let particleSize = 0.8; // ULTRA small particles from 2.0 to 0.8 for true pointcloud effect
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -340,9 +340,9 @@ function createSphericalParticleSystemFromImage() {
     // Determine particle count based on density setting - 高密度で全体を表現
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 500000; break;     // 50万パーティクル
-        case 'high': particleCount = 3000000; break;   // 300万パーティクル
-        default: particleCount = 1500000; // medium    // 150万パーティクル
+        case 'low': particleCount = 200000; break;     // 20万パーティクル（軽量）
+        case 'high': particleCount = 400000; break;   // 40万パーティクル（音楽連動対応）
+        default: particleCount = 300000; // medium     // 30万パーティクル（バランス）
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -765,7 +765,7 @@ function createOuterSpherePointcloud(texture) {
     const pixels = imageData.data;
     
     // ULTRA HIGH particle count for outer sphere beauty and density
-    const targetParticleCount = 3000000; // 300万パーティクル (increased for finer detail)
+    const targetParticleCount = 400000; // 40万パーティクル（音楽連動対応・パフォーマンス優先）
     const totalPixels = analysisWidth * analysisHeight;
     const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
     

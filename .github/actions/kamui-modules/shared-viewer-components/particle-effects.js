@@ -56,8 +56,8 @@ function updateDynamic3DEffects(pointCloudObject, cameraObject) {
     
     const depthRange = maxCameraDistance - minCameraDistance;
     
-    // Apply true camera-based depth effects to every particle (optimized sampling)
-    for (let i = 0; i < positionArray.length; i += 6) { // Process more particles for better depth distribution
+    // Apply true camera-based depth effects to every particle (optimized for audio performance)
+    for (let i = 0; i < positionArray.length; i += 12) { // Skip more particles for audio-reactive performance
         const x = positionArray[i];
         const y = positionArray[i + 1];
         const z = positionArray[i + 2];
