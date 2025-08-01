@@ -49,8 +49,8 @@ function init() {
     const initialRadius = CAM_RADIUS_PLACEHOLDER;
     setCameraPosition(0, 0, 0); // Center of the sphere
     
-    // 360度パノラマ用にカメラ制約を調整
-    const optimalViewingDistance = sphereRadius * 0.3; // 球体半径の30%の位置
+    // 二重球体用の初期カメラ位置
+    const optimalViewingDistance = innerSphereRadius * 0.3; // 内側球体半径の30%の位置
     
     // Configure controls for dual sphere exploration - UNLIMITED MOVEMENT
     controls.enablePan = true;  // Enable panning for full 3D exploration
@@ -383,7 +383,7 @@ function createSphericalParticleSystemFromImage() {
         const brightness = (r + g + b) / 3;
         const depthVariation = 0.2; // 20% depth variation
         const radiusMultiplier = 1.0 + (brightness - 0.5) * depthVariation;
-        const adjustedRadius = sphereRadius * radiusMultiplier;
+        const adjustedRadius = innerSphereRadius * radiusMultiplier;
         
         // Convert spherical to Cartesian coordinates with simulated depth
         const x = adjustedRadius * Math.sin(theta) * Math.cos(phi);
@@ -419,8 +419,8 @@ function createSphericalParticleSystemFromImage() {
     geometry.setAttribute('color', new THREE.BufferAttribute(actualColors, 3));
     geometry.computeBoundingSphere();
     
-    // Create particle system using shared component
-    panoramaParticles = createParticleSystem(geometry, {
+    // Create inner sphere particle system for fallback
+    innerSphereParticles = createParticleSystem(geometry, {
         size: particleSize,
         sizeAttenuation: true,
         transparent: true,
@@ -428,17 +428,17 @@ function createSphericalParticleSystemFromImage() {
         vertexColors: true
     });
     
-    scene.add(panoramaParticles);
+    scene.add(innerSphereParticles);
     
-    // Initialize mouse interaction with the panorama
-    initializeMouseInteraction(panoramaParticles, camera);
+    // Initialize mouse interaction with inner sphere
+    initializeMouseInteraction(innerSphereParticles, camera);
     
     // Update UI
-    updateStatsDisplay(panoramaParticles);
+    updateStatsDisplay(innerSphereParticles);
     hideLoadingIndicator();
     
     console.log(`✅ Spherical panorama created: ${particleIndex.toLocaleString()} particles`);
-    console.log(`Sphere radius: ${sphereRadius}, Camera at center`);
+    console.log(`Inner sphere radius: ${innerSphereRadius}, Camera at center`);
 }
 
 function createTestSphericalPattern() {
@@ -461,7 +461,7 @@ function createTestSphericalPattern() {
         const latitudeBand = Math.floor((theta / Math.PI) * 6);
         const depthVariation = 0.3;
         const radiusMultiplier = 1.0 + (Math.sin(latitudeBand * Math.PI / 6) - 0.5) * depthVariation;
-        const adjustedRadius = sphereRadius * radiusMultiplier;
+        const adjustedRadius = innerSphereRadius * radiusMultiplier;
         
         const x = adjustedRadius * Math.sin(theta) * Math.cos(phi);
         const y = adjustedRadius * Math.cos(theta);
@@ -512,7 +512,7 @@ function createTestSphericalPattern() {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.computeBoundingSphere();
     
-    panoramaParticles = createParticleSystem(geometry, {
+    innerSphereParticles = createParticleSystem(geometry, {
         size: particleSize,
         sizeAttenuation: true,
         transparent: true,
@@ -520,9 +520,9 @@ function createTestSphericalPattern() {
         vertexColors: true
     });
     
-    scene.add(panoramaParticles);
-    initializeMouseInteraction(panoramaParticles, camera);
-    updateStatsDisplay(panoramaParticles);
+    scene.add(innerSphereParticles);
+    initializeMouseInteraction(innerSphereParticles, camera);
+    updateStatsDisplay(innerSphereParticles);
     hideLoadingIndicator();
     
     console.log('✅ Test spherical pattern with depth variation created');
@@ -619,88 +619,94 @@ function toggleBrightness() {
 function updateGlowIntensity(value) {
     const glowValue = parseFloat(value) / 100; // Convert 0-200 to 0-2 (now supports 200% glow)
     
-    if (panoramaParticles && panoramaParticles.material) {
-        // Update material properties for glow effect - EXTREME for visibility
-        const baseBrightness = 1.0;
-        const glowBrightness = baseBrightness + (glowValue * 2.0); // Max 3.0x brightness - DRAMATIC glow effect
-        
+    // Update glow for both spheres
+    [innerSphereParticles, outerSphereParticles].forEach((sphere, index) => {
+        if (!sphere || !sphere.material) return;
         // Create emissive-like effect by adjusting material properties
-        panoramaParticles.material.opacity = Math.min(1.0, 0.6 + glowValue * 0.4); // ENHANCED dramatic opacity change
-        panoramaParticles.material.blending = glowValue > 0.1 ? THREE.AdditiveBlending : THREE.NormalBlending; // MUCH lower threshold for instant glow
+        sphere.material.opacity = Math.min(1.0, 0.6 + glowValue * 0.4);
+        sphere.material.blending = glowValue > 0.1 ? THREE.AdditiveBlending : THREE.NormalBlending;
         
-        // Scale particles moderately for glow effect - BALANCED for visibility
+        // Scale particles for glow effect
         const baseSize = particleSize;
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        const glowSizeMultiplier = 1.0 + glowValue * 0.8; // Reduced glow size effect
-        const particleCount = panoramaParticles.geometry.attributes.position.count;
+        const glowSizeMultiplier = 1.0 + glowValue * 0.8;
+        const particleCount = sphere.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * adaptiveMultiplier; // Use adaptive multiplier
-        panoramaParticles.material.size = finalSize;
+        const sizeMultiplier = index === 0 ? 0.8 : 1.2; // Inner vs outer
+        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * adaptiveMultiplier * sizeMultiplier;
+        sphere.material.size = finalSize;
         
         // Update colors to simulate glow
-        if (panoramaParticles.geometry.attributes.color) {
-            const colors = panoramaParticles.geometry.attributes.color.array;
-            const originalColors = panoramaParticles.geometry.userData.originalColors;
+        if (sphere.geometry.attributes.color) {
+            const colors = sphere.geometry.attributes.color.array;
+            const originalColors = sphere.geometry.userData.originalColors;
             
             // Store original colors if not already stored
             if (!originalColors) {
-                panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
+                sphere.geometry.userData.originalColors = new Float32Array(colors);
             }
             
-            // Apply brightness with gamma correction - prevent white washout
-            const gamma = 1.0 / (0.6 + glowValue * 0.4); // Dynamic gamma from 1.67 to 1.0
+            // Apply brightness with gamma correction
+            const gamma = 1.0 / (0.6 + glowValue * 0.4);
             for (let i = 0; i < colors.length; i++) {
                 const originalColor = originalColors ? originalColors[i] : colors[i];
                 colors[i] = Math.pow(originalColor, gamma);
             }
             
-            panoramaParticles.geometry.attributes.color.needsUpdate = true;
+            sphere.geometry.attributes.color.needsUpdate = true;
         }
         
-        panoramaParticles.material.needsUpdate = true;
-        
-        // Enhanced logging with more details
-        console.log(`✨ Glow intensity updated: ${(glowValue * 100).toFixed(0)}% → size: ${finalSize.toFixed(2)} brightness: ${glowBrightness.toFixed(2)}x`);
-        
-        // Force render update
-        if (typeof renderer !== 'undefined') {
-            renderer.render(scene, camera);
-        }
+        sphere.material.needsUpdate = true;
+    });
+    
+    // Enhanced logging
+    console.log(`✨ Glow intensity updated: ${(glowValue * 100).toFixed(0)}% → both spheres updated`);
+    
+    // Force render update
+    if (typeof renderer !== 'undefined') {
+        renderer.render(scene, camera);
     }
 }
 
 // Audio reactive integration
 function resetToNormalState() {
-    if (panoramaParticles && lights) {
-        resetToNormalVisualState(panoramaParticles, lights.ambientLight, lights.directionalLight);
+    if ((innerSphereParticles || outerSphereParticles) && lights) {
+        if (innerSphereParticles) {
+            resetToNormalVisualState(innerSphereParticles, lights.ambientLight, lights.directionalLight);
+        }
+        if (outerSphereParticles) {
+            resetToNormalVisualState(outerSphereParticles, lights.ambientLight, lights.directionalLight);
+        }
     }
 }
 
 // Mouse interaction integration
 function resetParticlePositions() {
-    if (panoramaParticles) {
+    [innerSphereParticles, outerSphereParticles].forEach(sphere => {
+        if (!sphere) return;
+        
         // Use shared component function if available, otherwise use fallback
         if (typeof window.resetParticlePositions === 'function' && window.resetParticlePositions !== resetParticlePositions) {
-            window.resetParticlePositions(panoramaParticles);
+            window.resetParticlePositions(sphere);
         } else {
             // Fallback: reset positions manually
-            if (panoramaParticles.geometry.userData.originalPositions) {
-                const positions = panoramaParticles.geometry.attributes.position.array;
-                const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+            if (sphere.geometry.userData.originalPositions) {
+                const positions = sphere.geometry.attributes.position.array;
+                const originalPositions = sphere.geometry.userData.originalPositions;
                 
                 for (let i = 0; i < positions.length; i++) {
                     positions[i] = originalPositions[i];
                 }
                 
-                panoramaParticles.geometry.attributes.position.needsUpdate = true;
+                sphere.geometry.attributes.position.needsUpdate = true;
             }
         }
         
         // Reset colors if available
         if (typeof resetParticleColors === 'function') {
-            resetParticleColors(panoramaParticles);
+            resetParticleColors(sphere);
         }
-    }
+    });
 }
 
 // Music setup integration is handled in the HTML template
@@ -1072,7 +1078,7 @@ function analyzeAudio() {
 }
 
 function applyAudioReactiveEffects() {
-    if (!panoramaParticles || !audioReactiveEnabled) return;
+    if ((!innerSphereParticles && !outerSphereParticles) || !audioReactiveEnabled) return;
     
     // Analyze audio
     analyzeAudio();
@@ -1106,76 +1112,82 @@ function applyAudioReactiveEffects() {
     }
     panoramaEffects.lastBass = currentBass;
     
-    // Apply size effect - ENHANCED with beat pulse for dramatic music response
-    if (panoramaParticles.material) {
-        const baseMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        const beatMultiplier = audioReactiveEnabled ? (panoramaEffects.beatPulse || 1.0) : 1.0;
-        const totalMultiplier = baseMultiplier * beatMultiplier;
-        const effectiveSize = particleSize * totalMultiplier;
-        // Use adaptive multiplier for audio reactive effects too
-        const particleCount = panoramaParticles.geometry.attributes.position.count;
+    // Apply size effect to both spheres - ENHANCED with beat pulse
+    const baseMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
+    const beatMultiplier = audioReactiveEnabled ? (panoramaEffects.beatPulse || 1.0) : 1.0;
+    const totalMultiplier = baseMultiplier * beatMultiplier;
+    const effectiveSize = particleSize * totalMultiplier;
+    
+    if (innerSphereParticles && innerSphereParticles.material) {
+        const particleCount = innerSphereParticles.geometry.attributes.position.count;
         const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier); // Same adaptive multiplier as slider
-        panoramaParticles.material.size = finalSize;
-        panoramaParticles.material.needsUpdate = true;
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 0.8); // Smaller for inner
+        innerSphereParticles.material.size = finalSize;
+        innerSphereParticles.material.needsUpdate = true;
     }
     
-    // Apply color effects
-    if (panoramaParticles.geometry.attributes.color) {
-        const colors = panoramaParticles.geometry.attributes.color.array;
-        const originalColors = panoramaParticles.geometry.userData.originalColors;
+    if (outerSphereParticles && outerSphereParticles.material) {
+        const particleCount = outerSphereParticles.geometry.attributes.position.count;
+        const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
+        const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier * 1.2); // Larger for outer
+        outerSphereParticles.material.size = finalSize;
+        outerSphereParticles.material.needsUpdate = true;
+    }
+    
+    // Apply color effects to both spheres
+    const brightness = panoramaEffects.brightnessMultiplier;
+    
+    [innerSphereParticles, outerSphereParticles].forEach(sphere => {
+        if (!sphere || !sphere.geometry.attributes.color) return;
+        
+        const colors = sphere.geometry.attributes.color.array;
+        const originalColors = sphere.geometry.userData.originalColors;
         
         if (!originalColors) {
-            panoramaParticles.geometry.userData.originalColors = new Float32Array(colors);
+            sphere.geometry.userData.originalColors = new Float32Array(colors);
+            return; // Skip first frame to ensure original colors are stored
         }
-        
-        const brightness = panoramaEffects.brightnessMultiplier;
-        const colorShift = panoramaEffects.colorIntensity;
         
         for (let i = 0; i < colors.length; i += 3) {
-            // Apply subtle enhancement that preserves original colors - BALANCED approach
-            const originalColor = originalColors ? originalColors[i] : colors[i];
-            const originalColorG = originalColors ? originalColors[i + 1] : colors[i + 1];
-            const originalColorB = originalColors ? originalColors[i + 2] : colors[i + 2];
+            const originalColor = originalColors[i];
+            const originalColorG = originalColors[i + 1];
+            const originalColorB = originalColors[i + 2];
             
-            // Apply brightness with color preservation - prevent white washout
-            // Use gamma correction instead of simple multiplication
-            const gamma = 1.0 / (0.5 + brightness * 0.5); // Dynamic gamma from 2.0 to 0.67
-            colors[i] = Math.pow(originalColor, gamma);     // R - Gamma correction
-            colors[i + 1] = Math.pow(originalColorG, gamma); // G - Gamma correction  
-            colors[i + 2] = Math.pow(originalColorB, gamma); // B - Gamma correction
+            // Apply brightness with gamma correction
+            const gamma = 1.0 / (0.5 + brightness * 0.5);
+            colors[i] = Math.pow(originalColor, gamma);
+            colors[i + 1] = Math.pow(originalColorG, gamma);
+            colors[i + 2] = Math.pow(originalColorB, gamma);
         }
         
-        panoramaParticles.geometry.attributes.color.needsUpdate = true;
-    }
+        sphere.geometry.attributes.color.needsUpdate = true;
+    });
     
-    // Apply movement effect (subtle position variations)
-    if (panoramaEffects.movementIntensity > 0.1 && panoramaParticles.geometry.attributes.position) {
-        const positions = panoramaParticles.geometry.attributes.position.array;
-        let originalPositions = panoramaParticles.geometry.userData.originalPositions;
-        
-        if (!originalPositions) {
-            panoramaParticles.geometry.userData.originalPositions = new Float32Array(positions);
-            originalPositions = panoramaParticles.geometry.userData.originalPositions;
-        }
-        
+    // Apply movement effect to both spheres (subtle position variations)
+    if (panoramaEffects.movementIntensity > 0.1) {
         const time = Date.now() * 0.001;
         const movement = panoramaEffects.movementIntensity * 2.0;
         
-        // Ensure originalPositions is properly initialized
-        if (!originalPositions || originalPositions.length === 0) {
-            console.warn('⚠️ originalPositions not initialized properly, skipping movement effect');
-            return;
-        }
-        
-        for (let i = 0; i < positions.length; i += 3) {
-            const offset = Math.sin(time * 2 + i * 0.01) * movement;
-            positions[i] = originalPositions[i] + offset;
-            positions[i + 1] = originalPositions[i + 1] + offset * 0.5;
-            positions[i + 2] = originalPositions[i + 2] + offset * 0.7;
-        }
-        
-        panoramaParticles.geometry.attributes.position.needsUpdate = true;
+        [innerSphereParticles, outerSphereParticles].forEach(sphere => {
+            if (!sphere || !sphere.geometry.attributes.position) return;
+            
+            const positions = sphere.geometry.attributes.position.array;
+            let originalPositions = sphere.geometry.userData.originalPositions;
+            
+            if (!originalPositions) {
+                sphere.geometry.userData.originalPositions = new Float32Array(positions);
+                return; // Skip first frame
+            }
+            
+            for (let i = 0; i < positions.length; i += 3) {
+                const offset = Math.sin(time * 2 + i * 0.01) * movement;
+                positions[i] = originalPositions[i] + offset;
+                positions[i + 1] = originalPositions[i + 1] + offset * 0.5;
+                positions[i + 2] = originalPositions[i + 2] + offset * 0.7;
+            }
+            
+            sphere.geometry.attributes.position.needsUpdate = true;
+        });
     }
     
     // Enhanced debug logging for audio reactive testing
@@ -1188,58 +1200,51 @@ function applyAudioReactiveEffects() {
 
 // NEW: Apply frequency-based color mixing to particles  
 function applyFrequencyColorMixing() {
-    if (!panoramaParticles || !audioReactiveEnabled || !panoramaEffects.colorMix) return;
-    
-    const geometry = panoramaParticles.geometry;
-    const colors = geometry.attributes.color.array;
-    const originalColors = geometry.userData.originalColors;
-    
-    // Store original colors if not already stored
-    if (!originalColors) {
-        geometry.userData.originalColors = new Float32Array(colors);
-        return; // Skip first frame to ensure original colors are stored
-    }
+    if ((!innerSphereParticles && !outerSphereParticles) || !audioReactiveEnabled || !panoramaEffects.colorMix) return;
     
     const colorMix = panoramaEffects.colorMix;
     
-    // Apply frequency-based color mixing
-    for (let i = 0; i < colors.length; i += 3) {
-        const origR = originalColors[i];
-        const origG = originalColors[i + 1]; 
-        const origB = originalColors[i + 2];
+    [innerSphereParticles, outerSphereParticles].forEach(sphere => {
+        if (!sphere) return;
         
-        // ADDITIVE BLEND: Music adds light to original colors (like stage lighting)
-        // This preserves original beauty while adding musical illumination
-        
-        // Calculate light intensity based on frequency strengths
-        // 🔴 Bass adds warm red/orange light (sunset effect)
-        const bassLight = colorMix.bassRed * 0.8; // Strong warm light
-        
-        // 🟢 Mid adds natural green/yellow light (life energy)  
-        const midLight = colorMix.midGreen * 0.6; // Moderate natural light
-        
-        // 🔵 Treble adds cool blue/purple light (moonlight effect)
-        const trebleLight = colorMix.trebleBlue * 0.7; // Cool ethereal light
-        
-        // ADDITIVE BLENDING: Original color + Musical light
-        // This creates a "music illuminates the scene" effect
-        colors[i] = Math.min(1.0, origR + bassLight * 0.9);      // Red: Original + warm bass light
-        colors[i + 1] = Math.min(1.0, origG + midLight * 0.8);   // Green: Original + natural mid light
-        colors[i + 2] = Math.min(1.0, origB + trebleLight * 1.0); // Blue: Original + cool treble light
-        
-        // Cross-illumination for more interesting color mixing
-        // Bass also slightly warms greens and blues
-        colors[i + 1] = Math.min(1.0, colors[i + 1] + bassLight * 0.2);  // Warm up greens
-        colors[i + 2] = Math.min(1.0, colors[i + 2] + bassLight * 0.1);  // Slightly warm blues
-        
-        // Treble adds sparkle to all channels for shimmer effect
-        const sparkle = trebleLight * 0.15;
-        colors[i] = Math.min(1.0, colors[i] + sparkle);
-        colors[i + 1] = Math.min(1.0, colors[i + 1] + sparkle);
-        colors[i + 2] = Math.min(1.0, colors[i + 2] + sparkle * 1.5); // Extra blue sparkle
-    }
+        const geometry = sphere.geometry;
+        const colors = geometry.attributes.color.array;
+        const originalColors = geometry.userData.originalColors;
     
-    geometry.attributes.color.needsUpdate = true;
+        // Store original colors if not already stored
+        if (!originalColors) {
+            geometry.userData.originalColors = new Float32Array(colors);
+            return; // Skip first frame to ensure original colors are stored
+        }
+        
+        // Apply frequency-based color mixing
+        for (let i = 0; i < colors.length; i += 3) {
+            const origR = originalColors[i];
+            const origG = originalColors[i + 1]; 
+            const origB = originalColors[i + 2];
+            
+            // Calculate light intensity based on frequency strengths
+            const bassLight = colorMix.bassRed * 0.8;
+            const midLight = colorMix.midGreen * 0.6;
+            const trebleLight = colorMix.trebleBlue * 0.7;
+            
+            // ADDITIVE BLENDING: Original color + Musical light
+            colors[i] = Math.min(1.0, origR + bassLight * 0.9);
+            colors[i + 1] = Math.min(1.0, origG + midLight * 0.8);
+            colors[i + 2] = Math.min(1.0, origB + trebleLight * 1.0);
+            
+            // Cross-illumination and sparkle effects
+            colors[i + 1] = Math.min(1.0, colors[i + 1] + bassLight * 0.2);
+            colors[i + 2] = Math.min(1.0, colors[i + 2] + bassLight * 0.1);
+            
+            const sparkle = trebleLight * 0.15;
+            colors[i] = Math.min(1.0, colors[i] + sparkle);
+            colors[i + 1] = Math.min(1.0, colors[i + 1] + sparkle);
+            colors[i + 2] = Math.min(1.0, colors[i + 2] + sparkle * 1.5);
+        }
+        
+        geometry.attributes.color.needsUpdate = true;
+    });
 }
 
 function resetAudioEffects() {
@@ -1249,45 +1254,46 @@ function resetAudioEffects() {
     panoramaEffects.colorIntensity = 0.0;
     panoramaEffects.movementIntensity = 0.0;
     
-    // Reset particle properties
-    if (panoramaParticles) {
-        if (panoramaParticles.material) {
-            // Use current slider value, not the multiplied value
-            // FIXED: Apply the same 8x multiplier as everywhere else
-            const currentSliderValue = document.getElementById('particleSize') ? 
-                parseFloat(document.getElementById('particleSize').value) : particleSize;
-            // Apply adaptive multiplier based on particle count
-            const particleCount = panoramaParticles.geometry.attributes.position.count;
+    // Reset both spheres properties
+    const currentSliderValue = document.getElementById('particleSize') ? 
+        parseFloat(document.getElementById('particleSize').value) : particleSize;
+    
+    [innerSphereParticles, outerSphereParticles].forEach((sphere, index) => {
+        if (!sphere) return;
+        
+        if (sphere.material) {
+            const particleCount = sphere.geometry.attributes.position.count;
             const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
-            const finalSize = Math.max(1.0, currentSliderValue * adaptiveMultiplier); // Apply adaptive multiplier
-            panoramaParticles.material.size = finalSize;
-            panoramaParticles.material.needsUpdate = true;
+            const sizeMultiplier = index === 0 ? 0.8 : 1.2; // Inner vs outer
+            const finalSize = Math.max(1.0, currentSliderValue * adaptiveMultiplier * sizeMultiplier);
+            sphere.material.size = finalSize;
+            sphere.material.needsUpdate = true;
         }
         
         // Reset colors
-        if (panoramaParticles.geometry.attributes.color && panoramaParticles.geometry.userData.originalColors) {
-            const colors = panoramaParticles.geometry.attributes.color.array;
-            const originalColors = panoramaParticles.geometry.userData.originalColors;
+        if (sphere.geometry.attributes.color && sphere.geometry.userData.originalColors) {
+            const colors = sphere.geometry.attributes.color.array;
+            const originalColors = sphere.geometry.userData.originalColors;
             
             for (let i = 0; i < colors.length; i++) {
                 colors[i] = originalColors[i];
             }
             
-            panoramaParticles.geometry.attributes.color.needsUpdate = true;
+            sphere.geometry.attributes.color.needsUpdate = true;
         }
         
         // Reset positions
-        if (panoramaParticles.geometry.attributes.position && panoramaParticles.geometry.userData.originalPositions) {
-            const positions = panoramaParticles.geometry.attributes.position.array;
-            const originalPositions = panoramaParticles.geometry.userData.originalPositions;
+        if (sphere.geometry.attributes.position && sphere.geometry.userData.originalPositions) {
+            const positions = sphere.geometry.attributes.position.array;
+            const originalPositions = sphere.geometry.userData.originalPositions;
             
             for (let i = 0; i < positions.length; i++) {
                 positions[i] = originalPositions[i];
             }
             
-            panoramaParticles.geometry.attributes.position.needsUpdate = true;
+            sphere.geometry.attributes.position.needsUpdate = true;
         }
-    }
+    });
 }
 
 // Export all interactive functions to global scope for HTML template
