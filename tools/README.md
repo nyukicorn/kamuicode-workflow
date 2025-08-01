@@ -6,14 +6,16 @@
 
 ### 1. お気に入り作品を保存
 ```bash
-# 基本的な保存（元の名前で保存）
+# 完全自動（プロンプトから特徴抽出 + タイムスタンプ）
 ./tools/save-favorite.sh create-immersive-panorama-pointcloud-experience-20250801-16679534066
 
-# わかりやすい名前で保存
-./tools/save-favorite.sh create-immersive-panorama-pointcloud-experience-20250801-16679534066 beautiful-aurora
+# ユーザー指定名 + 自動タイムスタンプ（重複防止）
+./tools/save-favorite.sh create-immersive-panorama-pointcloud-experience-20250801-16679534066 aurora
+# → 結果: aurora-20250802-0155
 
-# 宇宙パノラマとして保存
-./tools/save-favorite.sh create-immersive-panorama-pointcloud-experience-20250801-16679534066 cosmic-nebula
+# 強制自動命名
+./tools/save-favorite.sh create-immersive-panorama-pointcloud-experience-20250801-16679534066 --auto-name
+# → 結果: cosmic-20250802-0155 (プロンプトから「宇宙」を検出)
 ```
 
 ### 2. ギャラリーインデックスを更新
