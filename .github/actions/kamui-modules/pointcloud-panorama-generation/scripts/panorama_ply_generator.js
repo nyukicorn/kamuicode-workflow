@@ -82,10 +82,6 @@ class PanoramaPLYGenerator {
         const radiusVariation = baseRadius * this.options.depthVariation;
         let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
         
-        // CRITICAL FIX: Clamp particles within sphere bounds while preserving depth
-        // Allow natural depth distribution but cap at sphere boundary (radius 200)
-        adjustedRadius = Math.min(200, adjustedRadius);
-        
         // Ensure radius is valid
         if (!isFinite(adjustedRadius) || adjustedRadius <= 0) {
             adjustedRadius = baseRadius;
@@ -101,6 +97,10 @@ class PanoramaPLYGenerator {
                 adjustedRadius *= expansionFactor;
             }
         }
+        
+        // CRITICAL FIX: Final clamp after ALL processing - ensure particles stay within sphere
+        // This must be AFTER pole compression to be effective
+        adjustedRadius = Math.min(200, adjustedRadius);
         
         // Convert to Cartesian coordinates with validation
         const sinTheta = Math.sin(theta);
