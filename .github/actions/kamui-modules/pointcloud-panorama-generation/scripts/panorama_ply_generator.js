@@ -145,6 +145,9 @@ class PanoramaPLYGenerator {
         console.log(`📊 Sampling rate: ${(samplingRate * 100).toFixed(1)}%`);
         
         let processedPixels = 0;
+        let skippedByColor = 0;
+        let skippedByTransparency = 0;
+        let colorfulPixelsFound = 0;
         const startTime = Date.now();
         
         // Sample pixels based on density requirements - ENHANCED for maximum particle count
@@ -187,12 +190,26 @@ class PanoramaPLYGenerator {
                 
                 // ULTIMATE: Include ALL areas as particles - no transparency filtering
                 // Skip only completely invisible pixels (a = 0), keep everything else including semi-transparent
-                if (a < 1) continue; // MAXIMUM inclusivity - only skip completely invisible pixels
+                if (a < 1) {
+                    skippedByTransparency++;
+                    continue; // MAXIMUM inclusivity - only skip completely invisible pixels
+                }
                 
                 // COLOR-BASED SAMPLING: Force particle creation for colored areas regardless of depth
                 // This ensures sky, aurora, and other colored but depth-less areas get particles
                 const colorSum = r + g + b;
                 const hasSignificantColor = colorSum > 50; // Any visible color (raised threshold)
+                
+                // Debug sky area (top 30% of image) - ENHANCED debugging
+                if (v < 0.3) {
+                    if (hasSignificantColor) {
+                        colorfulPixelsFound++;
+                    }
+                    // Sample logging for first few sky pixels
+                    if (colorfulPixelsFound < 10) {
+                        console.log(`🌌 Sky pixel [${x},${y}] (${(v*100).toFixed(1)}%): RGB(${r},${g},${b})=${colorSum} depth=${depthValue} hasColor=${hasSignificantColor}`);
+                    }
+                }
                 
                 // CRITICAL FIX: If there's color, ALWAYS create particle regardless of depth
                 // This is especially important for sky, aurora, and gradient areas
@@ -201,6 +218,7 @@ class PanoramaPLYGenerator {
                     // Continue to particle creation
                 } else if (depthValue < 5) {
                     // No color AND no depth = skip
+                    skippedByColor++;
                     continue;
                 }
                 
@@ -275,6 +293,8 @@ class PanoramaPLYGenerator {
         const processingTime = (Date.now() - startTime) / 1000;
         console.log(`✅ Sphere conversion completed in ${processingTime.toFixed(2)}s`);
         console.log(`🎯 Generated ${points.length.toLocaleString()} particles`);
+        console.log(`📊 Debug: Skipped by transparency: ${skippedByTransparency}, by color: ${skippedByColor}`);
+        console.log(`🌌 Sky area: Found ${colorfulPixelsFound} colorful pixels in top 30%`);
         
         return points;
     }
