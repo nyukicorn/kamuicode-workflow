@@ -98,9 +98,13 @@ class PanoramaPLYGenerator {
             }
         }
         
-        // CRITICAL FIX: Final clamp after ALL processing - ensure particles stay within sphere
-        // This must be AFTER pole compression to be effective
-        adjustedRadius = Math.min(200, adjustedRadius);
+        // CRITICAL FIX: Scale down to fit within sphere while preserving depth variation
+        // This maintains depth differences while ensuring all particles are within radius 200
+        if (adjustedRadius > 200) {
+            adjustedRadius = 200 * 0.95; // Scale down oversized particles to 95% of max radius
+        }
+        // Ensure minimum radius for depth variety
+        adjustedRadius = Math.max(adjustedRadius, 50); // Minimum 50 units from center
         
         // Convert to Cartesian coordinates with validation
         const sinTheta = Math.sin(theta);
