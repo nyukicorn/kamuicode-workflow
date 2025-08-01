@@ -157,6 +157,30 @@ function createDepthEnhancedParticleSystem(geometry) {
         console.log(`🔧 Scaled inner sphere particles by factor: ${scaleFactor.toFixed(3)}`);
     }
     
+    // FORCE particle count reduction for audio performance
+    const currentParticleCount = positions.array.length / 3;
+    const maxAudioFriendlyParticles = 600000; // 60万が音楽連動の限界
+    
+    if (currentParticleCount > maxAudioFriendlyParticles) {
+        const reductionFactor = maxAudioFriendlyParticles / currentParticleCount;
+        const step = Math.ceil(1 / reductionFactor);
+        
+        const newPositions = [];
+        const newColors = [];
+        const positionArray = positions.array;
+        const colorArray = colors.array;
+        
+        for (let i = 0; i < positionArray.length; i += step * 3) {
+            newPositions.push(positionArray[i], positionArray[i + 1], positionArray[i + 2]);
+            newColors.push(colorArray[i], colorArray[i + 1], colorArray[i + 2]);
+        }
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPositions), 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(newColors), 3));
+        
+        console.log(`🚀 Particle decimation: ${currentParticleCount.toLocaleString()} -> ${(newPositions.length/3).toLocaleString()} (${(reductionFactor*100).toFixed(1)}%)`);
+    }
+    
     // Camera constraints already set for dual sphere exploration
     
     // DUAL SPHERE: Create outer sphere from panorama image as pointcloud
