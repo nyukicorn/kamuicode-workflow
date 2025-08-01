@@ -101,9 +101,9 @@ class PanoramaPLYGenerator {
         const originalMax = baseRadius + radiusVariation; // 240
         const normalizedDepth = (adjustedRadius - originalMin) / (originalMax - originalMin);
         
-        // Scale to original wider range for natural depth and beauty
-        const targetMin = 80;   // Allow closer particles for depth variety
-        const targetMax = 280;  // Allow farther particles for natural panorama
+        // Scale to proper sphere range that fits within expected radius
+        const targetMin = 160;  // Closer particles for depth variety (80% of sphere radius)
+        const targetMax = 200;  // Maximum at expected sphere radius (100% of sphere radius)
         adjustedRadius = targetMin + normalizedDepth * (targetMax - targetMin);
         
         // Safety clamp (should not be needed but just in case)

@@ -144,6 +144,20 @@ function createDepthEnhancedParticleSystem(geometry) {
     // Adjust camera constraints to allow free movement
     controls.maxDistance = sphereRadius * 2; // Allow moving outside for better view
     
+    // Create background panorama sphere if image exists (for context)
+    const imagePath = 'assets/panorama-image.png';
+    const loader = new THREE.TextureLoader();
+    loader.load(imagePath, 
+        function(texture) {
+            console.log('🖼️ Loading background panorama image for context...');
+            createBackgroundPanoramaSphere(texture);
+        },
+        undefined,
+        function(error) {
+            console.log('📝 Background panorama image not found (normal for PLY-only mode)');
+        }
+    );
+    
     // Add depth visualization if enabled
     if (enableDepthVisualization && colors) {
         enhanceDepthVisualization(positions, colors);
@@ -557,10 +571,10 @@ function updateParticleSize(value) {
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
         const effectiveSize = particleSize * currentMultiplier;
         
-        // ADAPTIVE: Adjust multiplier based on particle count for optimal visibility
+        // ADAPTIVE: Adjust multiplier based on particle count for optimal visibility (reduced range)
         const particleCount = panoramaParticles.geometry.attributes.position.count;
-        const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
-        // 100万→30倍、200万→20倍、300万→10倍、400万→10倍（最小値）
+        const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
+        // 100万→6倍、150万→5倍、250万→3倍、500万→2倍（最小値）
         
         // Ensure minimum visible size and apply adaptive scaling
         const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier);
@@ -604,8 +618,10 @@ function updateGlowIntensity(value) {
         // Scale particles moderately for glow effect - BALANCED for visibility
         const baseSize = particleSize;
         const currentMultiplier = audioReactiveEnabled ? panoramaEffects.sizeMultiplier : 1.0;
-        const glowSizeMultiplier = 1.0 + glowValue * 1.2; // Moderate size effect (reduced from 3x)
-        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * 4.0; // 4x base multiplier for dense particles
+        const glowSizeMultiplier = 1.0 + glowValue * 0.8; // Reduced glow size effect
+        const particleCount = panoramaParticles.geometry.attributes.position.count;
+        const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
+        const finalSize = baseSize * currentMultiplier * glowSizeMultiplier * adaptiveMultiplier; // Use adaptive multiplier
         panoramaParticles.material.size = finalSize;
         
         // Update colors to simulate glow
@@ -964,7 +980,7 @@ function applyAudioReactiveEffects() {
         const effectiveSize = particleSize * totalMultiplier;
         // Use adaptive multiplier for audio reactive effects too
         const particleCount = panoramaParticles.geometry.attributes.position.count;
-        const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
+        const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
         const finalSize = Math.max(1.0, effectiveSize * adaptiveMultiplier); // Same adaptive multiplier as slider
         panoramaParticles.material.size = finalSize;
         panoramaParticles.material.needsUpdate = true;
@@ -1108,7 +1124,7 @@ function resetAudioEffects() {
                 parseFloat(document.getElementById('particleSize').value) : particleSize;
             // Apply adaptive multiplier based on particle count
             const particleCount = panoramaParticles.geometry.attributes.position.count;
-            const adaptiveMultiplier = Math.max(10, 40 - (particleCount / 100000));
+            const adaptiveMultiplier = Math.max(2, 8 - (particleCount / 500000));
             const finalSize = Math.max(1.0, currentSliderValue * adaptiveMultiplier); // Apply adaptive multiplier
             panoramaParticles.material.size = finalSize;
             panoramaParticles.material.needsUpdate = true;
