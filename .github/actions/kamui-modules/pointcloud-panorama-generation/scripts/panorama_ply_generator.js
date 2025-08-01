@@ -77,28 +77,18 @@ class PanoramaPLYGenerator {
             processedDepth = 1.0 - processedDepth;
         }
         
-        // CRITICAL FIX: Sky area positioning for proper panorama viewing
-        // Sky areas (v < 0.3) must be placed on the INNER surface for camera visibility
-        let adjustedRadius;
+        // Depth-based radius adjustment with validation
+        const depthFactor = processedDepth;
+        const radiusVariation = baseRadius * this.options.depthVariation;
+        let adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
         
-        if (v < 0.3) { 
-            // Sky area (top 30%): Force particles to inner surface for visibility
-            // Camera is at radius 60, so place sky at radius 90-120 (inner wall)
-            adjustedRadius = baseRadius * 0.5 + (processedDepth * baseRadius * 0.1); // 100-120 range
-            // Log only first few sky particles to avoid spam
-            if (processedPixels < 10) {
-                console.log(`🌌 Sky particle at v=${v.toFixed(3)} placed at radius ${adjustedRadius.toFixed(1)} (inner wall)`);
-            }
-        } else {
-            // Ground/forest areas: Normal depth-based positioning
-            const depthFactor = processedDepth;
-            const radiusVariation = baseRadius * this.options.depthVariation;
-            adjustedRadius = baseRadius + (depthFactor - 0.5) * radiusVariation;
-            
-            // Ensure radius is valid
-            if (!isFinite(adjustedRadius) || adjustedRadius <= 0) {
-                adjustedRadius = baseRadius;
-            }
+        // CRITICAL FIX: Ensure ALL particles stay within sphere bounds
+        // Clamp radius to sphere interior (camera at 60, sphere at 200)
+        adjustedRadius = Math.min(baseRadius, adjustedRadius);
+        
+        // Ensure radius is valid
+        if (!isFinite(adjustedRadius) || adjustedRadius <= 0) {
+            adjustedRadius = baseRadius;
         }
         
         // DISABLED: Pole compression causes particle clustering issues
