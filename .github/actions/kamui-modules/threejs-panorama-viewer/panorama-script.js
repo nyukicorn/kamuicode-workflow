@@ -21,8 +21,8 @@ let panoramaEffects = {
     movementIntensity: 0.0
 };
 
-// Panorama configuration - 360度パノラマ用に最適化 - ULTRA SMALL for true pointcloud art
-let particleSize = 0.8; // ULTRA small particles from 2.0 to 0.8 for true pointcloud effect
+// Panorama configuration - 360度パノラマ用に最適化 - MICROSCOPIC for art quality
+let particleSize = 0.15; // MICROSCOPIC particles (0.8→0.15) to eliminate paper confetti effect
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -157,9 +157,9 @@ function createDepthEnhancedParticleSystem(geometry) {
         console.log(`🔧 Scaled inner sphere particles by factor: ${scaleFactor.toFixed(3)}`);
     }
     
-    // FORCE particle count reduction for audio performance
+    // FORCE particle count reduction for audio performance - MICROSCOPIC PARTICLES
     const currentParticleCount = positions.array.length / 3;
-    const maxAudioFriendlyParticles = 600000; // 60万が音楽連動の限界
+    const maxAudioFriendlyParticles = 200000; // 20万が音楽連動の限界（マイクロ粒子対応）
     
     if (currentParticleCount > maxAudioFriendlyParticles) {
         const reductionFactor = maxAudioFriendlyParticles / currentParticleCount;
@@ -788,8 +788,8 @@ function createOuterSpherePointcloud(texture) {
     const imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight);
     const pixels = imageData.data;
     
-    // ULTRA HIGH particle count for outer sphere beauty and density
-    const targetParticleCount = 400000; // 40万パーティクル（音楽連動対応・パフォーマンス優先）
+    // OPTIMIZED particle count for audio performance with microscopic particles
+    const targetParticleCount = 150000; // 15万パーティクル（音楽連動最適化・マイクロ粒子対応）
     const totalPixels = analysisWidth * analysisHeight;
     const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
     
@@ -821,15 +821,38 @@ function createOuterSpherePointcloud(texture) {
             // Skip transparent pixels
             if (alpha < 0.1) continue;
             
-            // Convert to Cartesian coordinates on outer sphere
+            // DEPTH CALCULATION: Use brightness as pseudo-depth for spherical distribution
+            const brightness = (r + g + b) / 3; // Average brightness as depth info
+            const depthValue = brightness * 255; // Convert back to 0-255 range for depth calculation
+            
+            // Apply spherical depth transformation (same logic as inner sphere)
+            let processedDepth = depthValue / 255.0; // Normalize to 0-1
+            if (processedDepth === 0) {
+                processedDepth = 0.9; // Dark areas = distant background
+            } else if (processedDepth < 0.02) {
+                processedDepth = 0.8; // Very dark = distant
+            }
+            
+            // Calculate depth-based radius for outer sphere
+            const outerBaseRadius = outerSphereRadius;
+            const depthVariation = outerBaseRadius * 0.3; // 30% variation for outer sphere
+            let adjustedRadius = outerBaseRadius + (processedDepth - 0.5) * depthVariation;
+            
+            // Scale to outer sphere range (keep farther from inner sphere)
+            const outerMin = outerSphereRadius * 0.7; // 70% of outer radius (420)
+            const outerMax = outerSphereRadius; // 100% of outer radius (600)
+            const normalizedDepth = Math.max(0, Math.min(1, (adjustedRadius - (outerBaseRadius - depthVariation)) / (2 * depthVariation)));
+            adjustedRadius = outerMin + normalizedDepth * (outerMax - outerMin);
+            
+            // Convert to Cartesian coordinates with depth-adjusted radius
             const sinTheta = Math.sin(theta);
             const cosTheta = Math.cos(theta);
             const cosPhi = Math.cos(phi);
             const sinPhi = Math.sin(phi);
             
-            const x3d = outerSphereRadius * sinTheta * cosPhi;
-            const y3d = outerSphereRadius * cosTheta;
-            const z3d = outerSphereRadius * sinTheta * sinPhi;
+            const x3d = adjustedRadius * sinTheta * cosPhi;
+            const y3d = adjustedRadius * cosTheta;
+            const z3d = adjustedRadius * sinTheta * sinPhi;
             
             positions.push(x3d, y3d, z3d);
             
