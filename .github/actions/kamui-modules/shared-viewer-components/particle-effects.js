@@ -73,8 +73,8 @@ function updateDynamic3DEffects(pointCloudObject, cameraObject) {
         const normalizedDepth = depthRange > 0 ? 
             Math.max(0, Math.min(1, (cameraDistance - minCameraDistance) / depthRange)) : 0;
         
-        // Enhanced depth intensity for better 3D perception (closer = brighter, farther = darker)
-        const depthIntensity = 0.2 + (0.8 * (1 - normalizedDepth)); // 0.2 to 1.0 range - stronger contrast
+        // ULTRA enhanced depth intensity for dramatic 3D perception (closer = brighter, farther = darker)
+        const depthIntensity = 0.1 + (0.9 * (1 - normalizedDepth)); // 0.1 to 1.0 range - ULTRA strong contrast
         
         // Apply natural color darkening (no artificial color tints)
         const colorIndex = i;

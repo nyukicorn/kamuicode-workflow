@@ -21,8 +21,8 @@ let panoramaEffects = {
     movementIntensity: 0.0
 };
 
-// Panorama configuration - 360度パノラマ用に最適化 - ENHANCED for visibility
-let particleSize = 5.0; // Increased from 3.5 to 5.0 for better initial visibility
+// Panorama configuration - 360度パノラマ用に最適化 - REDUCED for better detail
+let particleSize = 2.0; // Reduced from 5.0 to 2.0 for finer detail and less blob effect
 // autoRotate is already declared in camera-controls.js, just set the value
 autoRotate = AUTO_ROTATE_PLACEHOLDER;
 // rotationSpeed is already declared in camera-controls.js, just set the value
@@ -138,10 +138,24 @@ function createDepthEnhancedParticleSystem(geometry) {
     const positions = geometry.attributes.position;
     const colors = geometry.attributes.color;
     
-    // Calculate bounding sphere for inner sphere (PLY data)
+    // Calculate bounding sphere for inner sphere (PLY data) but force smaller radius
     geometry.computeBoundingSphere();
-    innerSphereRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : 200;
-    console.log(`📏 Inner sphere radius: ${innerSphereRadius}`);
+    const originalRadius = geometry.boundingSphere ? geometry.boundingSphere.radius : 200;
+    innerSphereRadius = 100; // FORCE smaller inner sphere for outer sphere focus
+    console.log(`📏 Original PLY radius: ${originalRadius}, Forced inner radius: ${innerSphereRadius}`);
+    
+    // SCALE inner sphere particles to desired radius
+    if (originalRadius > 0) {
+        const scaleFactor = innerSphereRadius / originalRadius;
+        const positionArray = positions.array;
+        for (let i = 0; i < positionArray.length; i += 3) {
+            positionArray[i] *= scaleFactor;     // x
+            positionArray[i + 1] *= scaleFactor; // y  
+            positionArray[i + 2] *= scaleFactor; // z
+        }
+        positions.needsUpdate = true;
+        console.log(`🔧 Scaled inner sphere particles by factor: ${scaleFactor.toFixed(3)}`);
+    }
     
     // Camera constraints already set for dual sphere exploration
     
@@ -165,9 +179,9 @@ function createDepthEnhancedParticleSystem(geometry) {
         enhanceDepthVisualization(positions, colors);
     }
     
-    // Create inner sphere particle system - 内側球体（深度情報付き）
+    // Create inner sphere particle system - 内側球体（深度情報付き）- MUCH SMALLER PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.8,  // Slightly smaller for inner sphere
+        size: particleSize * 0.4,  // Much smaller particles for finer detail (0.8x2.0=1.6 -> 0.4x2.0=0.8)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.95,
@@ -812,9 +826,9 @@ function createOuterSpherePointcloud(texture) {
     geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
     geometry.computeBoundingSphere();
     
-    // Create outer sphere particle system - BRIGHTER and more visible
+    // Create outer sphere particle system - BRIGHTER and more visible - MUCH SMALLER PARTICLES
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.8,  // Smaller particles for finer detail
+        size: particleSize * 0.3,  // Much smaller particles for finer detail (0.8->0.3)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.95,  // More opaque for better visibility
@@ -863,7 +877,7 @@ function createOuterSphereFallback() {
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.8, // Smaller for finer detail
+        size: particleSize * 0.3, // Much smaller for finer detail (0.8->0.3)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.95, // More opaque for visibility
