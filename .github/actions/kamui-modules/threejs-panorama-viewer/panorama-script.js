@@ -1072,24 +1072,80 @@ function toggleAudioReactive() {
     }
 }
 
+// Microphone state management
+let microphoneEnabled = false;
+let microphoneStream = null;
+let micAnalyser = null;
+let micDataArray = null;
+
 function toggleMicrophone() {
-    if (typeof window.toggleMicrophone === 'function' && window.toggleMicrophone !== toggleMicrophone) {
-        window.toggleMicrophone();
-    } else {
-        console.warn('🎤 Microphone system not available');
-        // Basic microphone toggle fallback
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            console.log('🎤 Attempting to access microphone...');
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    console.log('🎤 Microphone access granted');
-                    // Store stream for later use
-                    window.microphoneStream = stream;
-                })
-                .catch(error => {
-                    console.warn('🎤 Microphone access denied:', error);
-                });
+    console.log('🎤 Toggle microphone called');
+    
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('❌ getUserMedia not supported in this browser');
+        alert('マイクアクセスはこのブラウザでサポートされていません');
+        return;
+    }
+    
+    if (microphoneEnabled) {
+        // マイクをOFFにする
+        if (microphoneStream) {
+            microphoneStream.getTracks().forEach(track => track.stop());
+            microphoneStream = null;
         }
+        microphoneEnabled = false;
+        micAnalyser = null;
+        micDataArray = null;
+        console.log('🎤 Microphone disabled');
+        
+        // UI更新
+        const micButton = document.getElementById('microphoneToggle');
+        if (micButton) {
+            micButton.innerHTML = '🎙️ Mic OFF';
+            micButton.classList.remove('active');
+        }
+    } else {
+        // マイクをONにする
+        console.log('🎤 Requesting microphone access...');
+        navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
+        })
+        .then(stream => {
+            console.log('✅ Microphone access granted');
+            microphoneStream = stream;
+            microphoneEnabled = true;
+            
+            // オーディオコンテキスト設定
+            if (audioContext) {
+                const source = audioContext.createMediaStreamSource(stream);
+                micAnalyser = audioContext.createAnalyser();
+                micAnalyser.fftSize = 256;
+                micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+                source.connect(micAnalyser);
+                console.log('🎤 Microphone analyzer connected');
+            }
+            
+            // UI更新
+            const micButton = document.getElementById('microphoneToggle');
+            if (micButton) {
+                micButton.innerHTML = '🎙️ Mic ON';
+                micButton.classList.add('active');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Microphone access denied:', error);
+            if (error.name === 'NotAllowedError') {
+                alert('マイクアクセスが拒否されました。ブラウザの設定でマイクアクセスを許可してください。');
+            } else if (error.name === 'NotFoundError') {
+                alert('マイクデバイスが見つかりません。');
+            } else {
+                alert(`マイクアクセスエラー: ${error.message}`);
+            }
+        });
     }
 }
 
