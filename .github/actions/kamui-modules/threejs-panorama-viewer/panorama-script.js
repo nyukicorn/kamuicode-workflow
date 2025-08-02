@@ -217,6 +217,12 @@ function createDepthEnhancedParticleSystem(geometry) {
         enhanceDepthVisualization(positions, colors);
     }
     
+    // Remove existing inner sphere if it exists (prevent duplication)
+    if (innerSphereParticles) {
+        scene.remove(innerSphereParticles);
+        console.log('🗑️ Removed existing inner sphere to prevent duplication');
+    }
+    
     // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
     const innerParticleSize = particleSize * 0.01;
     console.log(`🔴 INNER SPHERE (PLY): Base size: ${particleSize}, Multiplier: 0.01, Final size: ${innerParticleSize}`);
@@ -474,6 +480,12 @@ function createSphericalParticleSystemFromImage() {
     geometry.setAttribute('position', new THREE.BufferAttribute(actualPositions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(actualColors, 3));
     geometry.computeBoundingSphere();
+    
+    // Remove existing inner sphere if it exists (prevent duplication)
+    if (innerSphereParticles) {
+        scene.remove(innerSphereParticles);
+        console.log('🗑️ Removed existing inner sphere (fallback) to prevent duplication');
+    }
     
     // Create inner sphere particle system for fallback - ULTRA MICRO PARTICLES
     const innerParticleSize = particleSize * 0.01;
@@ -899,6 +911,12 @@ function createOuterSpherePointcloud(texture) {
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(colors), 3));
     geometry.computeBoundingSphere();
+    
+    // Remove existing outer sphere if it exists (prevent duplication)
+    if (outerSphereParticles) {
+        scene.remove(outerSphereParticles);
+        console.log('🗑️ Removed existing outer sphere to prevent duplication');
+    }
     
     // Create outer sphere particle system - BRIGHTER and more visible - MUCH SMALLER PARTICLES
     const outerParticleSize = particleSize * 0.3;
@@ -1480,6 +1498,22 @@ window.setInnerSize = function(multiplier) {
         innerSphereParticles.material.needsUpdate = true;
         console.log(`🔴 INNER SPHERE size updated: ${newSize} (multiplier: ${multiplier})`);
     }
+};
+
+// Debug scene objects (check for sphere duplication)
+window.debugScene = function() {
+    console.log('=== SCENE DEBUG INFO ===');
+    console.log(`Total scene children: ${scene.children.length}`);
+    let particleSystemCount = 0;
+    scene.children.forEach((child, index) => {
+        if (child.type === 'Points') {
+            particleSystemCount++;
+            console.log(`${index}: Points system - ${child.geometry.attributes.position.count} particles`);
+        } else {
+            console.log(`${index}: ${child.type}`);
+        }
+    });
+    console.log(`Total particle systems: ${particleSystemCount}`);
 };
 window.updateGlowIntensity = updateGlowIntensity;
 
