@@ -218,8 +218,12 @@ function createDepthEnhancedParticleSystem(geometry) {
     }
     
     // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
+    const innerParticleSize = particleSize * 0.01;
+    console.log(`🔴 INNER SPHERE (PLY): Base size: ${particleSize}, Multiplier: 0.01, Final size: ${innerParticleSize}`);
+    console.log(`🔴 INNER SPHERE (PLY): Particle count: ${particleIndex}, Radius: ${innerSphereRadius}`);
+    
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.01,  // MICRO-NANO particles for perfect transparency
+        size: innerParticleSize,  // MICRO-NANO particles for perfect transparency
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.4,  // 極めて透明で幻想的な効果
@@ -472,8 +476,12 @@ function createSphericalParticleSystemFromImage() {
     geometry.computeBoundingSphere();
     
     // Create inner sphere particle system for fallback - ULTRA MICRO PARTICLES
+    const innerParticleSize = particleSize * 0.01;
+    console.log(`🔵 INNER SPHERE (FALLBACK): Base size: ${particleSize}, Multiplier: 0.01, Final size: ${innerParticleSize}`);
+    console.log(`🔵 INNER SPHERE (FALLBACK): Particle count: ${particleIndex}, Radius: ${innerSphereRadius}`);
+    
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.01,  // MICRO-NANO particles for extreme fineness
+        size: innerParticleSize,  // MICRO-NANO particles for extreme fineness
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.4,  // Ultra transparent for ethereal effect
@@ -893,8 +901,12 @@ function createOuterSpherePointcloud(texture) {
     geometry.computeBoundingSphere();
     
     // Create outer sphere particle system - BRIGHTER and more visible - MUCH SMALLER PARTICLES
+    const outerParticleSize = particleSize * 0.3;
+    console.log(`🟢 OUTER SPHERE (PLY): Base size: ${particleSize}, Multiplier: 0.3, Final size: ${outerParticleSize}`);
+    console.log(`🟢 OUTER SPHERE (PLY): Particle count: ${positions.count}, Radius: ${outerSphereRadius}`);
+    
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.3,  // Much smaller particles for finer detail (0.8->0.3)
+        size: outerParticleSize,  // Much smaller particles for finer detail (0.8->0.3)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.95,  // More opaque for better visibility
@@ -942,8 +954,12 @@ function createOuterSphereFallback() {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
+    const outerParticleSize = particleSize * 0.3;
+    console.log(`🟡 OUTER SPHERE (FALLBACK): Base size: ${particleSize}, Multiplier: 0.3, Final size: ${outerParticleSize}`);
+    console.log(`🟡 OUTER SPHERE (FALLBACK): Particle count: ${particleCount}, Radius: ${outerSphereRadius}`);
+    
     outerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.3, // Much smaller for finer detail (0.8->0.3)
+        size: outerParticleSize, // Much smaller for finer detail (0.8->0.3)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.95, // More opaque for visibility
@@ -1441,6 +1457,30 @@ window.updatePointSize = updateParticleSize;
 
 // Export slider functions (CRITICAL FIX)
 window.updateParticleSize = updateParticleSize;
+
+// Debug functions for console
+window.debugParticles = function() {
+    console.log('=== PARTICLE DEBUG INFO ===');
+    if (innerSphereParticles) {
+        console.log(`🔴 INNER SPHERE: Material size = ${innerSphereParticles.material.size}, Particle count = ${innerSphereParticles.geometry.attributes.position.count}`);
+        console.log(`🔴 INNER SPHERE: Opacity = ${innerSphereParticles.material.opacity}, Visible = ${innerSphereParticles.visible}`);
+    }
+    if (outerSphereParticles) {
+        console.log(`🟢 OUTER SPHERE: Material size = ${outerSphereParticles.material.size}, Particle count = ${outerSphereParticles.geometry.attributes.position.count}`);
+        console.log(`🟢 OUTER SPHERE: Opacity = ${outerSphereParticles.material.opacity}, Visible = ${outerSphereParticles.visible}`);
+    }
+    console.log(`Base particle size: ${particleSize}`);
+};
+
+// Force update inner sphere size
+window.setInnerSize = function(multiplier) {
+    if (innerSphereParticles) {
+        const newSize = particleSize * multiplier;
+        innerSphereParticles.material.size = newSize;
+        innerSphereParticles.material.needsUpdate = true;
+        console.log(`🔴 INNER SPHERE size updated: ${newSize} (multiplier: ${multiplier})`);
+    }
+};
 window.updateGlowIntensity = updateGlowIntensity;
 
 // Export other control functions
