@@ -440,34 +440,77 @@ Add bass for depth.</textarea>
             }, 3000);
         }
 
+        // Demo timeline animation for visual appeal
+        let demoTimelineInterval = null;
+        
+        function startDemoTimeline() {
+            if (demoTimelineInterval) clearInterval(demoTimelineInterval);
+            
+            const timeMarkers = document.querySelectorAll('.time-marker');
+            let progress = 0;
+            
+            demoTimelineInterval = setInterval(() => {
+                progress += 1.25; // 8 seconds to complete (100 / 80 = 1.25)
+                if (progress >= 100) progress = 0;
+                
+                timeMarkers.forEach(marker => {
+                    if (marker.dataset.controlledByPlay !== 'true') {
+                        marker.style.left = progress + '%';
+                    }
+                });
+            }, 100); // Update every 100ms
+        }
+        
+        function stopDemoTimeline() {
+            if (demoTimelineInterval) {
+                clearInterval(demoTimelineInterval);
+                demoTimelineInterval = null;
+                console.log('🔴 Demo timeline interval cleared');
+            }
+            
+            // Force stop all markers
+            const timeMarkers = document.querySelectorAll('.time-marker');
+            timeMarkers.forEach((marker, index) => {
+                marker.style.left = '0%';
+                marker.style.animation = 'none';
+                marker.style.transition = 'none';
+                console.log(`🔴 Force stopped marker ${index}`);
+            });
+        }
+        
+        // Make functions globally accessible
+        window.startDemoTimeline = startDemoTimeline;
+        window.stopDemoTimeline = stopDemoTimeline;
+        
         // Initialize demo
         window.addEventListener('load', () => {
-            console.log('🔴 Page loaded - stopping CSS animations and taking control');
+            console.log('🔴 Page loaded - setting up demo timeline');
             
-            // Stop all automatic CSS animations
+            // Initialize markers
             const timeMarkers = document.querySelectorAll('.time-marker');
             timeMarkers.forEach((marker, index) => {
                 marker.style.animation = 'none';
                 marker.style.left = '0%';
                 marker.style.transition = 'none';
-                console.log(`🔴 Marker ${index} stopped and reset to 0%`);
+                marker.dataset.controlledByPlay = 'false';
+                console.log(`🔴 Marker ${index} initialized for demo control`);
             });
             
             generateHeatmapBars();
             
-            // Auto-refresh heatmap every 8 seconds for demo (but NOT markers)
+            // Start demo timeline
+            startDemoTimeline();
+            
+            // Auto-refresh heatmap every 8 seconds for demo
             setInterval(() => {
-                console.log('🔴 Demo heatmap refresh - markers should stay at 0%');
+                console.log('🔴 Demo heatmap refresh - restarting demo timeline');
                 generateHeatmapBars();
                 
-                // Ensure markers stay stopped during demo refreshes
-                const markers = document.querySelectorAll('.time-marker');
-                markers.forEach(marker => {
-                    if (!marker.dataset.controlledByPlay) {
-                        marker.style.left = '0%';
-                        marker.style.animation = 'none';
-                    }
-                });
+                // Restart demo timeline if not controlled by play
+                const isAnyControlledByPlay = Array.from(timeMarkers).some(m => m.dataset.controlledByPlay === 'true');
+                if (!isAnyControlledByPlay) {
+                    startDemoTimeline();
+                }
             }, 8000);
         });
 
@@ -655,14 +698,33 @@ Add bass for depth.</textarea>
                     
                     // Start real-time timeline that follows actual music events
                     startRealTimeTimeline(trackData) {
-                        console.log('⏱️ Starting real-time timeline...');
+                        console.log('⏱️ Starting real-time timeline controlled by Play...');
                         
-                        // Reset markers
-                        const timeMarkers = document.querySelectorAll('.time-marker');
-                        timeMarkers.forEach(marker => {
-                            marker.style.left = '0%';
-                            marker.style.transition = 'none';
-                        });
+                        // FORCE stop demo timeline first
+                        if (window.stopDemoTimeline) {
+                            window.stopDemoTimeline();
+                            console.log('🔴 Demo timeline force stopped');
+                        }
+                        
+                        // Wait a bit to ensure demo timeline is completely stopped
+                        setTimeout(() => {
+                            // Mark markers as controlled by Play
+                            const timeMarkers = document.querySelectorAll('.time-marker');
+                            timeMarkers.forEach((marker, index) => {
+                                marker.style.left = '0%';
+                                marker.style.transition = 'none';
+                                marker.style.animation = 'none';
+                                marker.dataset.controlledByPlay = 'true';
+                                console.log(`🔴 Marker ${index} now controlled by Play, starting at 0%`);
+                            });
+                            
+                            this.startMusicTimeline(trackData, timeMarkers);
+                        }, 100); // 100ms delay to ensure demo timeline stops
+                    },
+                    
+                    // Separate method for music timeline
+                    startMusicTimeline(trackData, timeMarkers) {
+                        console.log('⏱️ Starting music timeline with fresh markers...');
                         
                         // Calculate total music duration
                         let maxDuration = 0;
@@ -684,14 +746,37 @@ Add bass for depth.</textarea>
                             const elapsed = (Date.now() - this.timelineStartTime) / 1000;
                             const progress = Math.min(elapsed / maxDuration, 1) * 100;
                             
-                            timeMarkers.forEach(marker => {
-                                marker.style.left = progress + '%';
+                            // Less verbose logging
+                            if (Math.floor(elapsed * 2) % 2 === 0) { // Log every 0.5 seconds
+                                console.log(`🔴 Music timeline: ${elapsed.toFixed(1)}s / ${maxDuration}s (${progress.toFixed(1)}%)`);
+                            }
+                            
+                            // Only update markers that are controlled by Play
+                            timeMarkers.forEach((marker, index) => {
+                                if (marker.dataset.controlledByPlay === 'true') {
+                                    marker.style.left = progress + '%';
+                                }
                             });
                             
                             // Stop when duration is reached
                             if (elapsed >= maxDuration) {
                                 clearInterval(this.timelineInterval);
-                                console.log('⏱️ Timeline completed');
+                                console.log('⏱️ Music timeline completed - releasing control back to demo');
+                                
+                                // Release control back to demo
+                                timeMarkers.forEach((marker, index) => {
+                                    marker.dataset.controlledByPlay = 'false';
+                                    marker.style.left = '0%'; // Reset position
+                                    console.log(`🔴 Marker ${index} control released, reset to 0%`);
+                                });
+                                
+                                // Restart demo timeline after a short delay
+                                setTimeout(() => {
+                                    if (window.startDemoTimeline) {
+                                        window.startDemoTimeline();
+                                        console.log('🔴 Demo timeline restarted');
+                                    }
+                                }, 200);
                             }
                         }, 50); // Update every 50ms for smooth animation
                     },

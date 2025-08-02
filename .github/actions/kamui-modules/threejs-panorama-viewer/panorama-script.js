@@ -1077,9 +1077,8 @@ function toggleAudioReactive() {
 }
 
 // Microphone state management (using shared variables from audio-reactive-system.js)
-// microphoneEnabled and micAnalyser are already declared in shared component
+// microphoneEnabled, micAnalyser, and micDataArray are already declared in shared component
 let microphoneStream = null;
-let micDataArray = null;
 
 function toggleMicrophone() {
     console.log('🎤 Toggle microphone called');
