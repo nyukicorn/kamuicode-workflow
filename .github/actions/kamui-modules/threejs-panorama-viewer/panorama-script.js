@@ -219,7 +219,7 @@ function createDepthEnhancedParticleSystem(geometry) {
     
     // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.15,  // ULTRA micro particles (0.4->0.15, final: 0.08x0.15=0.012)
+        size: particleSize * 0.04,  // SUPER ULTRA micro particles (same as fallback)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.85,  // 少し透明にして重なりを軽減
@@ -473,7 +473,7 @@ function createSphericalParticleSystemFromImage() {
     
     // Create inner sphere particle system for fallback - ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.08,  // ULTRA micro particles to prevent white overlap
+        size: particleSize * 0.04,  // SUPER ULTRA micro particles (half of 0.08)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.75,  // Reduced opacity to prevent white saturation
@@ -566,7 +566,7 @@ function createTestSphericalPattern() {
     geometry.computeBoundingSphere();
     
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.08,  // ULTRA micro particles to prevent white overlap
+        size: particleSize * 0.04,  // SUPER ULTRA micro particles (half of 0.08)
         sizeAttenuation: true,
         transparent: true,
         opacity: 0.75,  // Reduced opacity to prevent white saturation
