@@ -1153,7 +1153,8 @@ function toggleMicrophone() {
 
 // Audio reactive effects functions
 function analyzeAudio() {
-    if (!audioReactiveEnabled) return;
+    // Allow audio analysis if either audio reactive is enabled OR microphone is enabled
+    if (!audioReactiveEnabled && !microphoneEnabled) return;
     
     let dataArray = null;
     let analyser = null;
@@ -1213,7 +1214,8 @@ function analyzeAudio() {
 }
 
 function applyAudioReactiveEffects() {
-    if ((!innerSphereParticles && !outerSphereParticles) || !audioReactiveEnabled) return;
+    // Apply effects if we have particles AND either audio reactive or microphone is enabled
+    if ((!innerSphereParticles && !outerSphereParticles) || (!audioReactiveEnabled && !microphoneEnabled)) return;
     
     // Analyze audio
     analyzeAudio();
