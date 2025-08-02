@@ -159,7 +159,7 @@ function createDepthEnhancedParticleSystem(geometry) {
     
     // FORCE particle count reduction for audio performance - ULTRA MICRO PARTICLES
     const currentParticleCount = positions.array.length / 3;
-    const maxAudioFriendlyParticles = 250000; // 25万に増加（外側を充実させる）
+    const maxAudioFriendlyParticles = 350000; // 35万に増加（外側をより詳細に）
     
     if (currentParticleCount > maxAudioFriendlyParticles) {
         const reductionFactor = maxAudioFriendlyParticles / currentParticleCount;
@@ -219,10 +219,10 @@ function createDepthEnhancedParticleSystem(geometry) {
     
     // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.02,  // NANO particles for beautiful transparency
+        size: particleSize * 0.01,  // MICRO-NANO particles for perfect transparency
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.6,  // 透明感を強調して美しい重なり
+        opacity: 0.4,  // 極めて透明で幻想的な効果
         vertexColors: true,
         blending: THREE.NormalBlending  // Additiveから通常ブレンディングに変更して白さ軽減
     });
@@ -375,12 +375,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - GREATLY REDUCED FOR NO OVERLAP
+    // Determine particle count based on density setting - MINIMAL FOR PERFECT TRANSPARENCY
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 50000; break;      // 5万パーティクル（超軽量・重なり完全防止）
-        case 'high': particleCount = 100000; break;    // 10万パーティクル（美しい透明感）
-        default: particleCount = 75000; // medium      // 7.5万パーティクル（理想的な分散）
+        case 'low': particleCount = 30000; break;      // 3万パーティクル（極薄・完全透明）
+        case 'high': particleCount = 60000; break;     // 6万パーティクル（薄く美しい層）
+        default: particleCount = 45000; // medium      // 4.5万パーティクル（理想的な透明感）
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -473,10 +473,10 @@ function createSphericalParticleSystemFromImage() {
     
     // Create inner sphere particle system for fallback - ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.02,  // NANO particles (half of 0.04) for no overlap
+        size: particleSize * 0.01,  // MICRO-NANO particles for extreme fineness
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.6,  // Even more transparent for beautiful overlap
+        opacity: 0.4,  // Ultra transparent for ethereal effect
         vertexColors: true,
         blending: THREE.NormalBlending  // Normal blending to reduce white appearance
     });
@@ -566,10 +566,10 @@ function createTestSphericalPattern() {
     geometry.computeBoundingSphere();
     
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.02,  // NANO particles (half of 0.04) for no overlap
+        size: particleSize * 0.01,  // MICRO-NANO particles for extreme fineness
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.6,  // Even more transparent for beautiful overlap
+        opacity: 0.4,  // Ultra transparent for ethereal effect
         vertexColors: true,
         blending: THREE.NormalBlending  // Normal blending to reduce white appearance
     });
