@@ -15,6 +15,7 @@ import json
 import logging
 import sys
 import threading
+import websockets
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -62,12 +63,9 @@ class InteractiveMusicMCP:
         self.is_playing = False
         self.current_time = 0.0
         
-        # WebSocket server integration
-        if get_websocket_server:
-            self.ws_server = get_websocket_server()
-            self._start_websocket_server()
-        else:
-            self.ws_server = None
+        # WebSocket server integration (disabled - using standalone server)
+        self.ws_server = None
+        logger.info("🌐 Using external WebSocket server on localhost:8765")
         
         # Register tools
         self._register_tools()
@@ -79,6 +77,25 @@ class InteractiveMusicMCP:
             self.cli_tools = None
         
         logger.info("🎵 Interactive Music Editor MCP Server initialized")
+        
+    async def notify_websocket(self, message_type: str, data: Any):
+        """外部WebSocketサーバーに通知を送信"""
+        try:
+            message = {
+                "type": message_type,
+                "data": data,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # WebSocketサーバーに接続して送信
+            uri = "ws://localhost:8765"
+            async with websockets.connect(uri) as websocket:
+                await websocket.send(json.dumps(message))
+                logger.info(f"📡 Sent to WebSocket: {message_type}")
+                
+        except Exception as e:
+            logger.warning(f"⚠️  WebSocket notification failed: {e}")
+            # WebSocketサーバーが起動していない場合は警告のみ
         
     def _start_websocket_server(self):
         """Start WebSocket server in background thread"""
@@ -115,8 +132,7 @@ class InteractiveMusicMCP:
             logger.info(f"🎼 Created track: {track_name} ({instrument})")
             
             # Notify WebSocket clients
-            if self.ws_server:
-                asyncio.create_task(self.ws_server.update_tracks(self.active_tracks))
+            asyncio.create_task(self.notify_websocket("tracks_updated", self.active_tracks))
             
             return {
                 "success": True,
@@ -156,8 +172,7 @@ class InteractiveMusicMCP:
             logger.info(f"🎵 Added {len(notes)} notes to track: {track_name}")
             
             # Notify WebSocket clients
-            if self.ws_server:
-                asyncio.create_task(self.ws_server.update_tracks(self.active_tracks))
+            asyncio.create_task(self.notify_websocket("tracks_updated", self.active_tracks))
             
             return {
                 "success": True,
@@ -208,8 +223,7 @@ class InteractiveMusicMCP:
             logger.info(f"🔥 Generated heatmap data for {len(heatmap)} tracks")
             
             # Notify WebSocket clients
-            if self.ws_server:
-                asyncio.create_task(self.ws_server.update_heatmap(heatmap))
+            asyncio.create_task(self.notify_websocket("heatmap_updated", heatmap))
             
             return {
                 "success": True,
@@ -300,6 +314,12 @@ class InteractiveMusicMCP:
                 dsl_code += ".volume(0.9).crescendo(2.0)\n"
             
             logger.info(f"🤖 NL→DSL: '{instruction}' → DSL code")
+            
+            # Notify WebSocket clients
+            asyncio.create_task(self.notify_websocket("command_executed", {
+                "command": f"natural_language_to_dsl: {instruction}",
+                "result": f"Generated DSL: {dsl_code[:50]}..."
+            }))
             
             return {
                 "success": True,

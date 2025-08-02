@@ -159,7 +159,7 @@ function createDepthEnhancedParticleSystem(geometry) {
     
     // FORCE particle count reduction for audio performance - ULTRA MICRO PARTICLES
     const currentParticleCount = positions.array.length / 3;
-    const maxAudioFriendlyParticles = 350000; // 35万に増加（外側をより詳細に）
+    const maxAudioFriendlyParticles = 50000; // 5万に大削減（内側を薄く）
     
     if (currentParticleCount > maxAudioFriendlyParticles) {
         const reductionFactor = maxAudioFriendlyParticles / currentParticleCount;
@@ -815,7 +815,7 @@ function createOuterSpherePointcloud(texture) {
     const pixels = imageData.data;
     
     // BALANCED particle count for inner/outer sphere ratio
-    const targetParticleCount = 100000; // 10万パーティクル（内外バランス重視・ウルトラマイクロ対応）
+    const targetParticleCount = 300000; // 30万パーティクル（外側を詳細に・内側を削減した分）
     const totalPixels = analysisWidth * analysisHeight;
     const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
     

@@ -1,0 +1,90 @@
+{
+  "server": "Interactive Music Editor MCP",
+  "status": "running",
+  "timestamp": "2025-08-03T01:14:18.858020",
+  "components": {
+    "processes": [
+      {
+        "name": "Minimal WebSocket Server",
+        "command": "minimal_websocket.py",
+        "status": "running",
+        "port": 8765
+      }
+    ],
+    "network_ports": {
+      "8765": "active (WebSocket)",
+      "8080": "active (HTTP)",
+      "3000": "active (HTTP)"
+    },
+    "websocket": {
+      "status": "connected",
+      "uri": "ws://localhost:8765",
+      "response_type": "welcome",
+      "message": "\ud83c\udfb5 Minimal WebSocket Connected!"
+    },
+    "file_structure": {
+      "mcp-server/server_fixed.py": {
+        "exists": true,
+        "description": "Main MCP Server",
+        "path": "/Users/nukuiyuki/Dev/kamuicode-workflow/interactive-music-editor/mcp-server/server_fixed.py"
+      },
+      "mcp-server/minimal_websocket.py": {
+        "exists": true,
+        "description": "Minimal WebSocket Server",
+        "path": "/Users/nukuiyuki/Dev/kamuicode-workflow/interactive-music-editor/mcp-server/minimal_websocket.py"
+      },
+      "mcp-server/cli_tools.py": {
+        "exists": true,
+        "description": "CLI Tools",
+        "path": "/Users/nukuiyuki/Dev/kamuicode-workflow/interactive-music-editor/mcp-server/cli_tools.py"
+      },
+      "web-interface/index.html": {
+        "exists": true,
+        "description": "Web Interface",
+        "path": "/Users/nukuiyuki/Dev/kamuicode-workflow/interactive-music-editor/web-interface/index.html"
+      },
+      "outputs/": {
+        "exists": true,
+        "description": "Output Directory",
+        "path": "/Users/nukuiyuki/Dev/kamuicode-workflow/interactive-music-editor/outputs/"
+      }
+    }
+  },
+  "analysis": {
+    "mcp_server": {
+      "available_tools": [
+        "create_music_track",
+        "add_notes_to_track",
+        "generate_heatmap_data",
+        "natural_language_to_dsl",
+        "create_music_from_prompt",
+        "get_system_status"
+      ],
+      "global_state_vars": [
+        "active_tracks = {}",
+        "heatmap_data = {}",
+        "tempo = 120"
+      ],
+      "file_size": 11288,
+      "total_lines": 370
+    }
+  },
+  "simulated_mcp_response": {
+    "server": "Interactive Music Editor MCP",
+    "status": "running",
+    "audio_context": {
+      "is_playing": false,
+      "current_time": 0.0,
+      "tempo": 120
+    },
+    "tracks": {
+      "count": 0,
+      "names": []
+    },
+    "heatmap": {
+      "available": false,
+      "tracks": 0
+    },
+    "timestamp": "2025-08-03T01:14:19.030496"
+  }
+}

@@ -162,11 +162,12 @@ class CLIMusicTools:
             self.mcp_server.heatmap_data = heatmap
             
             # Notify WebSocket clients
-            asyncio.create_task(self.ws_server.update_tracks(self.mcp_server.active_tracks))
-            asyncio.create_task(self.ws_server.update_heatmap(heatmap))
-            asyncio.create_task(self.ws_server.send_command_result(
-                prompt, f"Created {len(tracks_created)} tracks: {', '.join(tracks_created)}"
-            ))
+            if self.ws_server:
+                asyncio.create_task(self.ws_server.update_tracks(self.mcp_server.active_tracks))
+                asyncio.create_task(self.ws_server.update_heatmap(heatmap))
+                asyncio.create_task(self.ws_server.send_command_result(
+                    prompt, f"Created {len(tracks_created)} tracks: {', '.join(tracks_created)}"
+                ))
             
             return {
                 "success": True,
@@ -195,10 +196,11 @@ class CLIMusicTools:
             self.mcp_server.current_time = 0.0
             
             # Notify WebSocket clients
-            asyncio.create_task(self.ws_server.update_playback(True, 0.0))
-            asyncio.create_task(self.ws_server.send_command_result(
-                f"play {tracks_to_play}", "Playback started"
-            ))
+            if self.ws_server:
+                asyncio.create_task(self.ws_server.update_playback(True, 0.0))
+                asyncio.create_task(self.ws_server.send_command_result(
+                    f"play {tracks_to_play}", "Playback started"
+                ))
             
             return {
                 "success": True,
@@ -244,7 +246,7 @@ class CLIMusicTools:
         return heatmap
 
 # Function to add CLI tools to existing MCP server
-def extend_mcp_with_cli_tools(mcp_server: InteractiveMusicMCP):
+def extend_mcp_with_cli_tools(mcp_server):
     """Add CLI-specific tools to existing MCP server"""
     cli_tools = CLIMusicTools(mcp_server)
     cli_tools.register_cli_tools()

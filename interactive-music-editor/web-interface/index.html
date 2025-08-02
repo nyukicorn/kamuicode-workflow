@@ -569,6 +569,11 @@ Add bass for depth.</textarea>
             console.log('📨 WebSocket message:', data);
             
             switch (data.type) {
+                case 'welcome':
+                    console.log('🎵 Welcome message:', data.message);
+                    showNotification(data.message);
+                    break;
+                    
                 case 'tracks_updated':
                     updateTracksFromMCP(data.data);
                     break;
@@ -597,26 +602,106 @@ Add bass for depth.</textarea>
         // Update functions for WebSocket data
         function updateTracksFromMCP(tracks) {
             console.log('🎵 Updating tracks from MCP:', tracks);
-            // Update heatmap visualization
-            generateHeatmapFromTracks(tracks);
+            // Update heatmap visualization using existing function
+            generateHeatmapBars();
             showNotification('🎵 Tracks updated from CLI!');
         }
         
         function updateHeatmapFromMCP(heatmap) {
             console.log('🔥 Updating heatmap from MCP:', heatmap);
-            renderHeatmapData(heatmap);
+            // Update heatmap using existing visualization
+            renderMCPHeatmap(heatmap);
             showNotification('🔥 Heatmap updated!');
+        }
+        
+        function renderMCPHeatmap(heatmap) {
+            console.log('🎨 Rendering MCP heatmap data:', heatmap);
+            
+            // Update existing heatmap bars with MCP data
+            const trackRows = document.querySelectorAll('.track-row');
+            
+            Object.keys(heatmap).forEach((trackName, index) => {
+                if (trackRows[index]) {
+                    const heatmapRow = trackRows[index].querySelector('.heatmap-row');
+                    if (heatmapRow) {
+                        // Clear existing bars
+                        heatmapRow.innerHTML = '';
+                        
+                        // Add new bars based on MCP data
+                        const trackData = heatmap[trackName].data;
+                        trackData.forEach((point, i) => {
+                            if (point.volume > 0) {
+                                const bar = document.createElement('div');
+                                bar.className = 'heatmap-bar';
+                                bar.style.left = `${(i / trackData.length) * 100}%`;
+                                bar.style.width = '2%';
+                                bar.style.height = `${point.volume * 100}%`;
+                                bar.style.opacity = point.opacity;
+                                heatmapRow.appendChild(bar);
+                            }
+                        });
+                    }
+                }
+            });
         }
         
         function updatePlaybackState(playback) {
             console.log('▶️ Playback state:', playback);
             if (playback.playing) {
-                startRealTimeTimeline();
+                startMCPTimeline();
                 showNotification('▶️ Music started from CLI!');
             } else {
-                stopRealTimeTimeline();
+                stopMCPTimeline();
                 showNotification('⏹️ Music stopped');
             }
+        }
+        
+        // MCP用のタイムライン制御
+        let mcpTimelineInterval = null;
+        
+        function startMCPTimeline() {
+            // 既存のタイムラインを停止
+            window.stopDemoTimeline();
+            if (mcpTimelineInterval) clearInterval(mcpTimelineInterval);
+            
+            console.log('🎵 Starting MCP timeline');
+            
+            // タイムラインマーカーをアニメーション
+            const markers = document.querySelectorAll('.timeline-marker');
+            markers.forEach((marker, index) => {
+                marker.style.animation = 'none';
+                marker.style.left = '0%';
+                
+                // 少し遅延をつけて開始
+                setTimeout(() => {
+                    marker.style.transition = 'left 5s linear';
+                    marker.style.left = '100%';
+                }, index * 100);
+            });
+            
+            // 5秒後にリセット
+            setTimeout(() => {
+                markers.forEach(marker => {
+                    marker.style.transition = 'none';
+                    marker.style.left = '0%';
+                });
+            }, 5000);
+        }
+        
+        function stopMCPTimeline() {
+            console.log('⏹️ Stopping MCP timeline');
+            if (mcpTimelineInterval) {
+                clearInterval(mcpTimelineInterval);
+                mcpTimelineInterval = null;
+            }
+            
+            // マーカーを停止
+            const markers = document.querySelectorAll('.timeline-marker');
+            markers.forEach(marker => {
+                marker.style.animation = 'none';
+                marker.style.transition = 'none';
+                marker.style.left = '0%';
+            });
         }
         
         function showCommandResult(command_data) {
@@ -630,6 +715,34 @@ Add bass for depth.</textarea>
             if (state.heatmap) updateHeatmapFromMCP(state.heatmap);
             if (state.playing) updatePlaybackState({ playing: state.playing, current_time: state.current_time });
         }
+        
+        // Test function to send messages to WebSocket server
+        function testWebSocketMessage(type, data = {}) {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                const message = { type, ...data };
+                websocket.send(JSON.stringify(message));
+                console.log('📤 Sent WebSocket message:', message);
+                showNotification(`📤 Sent: ${type}`);
+            } else {
+                console.error('❌ WebSocket not connected');
+                showNotification('❌ WebSocket not connected', 'error');
+            }
+        }
+        
+        // Add keyboard shortcuts for testing
+        document.addEventListener('keydown', function(event) {
+            // Ctrl + T: Test demo command
+            if (event.ctrlKey && event.key === 't') {
+                event.preventDefault();
+                testWebSocketMessage('demo_command', { command: 'test_from_browser' });
+            }
+            
+            // Ctrl + P: Test playback
+            if (event.ctrlKey && event.key === 'p') {
+                event.preventDefault();
+                testWebSocketMessage('start_playback');
+            }
+        });
 
         // Initialize audio engine
         async function initAudio() {
