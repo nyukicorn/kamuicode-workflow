@@ -157,9 +157,9 @@ function createDepthEnhancedParticleSystem(geometry) {
         console.log(`🔧 Scaled inner sphere particles by factor: ${scaleFactor.toFixed(3)}`);
     }
     
-    // FORCE particle count reduction for audio performance - MICROSCOPIC PARTICLES
+    // FORCE particle count reduction for audio performance - ULTRA MICRO PARTICLES
     const currentParticleCount = positions.array.length / 3;
-    const maxAudioFriendlyParticles = 200000; // 20万が音楽連動の限界（マイクロ粒子対応）
+    const maxAudioFriendlyParticles = 150000; // 15万が音楽連動の限界（ウルトラマイクロ粒子対応）
     
     if (currentParticleCount > maxAudioFriendlyParticles) {
         const reductionFactor = maxAudioFriendlyParticles / currentParticleCount;
@@ -217,14 +217,14 @@ function createDepthEnhancedParticleSystem(geometry) {
         enhanceDepthVisualization(positions, colors);
     }
     
-    // Create inner sphere particle system - 内側球体（深度情報付き）- MUCH SMALLER PARTICLES
+    // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize * 0.4,  // Much smaller particles for finer detail (0.8x2.0=1.6 -> 0.4x2.0=0.8)
+        size: particleSize * 0.15,  // ULTRA micro particles (0.4->0.15, final: 0.08x0.15=0.012)
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.85,  // 少し透明にして重なりを軽減
         vertexColors: true,
-        blending: THREE.AdditiveBlending
+        blending: THREE.NormalBlending  // Additiveから通常ブレンディングに変更して白さ軽減
     });
     
     scene.add(innerSphereParticles);
@@ -375,12 +375,12 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
 function createSphericalParticleSystemFromImage() {
     console.log('🌐 Creating spherical particle system from image (fallback mode)...');
     
-    // Determine particle count based on density setting - 高密度で全体を表現
+    // Determine particle count based on density setting - REDUCED INNER SPHERE COUNT
     let particleCount;
     switch(particleDensity) {
-        case 'low': particleCount = 200000; break;     // 20万パーティクル（軽量）
-        case 'high': particleCount = 400000; break;   // 40万パーティクル（音楽連動対応）
-        default: particleCount = 300000; // medium     // 30万パーティクル（バランス）
+        case 'low': particleCount = 100000; break;     // 10万パーティクル（軽量・白重なり防止）
+        case 'high': particleCount = 200000; break;   // 20万パーティクル（詳細表現）
+        default: particleCount = 150000; // medium     // 15万パーティクル（バランス・白重なり防止）
     }
     
     showLoadingIndicator(`🌐 Generating ${particleCount.toLocaleString()} particles...`);
@@ -471,13 +471,14 @@ function createSphericalParticleSystemFromImage() {
     geometry.setAttribute('color', new THREE.BufferAttribute(actualColors, 3));
     geometry.computeBoundingSphere();
     
-    // Create inner sphere particle system for fallback
+    // Create inner sphere particle system for fallback - ULTRA MICRO PARTICLES
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize,
+        size: particleSize * 0.08,  // ULTRA micro particles to prevent white overlap
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.9,
-        vertexColors: true
+        opacity: 0.75,  // Reduced opacity to prevent white saturation
+        vertexColors: true,
+        blending: THREE.NormalBlending  // Normal blending to reduce white appearance
     });
     
     scene.add(innerSphereParticles);
@@ -565,11 +566,12 @@ function createTestSphericalPattern() {
     geometry.computeBoundingSphere();
     
     innerSphereParticles = createParticleSystem(geometry, {
-        size: particleSize,
+        size: particleSize * 0.08,  // ULTRA micro particles to prevent white overlap
         sizeAttenuation: true,
         transparent: true,
-        opacity: 0.9,
-        vertexColors: true
+        opacity: 0.75,  // Reduced opacity to prevent white saturation
+        vertexColors: true,
+        blending: THREE.NormalBlending  // Normal blending to reduce white appearance
     });
     
     scene.add(innerSphereParticles);
@@ -671,12 +673,14 @@ function toggleBrightness() {
 function updateGlowIntensity(value) {
     const glowValue = parseFloat(value) / 100; // Convert 0-200 to 0-2 (now supports 200% glow)
     
-    // Update glow for both spheres
+    // Update glow for both spheres - PREVENT WHITE OVERLAP IN INNER SPHERE
     [innerSphereParticles, outerSphereParticles].forEach((sphere, index) => {
         if (!sphere || !sphere.material) return;
         // Create emissive-like effect by adjusting material properties
         sphere.material.opacity = Math.min(1.0, 0.6 + glowValue * 0.4);
-        sphere.material.blending = glowValue > 0.1 ? THREE.AdditiveBlending : THREE.NormalBlending;
+        // Inner sphere uses normal blending to prevent white saturation, outer sphere can use additive
+        sphere.material.blending = (index === 0) ? THREE.NormalBlending : 
+                                  (glowValue > 0.1 ? THREE.AdditiveBlending : THREE.NormalBlending);
         
         // Scale particles for glow effect
         const baseSize = particleSize;
@@ -802,8 +806,8 @@ function createOuterSpherePointcloud(texture) {
     const imageData = ctx.getImageData(0, 0, analysisWidth, analysisHeight);
     const pixels = imageData.data;
     
-    // OPTIMIZED particle count for audio performance with microscopic particles
-    const targetParticleCount = 150000; // 15万パーティクル（音楽連動最適化・マイクロ粒子対応）
+    // BALANCED particle count for inner/outer sphere ratio
+    const targetParticleCount = 100000; // 10万パーティクル（内外バランス重視・ウルトラマイクロ対応）
     const totalPixels = analysisWidth * analysisHeight;
     const samplingRate = Math.min(1.0, targetParticleCount / totalPixels);
     
@@ -1072,10 +1076,9 @@ function toggleAudioReactive() {
     }
 }
 
-// Microphone state management
-let microphoneEnabled = false;
+// Microphone state management (using shared variables from audio-reactive-system.js)
+// microphoneEnabled and micAnalyser are already declared in shared component
 let microphoneStream = null;
-let micAnalyser = null;
 let micDataArray = null;
 
 function toggleMicrophone() {

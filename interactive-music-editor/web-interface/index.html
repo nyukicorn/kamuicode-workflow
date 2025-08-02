@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Interactive Music Editor - Revolutionary Live Coding Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: grid;
+            grid-template-rows: 60px 1fr 200px;
+            grid-template-columns: 1fr 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { filter: drop-shadow(0 0 5px rgba(255, 107, 107, 0.5)); }
+            to { filter: drop-shadow(0 0 20px rgba(78, 205, 196, 0.8)); }
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .editor-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-title {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .code-editor {
+            flex: 1;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+        }
+
+        .natural-language-input {
+            background: #2a2a2a;
+            color: #ffffff;
+            border: none;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            height: 120px;
+        }
+
+        .heatmap-panel {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .heatmap-container {
+            padding: 15px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .track-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            height: 30px;
+        }
+
+        .track-label {
+            width: 100px;
+            font-size: 12px;
+            text-align: right;
+            padding-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .track-timeline {
+            flex: 1;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .track-data {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 5px;
+        }
+
+        .time-marker {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: #ff6b6b;
+            left: 0%;
+            z-index: 10;
+            /* animation: move-marker 8s linear infinite; // DISABLED - now controlled by JavaScript */
+        }
+
+        /* Disabled auto animation - now using JavaScript control
+        @keyframes move-marker {
+            from { left: 0%; }
+            to { left: 100%; }
+        } */
+
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-left: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Animated background bars for demo */
+        .demo-bar {
+            height: 100%;
+            border-radius: 8px;
+            margin: 0 1px;
+            animation: bar-pulse 2s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        @keyframes bar-pulse {
+            0%, 100% { opacity: 0.3; transform: scaleY(0.5); }
+            50% { opacity: 1; transform: scaleY(1); }
+        }
+
+        .piano-bar { background: linear-gradient(45deg, #ff9a9e, #fecfef); animation-delay: 0s; }
+        .violin-bar { background: linear-gradient(45deg, #a8edea, #fed6e3); animation-delay: 0.5s; }
+        .drums-bar { background: linear-gradient(45deg, #ffecd2, #fcb69f); animation-delay: 1s; }
+        .bass-bar { background: linear-gradient(45deg, #667eea, #764ba2); animation-delay: 1.5s; }
+
+        .demo-visualization {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            opacity: 0.3;
+            font-size: 48px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="title">🎵 Interactive Music Editor</div>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>Live Coding Active</span>
+            </div>
+            <div class="control-buttons">
+                <button class="btn" onclick="generateMusic()">🎼 Generate</button>
+                <button class="btn" onclick="playMusic()">▶️ Play</button>
+                <button class="btn" onclick="stopMusic()">⏹️ Stop</button>
+            </div>
+        </div>
+
+        <!-- Code Editor Panel -->
+        <div class="editor-panel">
+            <div class="panel-title">🚀 Live Music Coding</div>
+            <textarea class="code-editor" id="codeEditor" placeholder="// Type your music code here...
+track('piano')
+  .play(['C4', 'E4', 'G4', 'C5'])
+  .timing([0, 0.5, 1, 1.5])
+  .volume(0.8)
+  .reverb(0.3)
+
+track('violin') 
+  .melody('romantic')
+  .harmony('C major')
+  .fadeIn(2)">// 🎼 Welcome to Interactive Music Editor!
+// Click "Play" to hear your code as music!
+
+track('piano')
+  .play(['C4', 'E4', 'G4', 'C5'])
+  .timing([0, 0.5, 1, 1.5])
+  .volume(0.8)
+  .reverb(0.3)
+
+track('violin') 
+  .play(['G4', 'A4', 'B4', 'C5'])
+  .timing([2, 2.5, 3, 3.5])
+  .melody('romantic')
+  .harmony('C major')
+
+// 🎵 Edit code → Click Play → Hear music instantly!</textarea>
+        </div>
+
+        <!-- Natural Language Panel -->
+        <div class="editor-panel">
+            <div class="panel-title">🤖 Natural Language Control</div>
+            <textarea class="natural-language-input" id="nlInput" placeholder="Type natural language instructions...">Add a gentle piano melody with strings.
+Make it more romantic at 2 minutes.
+Increase volume for dramatic effect.
+Add bass for depth.</textarea>
+            <div style="padding: 10px;">
+                <button class="btn" onclick="convertToCode()">🔄 Convert to Code</button>
+                <button class="btn" onclick="executeNaturalLanguage()">🎵 Execute</button>
+            </div>
+        </div>
+
+        <!-- Heatmap Visualization Panel -->
+        <div class="heatmap-panel">
+            <div class="panel-title" style="position: absolute; top: 0; left: 0; right: 0; z-index: 5;">
+                🔥 Real-time Music Heatmap - Live Visualization
+            </div>
+            <div class="demo-visualization">🎼</div>
+            <div class="heatmap-container" style="padding-top: 50px;">
+                <!-- Piano Track -->
+                <div class="track-row">
+                    <div class="track-label">🎹 Piano</div>
+                    <div class="track-timeline">
+                        <div class="time-marker"></div>
+                        <div class="track-data" id="pianoTrack">
+                            <!-- Generated bars will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Violin Track -->
+                <div class="track-row">
+                    <div class="track-label">🎻 Violin</div>
+                    <div class="track-timeline">
+                        <div class="time-marker"></div>
+                        <div class="track-data" id="violinTrack">
+                            <!-- Generated bars will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drums Track -->
+                <div class="track-row">
+                    <div class="track-label">🥁 Drums</div>
+                    <div class="track-timeline">
+                        <div class="time-marker"></div>
+                        <div class="track-data" id="drumsTrack">
+                            <!-- Generated bars will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bass Track -->
+                <div class="track-row">
+                    <div class="track-label">🎸 Bass</div>
+                    <div class="track-timeline">
+                        <div class="time-marker"></div>
+                        <div class="track-data" id="bassTrack">
+                            <!-- Generated bars will go here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo heatmap generation
+        function generateHeatmapBars() {
+            const tracks = ['pianoTrack', 'violinTrack', 'drumsTrack', 'bassTrack'];
+            const classes = ['piano-bar', 'violin-bar', 'drums-bar', 'bass-bar'];
+            
+            tracks.forEach((trackId, index) => {
+                const track = document.getElementById(trackId);
+                track.innerHTML = '';
+                
+                // Generate 40 bars for demo
+                for (let i = 0; i < 40; i++) {
+                    const bar = document.createElement('div');
+                    bar.className = `demo-bar ${classes[index]}`;
+                    bar.style.width = '2%';
+                    bar.style.height = `${Math.random() * 80 + 20}%`;
+                    bar.style.animationDelay = `${Math.random() * 2}s`;
+                    
+                    // Random gaps for realistic music patterns
+                    if (Math.random() > 0.7) {
+                        bar.style.opacity = '0.1';
+                    }
+                    
+                    track.appendChild(bar);
+                }
+            });
+        }
+
+        function generateMusic() {
+            console.log('🎼 Generating music...');
+            generateHeatmapBars();
+            showNotification('🎵 Music generated successfully!');
+        }
+
+        function playMusic() {
+            console.log('▶️ Playing music...');
+            showNotification('▶️ Music playing...');
+        }
+
+        function stopMusic() {
+            console.log('⏹️ Stopping music...');
+            showNotification('⏹️ Music stopped');
+        }
+
+        function convertToCode() {
+            const nlText = document.getElementById('nlInput').value;
+            const codeEditor = document.getElementById('codeEditor');
+            
+            // Simple demo conversion
+            let generatedCode = '\n// 🤖 Generated from natural language:\n';
+            
+            if (nlText.includes('piano')) {
+                generatedCode += "track('piano').play(['C4', 'E4', 'G4']).volume(0.7)\n";
+            }
+            if (nlText.includes('romantic')) {
+                generatedCode += ".reverb(0.4).warmth(0.6)\n";
+            }
+            if (nlText.includes('dramatic')) {
+                generatedCode += ".crescendo(2.0).volume(0.9)\n";
+            }
+            
+            codeEditor.value += generatedCode;
+            showNotification('🔄 Natural language converted to code!');
+        }
+
+        function executeNaturalLanguage() {
+            convertToCode();
+            generateMusic();
+            showNotification('🎵 Natural language instruction executed!');
+        }
+
+        function showNotification(message) {
+            // Simple notification system
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+                color: white;
+                padding: 15px;
+                border-radius: 5px;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize demo
+        window.addEventListener('load', () => {
+            console.log('🔴 Page loaded - stopping CSS animations and taking control');
+            
+            // Stop all automatic CSS animations
+            const timeMarkers = document.querySelectorAll('.time-marker');
+            timeMarkers.forEach((marker, index) => {
+                marker.style.animation = 'none';
+                marker.style.left = '0%';
+                marker.style.transition = 'none';
+                console.log(`🔴 Marker ${index} stopped and reset to 0%`);
+            });
+            
+            generateHeatmapBars();
+            
+            // Auto-refresh heatmap every 8 seconds for demo (but NOT markers)
+            setInterval(() => {
+                console.log('🔴 Demo heatmap refresh - markers should stay at 0%');
+                generateHeatmapBars();
+                
+                // Ensure markers stay stopped during demo refreshes
+                const markers = document.querySelectorAll('.time-marker');
+                markers.forEach(marker => {
+                    if (!marker.dataset.controlledByPlay) {
+                        marker.style.left = '0%';
+                        marker.style.animation = 'none';
+                    }
+                });
+            }, 8000);
+        });
+
+        // Add some CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+        // Audio engine integration
+        let audioEngine = null;
+
+        // Initialize audio engine
+        async function initAudio() {
+            if (!audioEngine) {
+                // Simple inline audio engine for immediate testing
+                audioEngine = {
+                    audioContext: null,
+                    masterGain: null,
+                    
+                    async init() {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        this.masterGain = this.audioContext.createGain();
+                        this.masterGain.connect(this.audioContext.destination);
+                        this.masterGain.gain.value = 0.5;
+                    },
+                    
+                    async resume() {
+                        if (this.audioContext && this.audioContext.state === 'suspended') {
+                            await this.audioContext.resume();
+                        }
+                    },
+                    
+                    noteToFreq(note) {
+                        const notes = {
+                            'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
+                            'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25
+                        };
+                        return notes[note] || 440;
+                    },
+                    
+                    playNote(freq, duration = 0.5) {
+                        const osc = this.audioContext.createOscillator();
+                        const gain = this.audioContext.createGain();
+                        
+                        osc.frequency.value = freq;
+                        osc.type = 'triangle';
+                        
+                        gain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                        
+                        osc.connect(gain);
+                        gain.connect(this.masterGain);
+                        
+                        osc.start();
+                        osc.stop(this.audioContext.currentTime + duration);
+                    },
+                    
+                    playFullDemo() {
+                        console.log('🎵 Playing demo...');
+                        const notes = ['C4', 'E4', 'G4', 'C5'];
+                        notes.forEach((note, i) => {
+                            setTimeout(() => {
+                                this.playNote(this.noteToFreq(note), 0.5);
+                            }, i * 300);
+                        });
+                    },
+                    
+                    playRomanticStyle() {
+                        console.log('🎵 Playing romantic style...');
+                        const chord = ['C4', 'E4', 'G4'];
+                        chord.forEach(note => {
+                            this.playNote(this.noteToFreq(note), 2.0);
+                        });
+                    },
+                    
+                    playDramaticStyle() {
+                        console.log('🎵 Playing dramatic style...');
+                        const notes = ['C4', 'D4', 'E4', 'F4', 'G4'];
+                        notes.forEach((note, i) => {
+                            setTimeout(() => {
+                                this.playNote(this.noteToFreq(note), 0.3);
+                            }, i * 100);
+                        });
+                    },
+                    
+                    playDemoPattern(instrument) {
+                        console.log(`🎵 Playing ${instrument} pattern...`);
+                        if (instrument === 'piano') {
+                            this.playFullDemo();
+                        } else if (instrument === 'violin') {
+                            this.playRomanticStyle();
+                        } else {
+                            this.playNote(220, 0.5); // Simple tone
+                        }
+                    },
+                    
+                    // Parse and execute code from editor with heatmap sync
+                    executeCode(codeText) {
+                        console.log('🎼 Parsing code:', codeText);
+                        const lines = codeText.split('\n');
+                        const trackData = {};
+                        
+                        lines.forEach(line => {
+                            line = line.trim();
+                            if (line.startsWith('//') || !line) return;
+                            
+                            // Parse track() declarations
+                            if (line.includes("track('") || line.includes('track("')) {
+                                const trackMatch = line.match(/track\(['"]([^'"]+)['"]\)/);
+                                if (trackMatch) {
+                                    const trackName = trackMatch[1];
+                                    trackData[trackName] = { name: trackName, notes: [], timing: [] };
+                                }
+                            }
+                            
+                            // Parse .play() calls with note arrays
+                            if (line.includes('.play([')) {
+                                const playMatch = line.match(/\.play\(\[([^\]]+)\]/);
+                                if (playMatch) {
+                                    const notesStr = playMatch[1];
+                                    const notes = notesStr.split(',').map(n => n.trim().replace(/['"]/g, ''));
+                                    
+                                    // Find the last track to assign notes to
+                                    const trackNames = Object.keys(trackData);
+                                    if (trackNames.length > 0) {
+                                        const lastTrack = trackNames[trackNames.length - 1];
+                                        trackData[lastTrack].notes = notes;
+                                        console.log(`🎵 Found notes for ${lastTrack}:`, notes);
+                                    }
+                                }
+                            }
+                            
+                            // Parse .timing() calls
+                            if (line.includes('.timing([')) {
+                                const timingMatch = line.match(/\.timing\(\[([^\]]+)\]/);
+                                if (timingMatch) {
+                                    const timingStr = timingMatch[1];
+                                    const timing = timingStr.split(',').map(t => parseFloat(t.trim()));
+                                    
+                                    // Find the last track to assign timing to
+                                    const trackNames = Object.keys(trackData);
+                                    if (trackNames.length > 0) {
+                                        const lastTrack = trackNames[trackNames.length - 1];
+                                        trackData[lastTrack].timing = timing;
+                                        console.log(`🎵 Found timing for ${lastTrack}:`, timing);
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Stop any existing timeline
+                        this.stopTimeline();
+                        
+                        // Generate synchronized heatmap
+                        this.generateSyncedHeatmap(trackData);
+                        
+                        // Start real-time timeline that follows actual music
+                        this.startRealTimeTimeline(trackData);
+                        
+                        // Execute parsed tracks
+                        Object.values(trackData).forEach((track, index) => {
+                            if (track.notes.length > 0) {
+                                setTimeout(() => {
+                                    this.playSequenceWithHeatmap(track.notes, track.name, track.timing);
+                                }, index * 100); // Slight delay between tracks
+                            }
+                        });
+                        
+                        return trackData;
+                    },
+                    
+                    // Stop any running timeline
+                    stopTimeline() {
+                        if (this.timelineInterval) {
+                            clearInterval(this.timelineInterval);
+                        }
+                        if (this.timelineStartTime) {
+                            this.timelineStartTime = null;
+                        }
+                    },
+                    
+                    // Start real-time timeline that follows actual music events
+                    startRealTimeTimeline(trackData) {
+                        console.log('⏱️ Starting real-time timeline...');
+                        
+                        // Reset markers
+                        const timeMarkers = document.querySelectorAll('.time-marker');
+                        timeMarkers.forEach(marker => {
+                            marker.style.left = '0%';
+                            marker.style.transition = 'none';
+                        });
+                        
+                        // Calculate total music duration
+                        let maxDuration = 0;
+                        Object.values(trackData).forEach(track => {
+                            if (track.timing && track.timing.length > 0) {
+                                const lastTime = Math.max(...track.timing) + 0.5;
+                                maxDuration = Math.max(maxDuration, lastTime);
+                            }
+                        });
+                        
+                        if (maxDuration === 0) maxDuration = 4;
+                        console.log(`⏱️ Total music duration: ${maxDuration} seconds`);
+                        
+                        // Start real-time timeline tracking
+                        this.timelineStartTime = Date.now();
+                        this.timelineMaxDuration = maxDuration;
+                        
+                        this.timelineInterval = setInterval(() => {
+                            const elapsed = (Date.now() - this.timelineStartTime) / 1000;
+                            const progress = Math.min(elapsed / maxDuration, 1) * 100;
+                            
+                            timeMarkers.forEach(marker => {
+                                marker.style.left = progress + '%';
+                            });
+                            
+                            // Stop when duration is reached
+                            if (elapsed >= maxDuration) {
+                                clearInterval(this.timelineInterval);
+                                console.log('⏱️ Timeline completed');
+                            }
+                        }, 50); // Update every 50ms for smooth animation
+                    },
+                    
+                    // Generate heatmap data synchronized with music
+                    generateSyncedHeatmap(trackData) {
+                        console.log('🔥 Generating synced heatmap...');
+                        
+                        // Get heatmap tracks
+                        const heatmapTracks = {
+                            'piano': document.getElementById('pianoTrack'),
+                            'violin': document.getElementById('violinTrack'),
+                            'drums': document.getElementById('drumsTrack'),
+                            'bass': document.getElementById('bassTrack')
+                        };
+                        
+                        // Clear existing heatmap
+                        Object.values(heatmapTracks).forEach(track => {
+                            if (track) track.innerHTML = '';
+                        });
+                        
+                        // Create timeline bars based on actual track data
+                        const maxDuration = 8; // 8 seconds timeline
+                        const barCount = 40; // Number of bars
+                        const timePerBar = maxDuration / barCount;
+                        
+                        Object.keys(heatmapTracks).forEach(instrumentName => {
+                            const trackElement = heatmapTracks[instrumentName];
+                            if (!trackElement) return;
+                            
+                            const trackInfo = trackData[instrumentName];
+                            
+                            for (let i = 0; i < barCount; i++) {
+                                const bar = document.createElement('div');
+                                bar.className = 'heatmap-bar';
+                                bar.style.width = '2.5%';
+                                bar.style.height = '60%';
+                                bar.style.margin = '0 1px';
+                                bar.style.borderRadius = '2px';
+                                bar.style.transition = 'all 0.3s ease';
+                                
+                                const currentTime = i * timePerBar;
+                                let isActive = false;
+                                let intensity = 0.2;
+                                
+                                // Check if this time slot has music
+                                if (trackInfo && trackInfo.notes && trackInfo.timing) {
+                                    trackInfo.timing.forEach((noteTime, noteIndex) => {
+                                        if (noteTime >= currentTime && noteTime < currentTime + timePerBar) {
+                                            isActive = true;
+                                            intensity = 1.0;
+                                        }
+                                    });
+                                }
+                                
+                                // Set colors and opacity based on instrument
+                                let baseColor = 'rgba(255, 255, 255, 0.2)';
+                                if (instrumentName === 'piano') baseColor = 'rgba(255, 154, 158, ';
+                                else if (instrumentName === 'violin') baseColor = 'rgba(168, 237, 234, ';
+                                else if (instrumentName === 'drums') baseColor = 'rgba(255, 236, 210, ';
+                                else if (instrumentName === 'bass') baseColor = 'rgba(102, 126, 234, ';
+                                
+                                bar.style.background = baseColor + (isActive ? intensity : 0.2) + ')';
+                                bar.style.opacity = isActive ? '1' : '0.3';
+                                
+                                // Store timing info for animation
+                                bar.dataset.timeStart = currentTime;
+                                bar.dataset.timeEnd = currentTime + timePerBar;
+                                bar.dataset.isActive = isActive;
+                                
+                                trackElement.appendChild(bar);
+                            }
+                        });
+                    },
+                    
+                    // Play a sequence of notes with timing and heatmap animation
+                    playSequenceWithHeatmap(notes, instrument = 'piano', timing = null) {
+                        if (!timing || timing.length === 0) {
+                            timing = notes.map((_, i) => i * 0.5); // Default timing
+                        }
+                        
+                        console.log(`🎵 Playing ${instrument} sequence with heatmap:`, notes);
+                        
+                        notes.forEach((note, i) => {
+                            if (note && note !== 'rest') {
+                                setTimeout(() => {
+                                    // Play the note
+                                    const freq = this.noteToFreq(note);
+                                    if (freq) {
+                                        // Different sounds for different instruments
+                                        let oscType = 'triangle';
+                                        if (instrument === 'violin') oscType = 'sawtooth';
+                                        if (instrument === 'bass') oscType = 'square';
+                                        
+                                        const osc = this.audioContext.createOscillator();
+                                        const gain = this.audioContext.createGain();
+                                        
+                                        osc.frequency.value = freq;
+                                        osc.type = oscType;
+                                        
+                                        gain.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+                                        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+                                        
+                                        osc.connect(gain);
+                                        gain.connect(this.masterGain);
+                                        
+                                        osc.start();
+                                        osc.stop(this.audioContext.currentTime + 0.5);
+                                    }
+                                    
+                                    // Animate corresponding heatmap bar
+                                    this.animateHeatmapBar(instrument, timing[i]);
+                                    
+                                }, (timing[i] || i * 0.5) * 1000);
+                            }
+                        });
+                    },
+                    
+                    // Animate heatmap bar when note plays + move timeline marker
+                    animateHeatmapBar(instrument, noteTime) {
+                        const trackElements = {
+                            'piano': document.getElementById('pianoTrack'),
+                            'violin': document.getElementById('violinTrack'),
+                            'drums': document.getElementById('drumsTrack'),
+                            'bass': document.getElementById('bassTrack')
+                        };
+                        
+                        const trackElement = trackElements[instrument];
+                        if (!trackElement) return;
+                        
+                        // Move timeline markers to match the note time
+                        this.updateTimelineMarkers(noteTime);
+                        
+                        // Find the bar that corresponds to this time
+                        const bars = trackElement.querySelectorAll('.heatmap-bar');
+                        bars.forEach(bar => {
+                            const timeStart = parseFloat(bar.dataset.timeStart);
+                            const timeEnd = parseFloat(bar.dataset.timeEnd);
+                            
+                            if (noteTime >= timeStart && noteTime < timeEnd) {
+                                // Animate this bar
+                                bar.style.transform = 'scaleY(1.5)';
+                                bar.style.boxShadow = '0 0 10px rgba(255, 255, 255, 0.8)';
+                                bar.style.opacity = '1';
+                                
+                                // Reset animation after a short time
+                                setTimeout(() => {
+                                    bar.style.transform = 'scaleY(1)';
+                                    bar.style.boxShadow = 'none';
+                                    bar.style.opacity = bar.dataset.isActive === 'true' ? '1' : '0.3';
+                                }, 300);
+                            }
+                        });
+                    },
+                    
+                    // Update timeline markers to sync with music
+                    updateTimelineMarkers(currentTime) {
+                        const timeMarkers = document.querySelectorAll('.time-marker');
+                        const maxDuration = 8; // 8 seconds total
+                        const progressPercent = Math.min((currentTime / maxDuration) * 100, 100);
+                        
+                        timeMarkers.forEach(marker => {
+                            // Move marker to current time position
+                            marker.style.left = progressPercent + '%';
+                            
+                            // Add glow effect
+                            marker.style.boxShadow = '0 0 8px rgba(255, 107, 107, 0.8)';
+                            marker.style.transform = 'scaleX(2)';
+                            
+                            // Reset glow after short time
+                            setTimeout(() => {
+                                marker.style.boxShadow = 'none';
+                                marker.style.transform = 'scaleX(1)';
+                            }, 200);
+                        });
+                    },
+                    
+                    // Play a sequence of notes with timing (fallback)
+                    playSequence(notes, instrument = 'piano', timing = null) {
+                        return this.playSequenceWithHeatmap(notes, instrument, timing);
+                    }
+                };
+                
+                await audioEngine.init();
+                await audioEngine.resume();
+                showNotification('🎵 Audio engine initialized!');
+                console.log('🎵 Audio engine ready');
+            }
+        }
+
+        // Generate: Creates new demo music and visual
+        async function generateMusic() {
+            console.log('🎼 Generating new demo music...');
+            
+            // Initialize audio if not done
+            await initAudio();
+            
+            // Generate random demo heatmap
+            generateHeatmapBars();
+            
+            // Play preset demo music (not from editor)
+            if (audioEngine) {
+                audioEngine.playFullDemo();
+            }
+            
+            showNotification('🎵 Demo music generated!');
+        }
+
+        // Enhanced play function - now executes code from editor
+        async function playMusic() {
+            console.log('▶️ Playing code from editor...');
+            
+            // LOG: Check marker position when Play is pressed
+            const timeMarkers = document.querySelectorAll('.time-marker');
+            timeMarkers.forEach((marker, index) => {
+                const currentPosition = marker.style.left;
+                console.log(`🔴 Marker ${index} position when Play pressed: ${currentPosition}`);
+                console.log(`🔴 Marker ${index} transition: ${marker.style.transition}`);
+            });
+            
+            await initAudio();
+            
+            if (audioEngine) {
+                // Get code from editor
+                const codeEditor = document.getElementById('codeEditor');
+                const codeText = codeEditor.value;
+                
+                if (codeText.trim()) {
+                    // Parse and execute the code
+                    const parsedTracks = audioEngine.executeCode(codeText);
+                    const trackCount = Object.keys(parsedTracks).length;
+                    
+                    if (trackCount > 0) {
+                        showNotification(`▶️ Playing ${trackCount} tracks from code!`);
+                    } else {
+                        // Fallback to demo if no valid code
+                        audioEngine.playFullDemo();
+                        showNotification('▶️ No valid tracks found, playing demo!');
+                    }
+                } else {
+                    // Fallback to demo if editor is empty
+                    audioEngine.playFullDemo();
+                    showNotification('▶️ Playing demo music!');
+                }
+            }
+        }
+
+        // Enhanced natural language execution
+        async function executeNaturalLanguage() {
+            await initAudio();
+            
+            const nlText = document.getElementById('nlInput').value.toLowerCase();
+            
+            // Convert to code
+            convertToCode();
+            
+            // Generate visuals
+            generateHeatmapBars();
+            
+            // Play appropriate music based on text
+            if (audioEngine) {
+                if (nlText.includes('romantic')) {
+                    audioEngine.playRomanticStyle();
+                    showNotification('🎵 Playing romantic style music!');
+                } else if (nlText.includes('dramatic')) {
+                    audioEngine.playDramaticStyle();
+                    showNotification('🎵 Playing dramatic style music!');
+                } else if (nlText.includes('piano')) {
+                    audioEngine.playDemoPattern('piano');
+                    showNotification('🎹 Playing piano pattern!');
+                } else if (nlText.includes('violin')) {
+                    audioEngine.playDemoPattern('violin');
+                    showNotification('🎻 Playing violin pattern!');
+                } else {
+                    audioEngine.playFullDemo();
+                    showNotification('🎵 Playing full composition!');
+                }
+            }
+        }
+
+        // Enhanced convert to code - now supports Japanese
+        async function convertToCode() {
+            const nlText = document.getElementById('nlInput').value;
+            const codeEditor = document.getElementById('codeEditor');
+            
+            // Generate new code based on natural language (Japanese + English)
+            let generatedCode = '// 🤖 自然言語から生成されたコード:\n';
+            
+            // Piano detection (ピアノ、piano)
+            if (nlText.includes('ピアノ') || nlText.includes('piano')) {
+                generatedCode += "track('piano')\n  .play(['C4', 'E4', 'G4', 'C5'])\n  .timing([0, 0.5, 1, 1.5])\n  .volume(0.7)\n\n";
+            }
+            
+            // Violin detection (バイオリン、violin)
+            if (nlText.includes('バイオリン') || nlText.includes('violin')) {
+                generatedCode += "track('violin')\n  .play(['G4', 'A4', 'B4', 'C5'])\n  .timing([2, 2.5, 3, 3.5])\n  .volume(0.6)\n\n";
+            }
+            
+            // Bass detection (ベース、bass)
+            if (nlText.includes('ベース') || nlText.includes('bass') || nlText.includes('バス')) {
+                generatedCode += "track('bass')\n  .play(['C2', 'C2', 'F2', 'G2'])\n  .timing([0, 1, 2, 3])\n  .volume(0.8)\n\n";
+            }
+            
+            // Drums detection (ドラム、drums)
+            if (nlText.includes('ドラム') || nlText.includes('drums')) {
+                generatedCode += "track('drums')\n  .play(['kick', 'kick', 'kick', 'kick'])\n  .timing([0, 1, 2, 3])\n  .volume(0.8)\n\n";
+            }
+            
+            // Style detection
+            if (nlText.includes('ロマンチック') || nlText.includes('romantic') || nlText.includes('やさしく') || nlText.includes('優しく')) {
+                generatedCode += "// ロマンチックなスタイル\n";
+                if (!nlText.includes('ピアノ') && !nlText.includes('piano')) {
+                    generatedCode += "track('piano')\n  .play(['C4', 'E4', 'G4'])\n  .timing([0, 1, 2])\n  .reverb(0.4)\n\n";
+                }
+            }
+            
+            if (nlText.includes('激しく') || nlText.includes('dramatic') || nlText.includes('盛り上げ') || nlText.includes('ドラマチック')) {
+                generatedCode += "// ドラマチックなスタイル\n";
+                generatedCode += "track('piano')\n  .play(['C4', 'D4', 'E4', 'F4', 'G4'])\n  .timing([0, 0.3, 0.6, 0.9, 1.2])\n  .volume(0.9)\n\n";
+            }
+            
+            // Add instruction (追加、入れて、加えて)
+            if (nlText.includes('追加') || nlText.includes('入れて') || nlText.includes('加えて') || nlText.includes('も')) {
+                // Already handled by individual instrument detection above
+            }
+            
+            // If no specific instruments mentioned, add default
+            if (!generatedCode.includes("track(")) {
+                generatedCode += "track('piano')\n  .play(['C4', 'E4', 'G4', 'C5'])\n  .timing([0, 0.5, 1, 1.5])\n  .volume(0.7)\n\n";
+            }
+            
+            // Replace the editor content instead of appending
+            codeEditor.value = generatedCode + "// 🎵 Playボタンで音楽を再生！";
+            showNotification('🔄 日本語を音楽コードに変換しました！');
+        }
+
+        // Add click-to-play functionality for individual tracks
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add click handlers to track labels
+            const trackLabels = document.querySelectorAll('.track-label');
+            trackLabels.forEach((label, index) => {
+                label.style.cursor = 'pointer';
+                label.addEventListener('click', async () => {
+                    await initAudio();
+                    if (audioEngine) {
+                        const instruments = ['piano', 'violin', 'drums', 'bass'];
+                        const instrument = instruments[index];
+                        audioEngine.playDemoPattern(instrument);
+                        showNotification(`🎵 Playing ${instrument} track!`);
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <!-- Audio engine is now inline, no external file needed -->
+</body>
+</html>
