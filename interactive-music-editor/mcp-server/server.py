@@ -14,12 +14,27 @@ import asyncio
 import json
 import logging
 import sys
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 # FastMCP for server implementation
 from fastmcp import FastMCP
+
+# WebSocket integration
+try:
+    from websocket_server import get_websocket_server
+except ImportError:
+    logger.warning("WebSocket server import failed - running without WebSocket support")
+    get_websocket_server = None
+
+# CLI tools integration  
+try:
+    from cli_tools import extend_mcp_with_cli_tools
+except ImportError:
+    logger.warning("CLI tools import failed - running without CLI tools")
+    extend_mcp_with_cli_tools = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -47,10 +62,33 @@ class InteractiveMusicMCP:
         self.is_playing = False
         self.current_time = 0.0
         
+        # WebSocket server integration
+        if get_websocket_server:
+            self.ws_server = get_websocket_server()
+            self._start_websocket_server()
+        else:
+            self.ws_server = None
+        
         # Register tools
         self._register_tools()
         
+        # Add CLI-specific tools
+        if extend_mcp_with_cli_tools:
+            self.cli_tools = extend_mcp_with_cli_tools(self)
+        else:
+            self.cli_tools = None
+        
         logger.info("🎵 Interactive Music Editor MCP Server initialized")
+        
+    def _start_websocket_server(self):
+        """Start WebSocket server in background thread"""
+        def run_ws_server():
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            asyncio.run(self.ws_server.start_server())
+            
+        ws_thread = threading.Thread(target=run_ws_server, daemon=True)
+        ws_thread.start()
+        logger.info("🌐 WebSocket server started on localhost:8765")
     
     def _register_tools(self):
         """Register all MCP tools"""
@@ -75,6 +113,10 @@ class InteractiveMusicMCP:
             
             self.active_tracks[track_name] = track
             logger.info(f"🎼 Created track: {track_name} ({instrument})")
+            
+            # Notify WebSocket clients
+            if self.ws_server:
+                asyncio.create_task(self.ws_server.update_tracks(self.active_tracks))
             
             return {
                 "success": True,
@@ -112,6 +154,10 @@ class InteractiveMusicMCP:
                 track["notes"].append(note_data)
             
             logger.info(f"🎵 Added {len(notes)} notes to track: {track_name}")
+            
+            # Notify WebSocket clients
+            if self.ws_server:
+                asyncio.create_task(self.ws_server.update_tracks(self.active_tracks))
             
             return {
                 "success": True,
@@ -160,6 +206,10 @@ class InteractiveMusicMCP:
             
             self.heatmap_data = heatmap
             logger.info(f"🔥 Generated heatmap data for {len(heatmap)} tracks")
+            
+            # Notify WebSocket clients
+            if self.ws_server:
+                asyncio.create_task(self.ws_server.update_heatmap(heatmap))
             
             return {
                 "success": True,

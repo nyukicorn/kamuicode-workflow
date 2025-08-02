@@ -220,7 +220,7 @@ function createDepthEnhancedParticleSystem(geometry) {
     // Create inner sphere particle system - 内側球体（深度情報付き）- ULTRA MICRO PARTICLES
     const innerParticleSize = particleSize * 0.01;
     console.log(`🔴 INNER SPHERE (PLY): Base size: ${particleSize}, Multiplier: 0.01, Final size: ${innerParticleSize}`);
-    console.log(`🔴 INNER SPHERE (PLY): Particle count: ${particleIndex}, Radius: ${innerSphereRadius}`);
+    console.log(`🔴 INNER SPHERE (PLY): Particle count: ${positions.count}, Radius: ${innerSphereRadius}`);
     
     innerSphereParticles = createParticleSystem(geometry, {
         size: innerParticleSize,  // MICRO-NANO particles for perfect transparency
@@ -358,8 +358,8 @@ function loadImageFromPath(loader, currentPath, pathIndex, allPaths) {
             console.log(`✅ Panorama texture loaded from path ${pathIndex + 1}: ${currentPath}`);
             panoramaTexture = texture;
             
-            // Create background panorama sphere
-            createBackgroundPanoramaSphere(texture);
+            // Create background panorama sphere (disabled - using particle system only)
+            // createBackgroundPanoramaSphere(texture);
             
             // Create spherical particle distribution from image  
             createSphericalParticleSystemFromImage();

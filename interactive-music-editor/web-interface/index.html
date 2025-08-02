@@ -525,6 +525,111 @@ Add bass for depth.</textarea>
         document.head.appendChild(style);
         // Audio engine integration
         let audioEngine = null;
+        let websocket = null;
+
+        // WebSocket connection management
+        function initWebSocket() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                return; // Already connected
+            }
+            
+            try {
+                websocket = new WebSocket('ws://localhost:8765');
+                
+                websocket.onopen = function(event) {
+                    console.log('🌐 WebSocket connected to MCP server');
+                    showNotification('🌐 Connected to real-time server!');
+                };
+                
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('🔌 WebSocket disconnected');
+                    showNotification('⚠️ Connection lost - retrying...', 'warning');
+                    // Retry connection after 3 seconds
+                    setTimeout(initWebSocket, 3000);
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('❌ WebSocket error:', error);
+                    showNotification('❌ Connection error', 'error');
+                };
+                
+            } catch (error) {
+                console.error('❌ Failed to connect WebSocket:', error);
+                showNotification('❌ Failed to connect to server', 'error');
+            }
+        }
+        
+        // Handle incoming WebSocket messages
+        function handleWebSocketMessage(data) {
+            console.log('📨 WebSocket message:', data);
+            
+            switch (data.type) {
+                case 'tracks_updated':
+                    updateTracksFromMCP(data.data);
+                    break;
+                    
+                case 'heatmap_updated':
+                    updateHeatmapFromMCP(data.data);
+                    break;
+                    
+                case 'playback_updated':
+                    updatePlaybackState(data.data);
+                    break;
+                    
+                case 'command_executed':
+                    showCommandResult(data.data);
+                    break;
+                    
+                case 'state_sync':
+                    syncEntireState(data.data);
+                    break;
+                    
+                default:
+                    console.log('Unknown message type:', data.type);
+            }
+        }
+        
+        // Update functions for WebSocket data
+        function updateTracksFromMCP(tracks) {
+            console.log('🎵 Updating tracks from MCP:', tracks);
+            // Update heatmap visualization
+            generateHeatmapFromTracks(tracks);
+            showNotification('🎵 Tracks updated from CLI!');
+        }
+        
+        function updateHeatmapFromMCP(heatmap) {
+            console.log('🔥 Updating heatmap from MCP:', heatmap);
+            renderHeatmapData(heatmap);
+            showNotification('🔥 Heatmap updated!');
+        }
+        
+        function updatePlaybackState(playback) {
+            console.log('▶️ Playback state:', playback);
+            if (playback.playing) {
+                startRealTimeTimeline();
+                showNotification('▶️ Music started from CLI!');
+            } else {
+                stopRealTimeTimeline();
+                showNotification('⏹️ Music stopped');
+            }
+        }
+        
+        function showCommandResult(command_data) {
+            const { command, result } = command_data;
+            showNotification(`✅ CLI: ${command} → ${JSON.stringify(result).slice(0, 50)}...`);
+        }
+        
+        function syncEntireState(state) {
+            console.log('🔄 Syncing entire state:', state);
+            if (state.tracks) updateTracksFromMCP(state.tracks);
+            if (state.heatmap) updateHeatmapFromMCP(state.heatmap);
+            if (state.playing) updatePlaybackState({ playing: state.playing, current_time: state.current_time });
+        }
 
         // Initialize audio engine
         async function initAudio() {
@@ -1115,6 +1220,9 @@ Add bass for depth.</textarea>
 
         // Add click-to-play functionality for individual tracks
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize WebSocket connection
+            initWebSocket();
+            
             // Add click handlers to track labels
             const trackLabels = document.querySelectorAll('.track-label');
             trackLabels.forEach((label, index) => {
